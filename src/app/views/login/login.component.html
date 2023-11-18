@@ -1,0 +1,10 @@
+<form [formGroup]="loginForm">
+
+  <app-form-element>
+    <label label for="apiKey">OpenAI API Key</label>
+    <input input id="apiKey" type="text" pInputText formControlName="apiKey" />
+  </app-form-element>
+
+  <p-button icon="pi pi-arrow-right" iconPos="right" label="Login" [disabled]="!loginForm.valid" (click)="onSubmit()" />
+
+</form>

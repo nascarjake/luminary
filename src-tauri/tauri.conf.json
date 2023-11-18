@@ -11,7 +11,13 @@
   },
   "tauri": {
     "allowlist": {
-      "all": false
+      "http": {
+        "all": true,
+        "request": true,
+        "scope": [
+          "https://api.openai.com/v1/*"
+        ]
+      }
     },
     "bundle": {
       "active": true,
