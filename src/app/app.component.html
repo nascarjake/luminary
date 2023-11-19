@@ -1,1 +1,7 @@
-<router-outlet></router-outlet>
+<app-header/>
+@if (hasSidebar()) {
+  <app-sidebar />
+}
+<app-main [class]="{ hasSidebar: hasSidebar() }">
+  <router-outlet />
+</app-main>

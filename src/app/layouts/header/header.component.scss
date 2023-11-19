@@ -1,0 +1,16 @@
+@use 'sass:map';
+@import 'manifest';
+
+:host {
+  position: fixed;
+  width: 100vw;
+  top: 0;
+  left: 0;
+  z-index: map.get($zIndexMap, 'header');
+  &::ng-deep p-menubar .p-menubar.p-component {
+    justify-content: flex-end;
+    .p-menubar-end {
+      display: none;
+    }
+  }
+}

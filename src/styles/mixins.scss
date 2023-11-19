@@ -1,0 +1,5 @@
+@mixin media-screen-md {
+  @media screen and (min-width: 960px) {
+    @content;
+  }
+}
