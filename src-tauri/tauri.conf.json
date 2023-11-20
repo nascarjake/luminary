@@ -11,8 +11,22 @@
   },
   "tauri": {
     "allowlist": {
-      "http": {
+      "fs": {
         "all": true,
+        "readFile": true,
+        "writeFile": true,
+        "readDir": true,
+        "createDir": true,
+        "exists": true,
+        "scope": [
+          "$APPCONFIG",
+          "$APPCONFIG/**/*"
+        ]
+      },
+      "path": {
+        "all": true
+      },
+      "http": {
         "request": true,
         "scope": [
           "https://api.openai.com/v1/*"
@@ -34,7 +48,7 @@
         "icons/icon.icns",
         "icons/icon.ico"
       ],
-      "identifier": "com.tauri.dev",
+      "identifier": "com.gpt-assistant-ui.dev",
       "longDescription": "",
       "macOS": {
         "entitlements": null,

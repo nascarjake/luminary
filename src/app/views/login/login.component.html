@@ -1,6 +1,11 @@
 <form [formGroup]="loginForm">
 
   <app-form-element>
+    <label label for="name">Profile name</label>
+    <input input id="name" type="text" pInputText formControlName="name" />
+  </app-form-element>
+
+  <app-form-element>
     <label label for="apiKey">OpenAI API Key</label>
     <input input id="apiKey" type="text" pInputText formControlName="apiKey" />
   </app-form-element>

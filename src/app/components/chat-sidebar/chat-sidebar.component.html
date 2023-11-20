@@ -1,0 +1,16 @@
+<aside>
+  @if (!loading) {
+    <p-panelMenu styleClass="panel" [model]="items" />
+    <div class="actions">
+      <p-button
+        icon="pi pi-redo"
+        styleClass="p-button-secondary p-button-text outlined"
+        label="Reload assistants"
+        (click)="loadAssistants()"
+      />
+    </div>
+  } @else {
+    <p-skeleton height="3.5rem" class="skeleton"></p-skeleton>
+    <p-skeleton height="3.5rem" class="skeleton"></p-skeleton>
+  }
+</aside>

@@ -39,7 +39,8 @@ export class OpenAiApiService {
 
   private getHeaders(): HttpOptions['headers'] {
     return {
-      Authorization: `Bearer ${this.apiKey}`
+      Authorization: `Bearer ${this.apiKey}`,
+      'OpenAI-Beta': 'assistants=v1'
     };
   }
 

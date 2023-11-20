@@ -5,18 +5,26 @@
   flex: 0 0 20%;
   width: 20%;
   height: 100%;
-  padding-top: ptr(43px);
   border-right: 1px solid $color-black-secondary;
-  @include media-screen-md {
-    padding-top: ptr(50px);
+  .skeleton {
+    display: block;
+    margin-bottom: ptr(1px);
+  }
+  .actions {
+    margin-top: ptr(30px);
+    text-align: center;
   }
   ::ng-deep {
     .p-panelmenu .p-panelmenu-header .p-panelmenu-header-content .p-panelmenu-header-action {
       font-weight: 400;
     }
+    .p-panelmenu .p-panelmenu-header .p-panelmenu-header-content {
+      border-top: unset;
+    }
     .p-panelmenu .p-panelmenu-header .p-panelmenu-header-content,
     .p-panelmenu .p-panelmenu-content {
       border-right: unset;
+      border-radius: unset;
     }
   }
 }

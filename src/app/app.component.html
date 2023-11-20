@@ -1,7 +1,6 @@
 <app-header/>
-@if (hasSidebar()) {
-  <app-sidebar />
-}
-<app-main [class]="{ hasSidebar: hasSidebar() }">
-  <router-outlet />
+<app-main>
+  @if (!loading) {
+    <router-outlet />
+  }
 </app-main>
