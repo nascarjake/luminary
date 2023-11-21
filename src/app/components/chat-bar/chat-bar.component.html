@@ -1,0 +1,20 @@
+
+<form [formGroup]="messageForm">
+  <textarea
+    class="textarea"
+    id="message"
+    rows="5"
+    placeholder="GPT message..."
+    pInputTextarea
+    formControlName="message"
+  >
+  </textarea>
+
+  <p-button
+    class="button"
+    icon="pi pi-send"
+    [disabled]="!messageForm.valid || !thread"
+    (click)="onSubmit()"
+    styleClass="p-button-secondary p-button-rounded p-button-outlined"
+  />
+</form>

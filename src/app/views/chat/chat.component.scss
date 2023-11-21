@@ -1,4 +1,25 @@
+@import 'manifest';
+
 :host {
   height: 100%;
   width: 100%;
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  app-chat-sidebar {
+    flex: 0 0 20%;
+    width: 20%;
+  }
+  app-chat-content {
+    flex: 0 0 80%;
+    padding-bottom: ptr(200px);
+  }
+  app-chat-bar {
+    position: fixed;
+    bottom: 0;
+    left: 20%;
+    right: 0;
+    z-index: 1;
+  }
 }

@@ -1,0 +1,19 @@
+@import 'manifest';
+
+:host {
+  display: block;
+  border-top: 1px solid $color-black-secondary;
+  padding: ptr(16px);
+  form {
+    position: relative;
+    textarea {
+      resize: none;
+      width: 100%;
+    }
+    p-button {
+      position: absolute;
+      bottom: ptr(16px);
+      right: ptr(16px);
+    }
+  }
+}
