@@ -1,15 +1,40 @@
-<form [formGroup]="loginForm">
+<div class="view">
+  <p-selectButton
+    class="selectMode"
+    [options]="[
+      { label: 'Create profile', value: 'create' },
+      { label: 'Select profile', value: 'profile' }
+    ]"
+    [(ngModel)]="mode"
+    optionLabel="label"
+    optionValue="value"
+  />
+  @if (mode == 'create') {
+    <form [formGroup]="registerForm">
 
-  <app-form-element>
-    <label label for="name">Profile name</label>
-    <input input id="name" type="text" pInputText formControlName="name" />
-  </app-form-element>
+      <app-form-element>
+        <label label for="name">Profile name</label>
+        <input input id="name" type="text" pInputText formControlName="name" />
+      </app-form-element>
 
-  <app-form-element>
-    <label label for="apiKey">OpenAI API Key</label>
-    <input input id="apiKey" type="text" pInputText formControlName="apiKey" />
-  </app-form-element>
+      <app-form-element>
+        <label label for="apiKey">OpenAI API Key</label>
+        <input input id="apiKey" type="text" pInputText formControlName="apiKey" />
+      </app-form-element>
 
-  <p-button icon="pi pi-arrow-right" iconPos="right" label="Login" [disabled]="!loginForm.valid" (click)="onSubmit()" />
+      <p-button icon="pi pi-arrow-right" iconPos="right" label="Create profile" [disabled]="!registerForm.valid" (click)="onSubmitRegisterForm()" />
 
-</form>
+    </form>
+  }
+  @else {
+    <p-dropdown
+      class="selectProfile"
+      [options]="profiles"
+      [(ngModel)]="selectedProfile"
+      optionLabel="name"
+      [showClear]="true"
+      placeholder="Select a Profile"
+    />
+    <p-button icon="pi pi-arrow-right" iconPos="right" label="Login" [disabled]="!selectedProfile" (click)="onSelectProfile()" />
+  }
+</div>

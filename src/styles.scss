@@ -1,3 +1,4 @@
+@import 'manifest';
 @import 'normalize.css/normalize.css';
 @import 'primeng/resources/themes/arya-blue/theme.css';
 @import 'primeng/resources/primeng.css';
@@ -11,6 +12,7 @@ html, body {
   width: 100vw;
   overflow: hidden;
   display: block;
+  background-color: $color-black-primary;
 }
 
 *, *::before, *::after {

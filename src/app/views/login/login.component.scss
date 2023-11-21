@@ -1,8 +1,21 @@
+@import 'manifest';
+
 :host {
   height: 100%;
   display: flex;
   flex-direction: row;
-  align-items: center;
   justify-content: center;
+  align-items: center;
   text-align: center;
+  flex-wrap: wrap;
+  .selectMode {
+    display: block;
+    flex: 0 0 100%;
+    margin-bottom: ptr(20px);
+  }
+  .selectProfile {
+    display: block;
+    flex: 0 0 100%;
+    margin-bottom: ptr(20px);
+  }
 }

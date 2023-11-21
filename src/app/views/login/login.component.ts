@@ -3,11 +3,14 @@ import { Component } from '@angular/core';
 import { FormControl, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
+import { SelectButtonModule } from 'primeng/selectbutton';
+import { DropdownModule } from 'primeng/dropdown';
 import { FormElementComponent } from '../../components/form-element/form-element.component';
 import { AuthService } from '../../services/auth.service';
 import { OpenAiApiService } from '../../services/open-ai-api.service';
 import { ConfigService } from '../../services/config.service';
 import { v4 as uuid } from 'uuid';
+import { AppConfig } from '../../../lib/entities/AppConfig';
 
 @Component({
   selector: 'app-login',
@@ -18,17 +21,23 @@ import { v4 as uuid } from 'uuid';
     InputTextModule,
     FormsModule,
     ReactiveFormsModule,
-    FormElementComponent
+    FormElementComponent,
+    SelectButtonModule,
+    DropdownModule
   ],
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss'
 })
 export class LoginComponent {
 
-  public loginError = false;
-  public loginForm = new FormGroup({
+  public mode: 'create'|'profile' = this.configService.getProfiles().length ? 'profile' : 'create';
+  public profiles = this.configService.getProfiles();
+  public selectedProfile?: AppConfig['profiles'][number];
+  public registerError = false;
+  public registerForm = new FormGroup({
     name: new FormControl('', [
-      Validators.required
+      Validators.required,
+      Validators.minLength(3),
     ]),
     apiKey: new FormControl('', [
       Validators.required
@@ -41,45 +50,39 @@ export class LoginComponent {
     private readonly configService: ConfigService
   ) {}
 
-  public async onSubmit(): Promise<void> {
-    this.openAiApiService.setApiKey(this.loginForm.value.apiKey!);
-    const validated = await this.validateApiKey();
-    if (validated) this.onLoginSuccess();
-    else this.onLoginFailure();
+  public async onSelectProfile(): Promise<void> {
+    if (!this.selectedProfile) return;
+    this.openAiApiService.setApiKey(this.selectedProfile.openai.apiKey);
+    this.configService.setActiveProfile(this.selectedProfile);
+    this.authService.authSubject.next(true);
   }
 
-  public onLoginSuccess(): void {
+  public async onSubmitRegisterForm(): Promise<void> {
+    this.openAiApiService.setApiKey(this.registerForm.value.apiKey!);
+    const validated = await this.validateApiKey();
+    if (validated) this.onRegisterSuccess();
+    else this.onRegisterFailure();
+  }
+
+  public onRegisterSuccess(): void {
     this.authService.authSubject.next(true);
     this.registerProfile();
   }
 
-  public onLoginFailure(): void {
-    this.loginError = true;
+  public onRegisterFailure(): void {
+    this.registerError = true;
     this.authService.authSubject.next(false);
   }
 
   private registerProfile(): void {
-    const exists = this.configService.getProfiles().some(({ openai: { apiKey } }) => apiKey === this.loginForm.value.apiKey);
-    if (!exists) {
-      this.configService.createProfile({
-        id: uuid(),
-        name: this.loginForm.value.name!,
-        default: true,
-        openai: {
-          apiKey: this.loginForm.value.apiKey!
-        }
-      });
-    } else {
-      const profile = this.configService.getProfiles().find(({ openai: { apiKey } }) => apiKey === this.loginForm.value.apiKey)!;
-      this.configService.updateProfile({
-        ...profile,
-        name: this.loginForm.value.name!,
-        default: true,
-        openai: {
-          apiKey: this.loginForm.value.apiKey!
-        }
-      });
-    }
+    this.configService.createProfile({
+      id: uuid(),
+      name: this.registerForm.value.name!,
+      default: true,
+      openai: {
+        apiKey: this.registerForm.value.apiKey!
+      }
+    });
   }
 
   private async validateApiKey(): Promise<boolean> {

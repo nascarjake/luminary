@@ -7,6 +7,7 @@ import { AppConfig } from '../../lib/entities/AppConfig';
 })
 export class ConfigService {
 
+  private activeProfile: AppConfig['profiles'][number]|undefined;
   private config: AppConfig = {
     version: '0.0.1',
     profiles: []
@@ -36,12 +37,20 @@ export class ConfigService {
     this.save();
   }
 
+  public getProfiles(): AppConfig['profiles'] {
+    return this.config.profiles;
+  }
+
   public getDefaultProfile(): AppConfig['profiles'][number]|undefined {
     return this.config.profiles.find(p => p.default);
   }
 
-  public getProfiles(): AppConfig['profiles'] {
-    return this.config.profiles;
+  public getActiveProfile(): AppConfig['profiles'][number]|undefined {
+    return this.activeProfile;
+  }
+
+  public setActiveProfile(profile: AppConfig['profiles'][number]): void {
+    this.activeProfile = profile;
   }
 
   private async configDirCreate(): Promise<void> {

@@ -49,6 +49,7 @@ export class AppComponent implements OnInit, OnDestroy {
     const profile = this.configService.getDefaultProfile();
     if (profile) {
       this.openAiApiService.setApiKey(profile.openai.apiKey);
+      this.configService.setActiveProfile(profile);
       this.authService.authSubject.next(true);
     } else {
       this.authService.authSubject.next(false);
