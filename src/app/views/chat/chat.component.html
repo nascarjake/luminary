@@ -1,3 +1,3 @@
-<app-chat-sidebar />
-<app-chat-content />
-<app-chat-bar />
+<app-chat-sidebar (onSelectAssitant)="onSelectAssitant($event)" (onSelectThread)="onSelectThread($event)" />
+<app-chat-content [assistantId]="assistantId" [threadId]="threadId" [threadMessages]="threadMessages" />
+<app-chat-bar [assistantId]="assistantId" [threadId]="threadId" (onSubmitMessage)="onSubmitMessage($event)" />

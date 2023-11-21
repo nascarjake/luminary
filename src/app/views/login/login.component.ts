@@ -53,6 +53,7 @@ export class LoginComponent {
   public async onSelectProfile(): Promise<void> {
     if (!this.selectedProfile) return;
     this.openAiApiService.setApiKey(this.selectedProfile.openai.apiKey);
+    this.configService.setDefaultProfile(this.selectedProfile);
     this.configService.setActiveProfile(this.selectedProfile);
     this.authService.authSubject.next(true);
   }
@@ -75,14 +76,18 @@ export class LoginComponent {
   }
 
   private registerProfile(): void {
-    this.configService.createProfile({
+    const profile = {
       id: uuid(),
       name: this.registerForm.value.name!,
-      default: true,
+      default: false,
       openai: {
         apiKey: this.registerForm.value.apiKey!
-      }
-    });
+      },
+      threads: []
+    };
+    this.configService.createProfile(profile);
+    this.configService.setDefaultProfile(profile);
+    this.configService.setActiveProfile(profile);
   }
 
   private async validateApiKey(): Promise<boolean> {

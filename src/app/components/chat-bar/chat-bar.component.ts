@@ -1,9 +1,8 @@
-import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { InputTextareaModule } from 'primeng/inputtextarea';
+import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { FormControl, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
-import { OAThread } from '../../../lib/entities/OAThread';
+import { InputTextareaModule } from 'primeng/inputtextarea';
 
 @Component({
   selector: 'app-chat-bar',
@@ -18,19 +17,30 @@ import { OAThread } from '../../../lib/entities/OAThread';
   templateUrl: './chat-bar.component.html',
   styleUrl: './chat-bar.component.scss'
 })
-export class ChatBarComponent {
+export class ChatBarComponent implements OnChanges {
 
-  @Input() public thread?: OAThread;
+  @Input() public threadId?: string;
+  @Input() public assistantId?: string;
+  @Output() public onSubmitMessage = new EventEmitter<string>();
+
   public messageForm = new FormGroup({
     message: new FormControl(
-      { value: '', disabled: !this.thread },
+      { value: '', disabled: !this.assistantId },
       [ Validators.required ]
     ),
   });
 
-  constructor() { }
+  async ngOnChanges(changes: SimpleChanges): Promise<void> {
+    if (changes['assistantId']) {
+      if (changes['assistantId'].currentValue) {
+        this.messageForm.get('message')!.enable();
+      } else {
+        this.messageForm.get('message')!.disable();
+      }
+    }
+  }
 
-  public onSubmit(): void {
-    console.log(this.messageForm.value);
+  public async onSubmit(): Promise<void> {
+    this.onSubmitMessage.emit(this.messageForm.value.message!);
   }
 }

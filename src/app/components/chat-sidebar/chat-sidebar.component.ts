@@ -1,11 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, EventEmitter, OnInit, Output } from '@angular/core';
 import { MenuItem } from 'primeng/api';
 import { PanelMenuModule } from 'primeng/panelmenu';
 import { OpenAiApiService } from '../../services/open-ai-api.service';
 import { OAAsistant } from '../../../lib/entities/OAAssistant';
 import { ButtonModule } from 'primeng/button';
 import { SkeletonModule } from 'primeng/skeleton';
+import { ConfigService } from '../../services/config.service';
 
 @Component({
   selector: 'app-chat-sidebar',
@@ -21,11 +22,15 @@ import { SkeletonModule } from 'primeng/skeleton';
 })
 export class ChatSidebarComponent implements OnInit {
 
+  @Output() public onSelectAssitant = new EventEmitter<string|undefined>();
+  @Output() public onSelectThread = new EventEmitter<string|undefined>();
+
   private assistants: OAAsistant[] = [];
   public loading: boolean = true;
   public items: MenuItem[] = [];
 
   constructor(
+    private readonly configService: ConfigService,
     private readonly openAiApiService: OpenAiApiService,
   ) { }
 
@@ -45,9 +50,21 @@ export class ChatSidebarComponent implements OnInit {
       label: name,
       icon: 'pi pi-fw pi-user',
       items: [
+        ...this.configService.getActiveProfile()!.threads.filter(({ assistantId }) => assistantId === id).map(({ id: threadId }) => ({
+          label: `Thread ${threadId}`,
+          icon: 'pi pi-fw pi-comment',
+          command: () => {
+            this.onSelectAssitant.emit(id);
+            this.onSelectThread.emit(threadId);
+          }
+        })),
         {
           label: 'New thread',
-          icon: 'pi pi-fw pi-plus'
+          icon: 'pi pi-fw pi-plus',
+          command: () => {
+            this.onSelectAssitant.emit(id);
+            this.onSelectThread.emit();
+          }
         }
       ]
     }));

@@ -3,4 +3,6 @@
 :host {
   display: block;
   padding: ptr(16px);
+  height: calc(100% - ptr(132px));
+  overflow-y: scroll;
 }

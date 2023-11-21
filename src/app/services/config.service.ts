@@ -49,6 +49,11 @@ export class ConfigService {
     return this.activeProfile;
   }
 
+  public setDefaultProfile(profile: AppConfig['profiles'][number]): void {
+    this.config.profiles = this.config.profiles.map(p => ({ ...p, default: p.id === profile.id }));
+    this.save();
+  }
+
   public setActiveProfile(profile: AppConfig['profiles'][number]): void {
     this.activeProfile = profile;
   }

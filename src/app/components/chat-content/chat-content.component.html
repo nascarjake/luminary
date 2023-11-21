@@ -1,1 +1,13 @@
-content works
+@if (threadId) {
+  @for (message of threadMessages ?? []; track message.id) {
+    <div class="message">
+      {{ message.content.at(0)!.text!.value }}
+    </div>
+  }
+}
+@else if (assistantId) {
+  no thread selected, create a new one for {{ assistantId }}
+}
+@else {
+  no assitant selected, select one to create a new thread or select an existing thread
+}

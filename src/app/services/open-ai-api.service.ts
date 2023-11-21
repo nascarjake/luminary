@@ -1,11 +1,12 @@
 import { Injectable } from '@angular/core';
 import { Body, Client, HttpOptions, getClient } from "@tauri-apps/api/http";
 import { environment } from '../../environments/environment';
+import { HttpError } from '../../lib/classes/HttpError';
 import { OAAsistant } from '../../lib/entities/OAAssistant';
 import { OAThread } from '../../lib/entities/OAThread';
 import { OAThreadMessage } from '../../lib/entities/OAThreadMessage';
+import { OAThreadRun } from '../../lib/entities/OAThreadRun';
 import { OAResponseList } from '../../lib/objects/OAResponseList';
-import { HttpError } from '../../lib/classes/HttpError';
 
 @Injectable({
   providedIn: 'root'
@@ -44,6 +45,24 @@ export class OpenAiApiService {
     };
   }
 
+  public async getAssistant(id: string): Promise<OAAsistant> {
+    const { data, ok, status } = await this.client!.get<OAAsistant>(`${this.apiUrl}/assistants/${id}`, { headers: this.getHeaders() });
+    if (!ok) throw new HttpError('Failed to get assistants', status);
+    return data;
+  }
+
+  public async getThread(id: string): Promise<OAThread> {
+    const { data, ok, status } = await this.client!.get<OAThread>(`${this.apiUrl}/threads/${id}`, { headers: this.getHeaders() });
+    if (!ok) throw new HttpError('Failed to get threads', status);
+    return data;
+  }
+
+  public async getThreadMessage(thread: OAThread, id: string): Promise<OAThreadMessage> {
+    const { data, ok, status } = await this.client!.get<OAThreadMessage>(`${this.apiUrl}/threads/${thread.id}/messages/${id}`, { headers: this.getHeaders() });
+    if (!ok) throw new HttpError('Failed to get thread message', status);
+    return data;
+  }
+
   public async listAssistants(): Promise<OAResponseList<OAAsistant>> {
     const { data, ok, status } = await this.client!.get<OAResponseList<OAAsistant>>(`${this.apiUrl}/assistants`, { headers: this.getHeaders() });
     if (!ok) throw new HttpError('Failed to get assistants', status);
@@ -56,7 +75,7 @@ export class OpenAiApiService {
     return data;
   }
 
-  public async listThreadMessages(thread: OAThread): Promise<OAResponseList<OAThreadMessage>> {
+  public async listThreadMessages(thread: Partial<OAThread>): Promise<OAResponseList<OAThreadMessage>> {
     const { data, ok, status } = await this.client!.get<OAResponseList<OAThreadMessage>>(`${this.apiUrl}/threads/${thread.id}/messages`, { headers: this.getHeaders() });
     if (!ok) throw new HttpError('Failed to get thread messages', status);
     return data;
@@ -68,13 +87,13 @@ export class OpenAiApiService {
     return data;
   }
 
-  public async createThread(thread: Partial<OAThread>): Promise<OAThread> {
-    const { data, ok, status } = await this.client!.post<OAThread>(`${this.apiUrl}/threads`, Body.json(thread), { headers: this.getHeaders() });
+  public async createThread(): Promise<OAThread> {
+    const { data, ok, status } = await this.client!.post<OAThread>(`${this.apiUrl}/threads`, undefined, { headers: this.getHeaders() });
     if (!ok) throw new HttpError('Failed to create thread', status);
     return data;
   }
 
-  public async createThreadMessage(thread: OAThread, message: Partial<OAThreadMessage>): Promise<OAThreadMessage> {
+  public async createThreadMessage(thread: Partial<OAThread>, message: { content: string; role: 'user', file_ids?: string[] }): Promise<OAThreadMessage> {
     const { data, ok, status } = await this.client!.post<OAThreadMessage>(`${this.apiUrl}/threads/${thread.id}/messages`, Body.json(message), { headers: this.getHeaders() });
     if (!ok) throw new HttpError('Failed to create thread message', status);
     return data;
@@ -106,6 +125,18 @@ export class OpenAiApiService {
   public async deleteThread(thread: OAThread): Promise<void> {
     const { ok, status } = await this.client!.delete(`${this.apiUrl}/threads/${thread.id}`, { headers: this.getHeaders() });
     if (!ok) throw new HttpError('Failed to delete thread', status);
+  }
+
+  public async runStatus(run: OAThreadRun): Promise<OAThreadRun> {
+    const { data, ok, status } = await this.client!.get<OAThreadRun>(`${this.apiUrl}/threads/${run.thread_id}/runs/${run.id}`, { headers: this.getHeaders() });
+    if (!ok) throw new HttpError('Failed to get run status', status);
+    return data;
+  }
+
+  public async runThread(thread: Partial<OAThread>, assistant: Partial<OAAsistant>): Promise<OAThreadRun> {
+    const { data, ok, status } = await this.client!.post<OAThreadRun>(`${this.apiUrl}/threads/${thread.id}/runs`, Body.json({ assistant_id: assistant.id }), { headers: this.getHeaders() });
+    if (!ok) throw new HttpError('Failed to run thread', status);
+    return data;
   }
 
 }

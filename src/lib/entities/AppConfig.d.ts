@@ -8,5 +8,9 @@ export interface AppConfig {
     openai: {
       apiKey: string;
     };
+    threads: {
+      id: string;
+      assistantId: string;
+    }[]
   }[];
 }
