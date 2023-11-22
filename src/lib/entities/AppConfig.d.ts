@@ -9,6 +9,7 @@ export interface AppConfig {
       apiKey: string;
     };
     threads: {
+      name: string;
       id: string;
       assistantId: string;
     }[]

@@ -4,7 +4,8 @@
     <div class="actions">
       <p-button
         icon="pi pi-replay"
-        styleClass="p-button-secondary p-button-text"
+        [text]="true"
+        severity="secondary"
         label="Reload assistants"
         (click)="loadAssistants()"
       />

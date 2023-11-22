@@ -6,6 +6,8 @@
   padding: ptr(16px);
   form {
     position: relative;
+    max-width: ptr(700px);
+    margin: 0 auto;
     textarea {
       resize: none;
       width: 100%;

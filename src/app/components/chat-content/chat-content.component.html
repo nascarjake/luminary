@@ -1,8 +1,19 @@
 @if (threadId) {
   @for (message of threadMessages ?? []; track message.id) {
     <div class="message">
-      {{ message.content.at(0)!.text!.value }}
+      <p-avatar
+        class="avatar"
+        shape="circle"
+        icon="pi pi-user"
+        [label]="message.role === 'assistant' ? 'A' : undefined"
+        [style]="message.role === 'assistant'
+        ? { 'background-color': 'var(--blue-500)', color: '#ffffff' }
+        : {}"
+        size="normal"
+      />
+      <div class="content" [innerHTML]="message.content.at(0)!.text!.value | mark"></div>
     </div>
+
   }
 }
 @else if (assistantId) {

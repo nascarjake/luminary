@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
+import { Component, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { FormControl, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { InputTextareaModule } from 'primeng/inputtextarea';
@@ -40,7 +40,16 @@ export class ChatBarComponent implements OnChanges {
     }
   }
 
+  @HostListener('document:keydown.control.enter', ['$event'])
+  @HostListener('document:keydown.meta.enter', ['$event'])
+  public async onKeydownHandler(event: KeyboardEvent): Promise<void> {
+    event.preventDefault();
+    event.stopPropagation();
+    if (this.messageForm.valid) await this.onSubmit();
+  }
+
   public async onSubmit(): Promise<void> {
     this.onSubmitMessage.emit(this.messageForm.value.message!);
+    this.messageForm.reset();
   }
 }

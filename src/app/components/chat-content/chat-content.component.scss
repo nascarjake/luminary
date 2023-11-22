@@ -5,4 +5,29 @@
   padding: ptr(16px);
   height: calc(100% - ptr(132px));
   overflow-y: scroll;
+  scroll-behavior: smooth;
+  .message {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: flex-start;
+    column-gap: ptr(16px);
+    max-width: ptr(700px);
+    margin: 0 auto ptr(20px);
+    .content {
+      border-radius: ptr(16px);
+      padding: ptr(16px);
+      background-color: var(--surface-b);
+      border: 1px solid $color-black-secondary;
+      ::ng-deep {
+        @include markdown;
+        *:first-child {
+          margin-top: 0;
+        }
+        *:last-child {
+          margin-bottom: 0;
+        }
+      }
+    }
+  }
 }

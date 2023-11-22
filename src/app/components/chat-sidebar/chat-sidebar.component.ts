@@ -50,12 +50,12 @@ export class ChatSidebarComponent implements OnInit {
       label: name,
       icon: 'pi pi-fw pi-user',
       items: [
-        ...this.configService.getActiveProfile()!.threads.filter(({ assistantId }) => assistantId === id).map(({ id: threadId }) => ({
-          label: `Thread ${threadId}`,
+        ...this.configService.getActiveProfile()!.threads.filter(({ assistantId }) => assistantId === id).map(thread => ({
+          label: thread.name,
           icon: 'pi pi-fw pi-comment',
           command: () => {
             this.onSelectAssitant.emit(id);
-            this.onSelectThread.emit(threadId);
+            this.onSelectThread.emit(thread.id);
           }
         })),
         {
