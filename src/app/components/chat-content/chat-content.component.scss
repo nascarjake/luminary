@@ -6,6 +6,26 @@
   height: calc(100% - ptr(132px));
   overflow-y: scroll;
   scroll-behavior: smooth;
+  .createThread,
+  .selectAssistant {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    row-gap: ptr(16px);
+    text-align: center;
+    height: 100%;
+    .icon {
+      font: { size: ptr(70px); weight: 300; }
+      color: rgba(white, .15);
+    }
+    .info {
+      color: rgba(white, .3);
+      max-width: 80%;
+      font: { size: ptr(20px); weight: 300; }
+    }
+  }
   .message {
     display: flex;
     flex-direction: row;
@@ -27,6 +47,18 @@
         *:last-child {
           margin-bottom: 0;
         }
+      }
+    }
+  }
+  .spinner {
+    display: block;
+    height: ptr(50px);
+    width: ptr(50px);
+    margin: ptr(50px) auto;
+    ::ng-deep {
+      .p-progress-spinner, svg {
+        width: ptr(50px);
+        height: ptr(50px);
       }
     }
   }

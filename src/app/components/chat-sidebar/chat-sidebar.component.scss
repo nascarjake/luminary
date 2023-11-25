@@ -4,6 +4,7 @@
   display: block;
   height: 100%;
   border-right: 1px solid $color-black-secondary;
+  overflow-y: scroll;
   .skeleton {
     display: block;
     margin-bottom: ptr(1px);

@@ -1,12 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, OnInit, Output } from '@angular/core';
+import { Component, EventEmitter, OnInit, Output, ViewChild } from '@angular/core';
 import { MenuItem } from 'primeng/api';
-import { PanelMenuModule } from 'primeng/panelmenu';
-import { OpenAiApiService } from '../../services/open-ai-api.service';
-import { OAAsistant } from '../../../lib/entities/OAAssistant';
 import { ButtonModule } from 'primeng/button';
+import { PanelMenuModule } from 'primeng/panelmenu';
 import { SkeletonModule } from 'primeng/skeleton';
+import { OAAsistant } from '../../../lib/entities/OAAssistant';
 import { ConfigService } from '../../services/config.service';
+import { OpenAiApiService } from '../../services/open-ai-api.service';
 
 @Component({
   selector: 'app-chat-sidebar',

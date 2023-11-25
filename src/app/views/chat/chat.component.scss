@@ -8,11 +8,11 @@
   justify-content: flex-start;
   flex-wrap: wrap;
   app-chat-sidebar {
-    flex: 0 0 20%;
+    flex: 0 0 max(20%, ptr(200px));
     width: 20%;
   }
   app-chat-content {
-    flex: 0 0 80%;
+    flex: 0 0 min(80%, calc(100% - ptr(200px)));
   }
   app-chat-bar {
     position: fixed;

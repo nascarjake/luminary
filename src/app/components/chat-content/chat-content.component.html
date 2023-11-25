@@ -17,8 +17,26 @@
   }
 }
 @else if (assistantId) {
-  no thread selected, create a new one for {{ assistantId }}
+  <div class="createThread">
+    <i class="icon pi pi-comments"></i>
+    <div class="info">
+      Create a new thread by posting a first message to the assistant
+    </div>
+  </div>
 }
 @else {
-  no assitant selected, select one to create a new thread or select an existing thread
+  <div class="selectAssistant">
+    <i class="icon pi pi-users"></i>
+    <div class="info">
+      Select an assistant to start chatting
+    </div>
+  </div>
+}
+
+@if (loading) {
+  <p-progressSpinner
+    class="spinner"
+    strokeWidth="2"
+    animationDuration="2s"
+  />
 }

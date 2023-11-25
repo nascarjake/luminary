@@ -1,9 +1,10 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy } from '@angular/core';
+import { Component, OnDestroy, ViewChild } from '@angular/core';
 import { Subscription, interval } from 'rxjs';
 import { OAThread } from '../../../lib/entities/OAThread';
 import { OAThreadMessage } from '../../../lib/entities/OAThreadMessage';
 import { OAThreadRun } from '../../../lib/entities/OAThreadRun';
+import { Sequence } from '../../classes/sequence';
 import { ChatBarComponent } from '../../components/chat-bar/chat-bar.component';
 import { ChatContentComponent } from '../../components/chat-content/chat-content.component';
 import { ChatSidebarComponent } from '../../components/chat-sidebar/chat-sidebar.component';
@@ -24,9 +25,14 @@ import { OpenAiApiService } from '../../services/open-ai-api.service';
 })
 export class ChatComponent implements OnDestroy {
 
+  @ViewChild(ChatSidebarComponent)
+  public chatSidebarComponent!: ChatSidebarComponent;
+  public loadingThread: boolean = false;
+  public loadingMessage: boolean = false;
   public assistantId?: string;
   public threadId?: string;
   public threadMessages?: OAThreadMessage[];
+  private submitSequence: Sequence = new Sequence();
   private message?: string;
   private run?: OAThreadRun;
   private thread?: OAThread;
@@ -42,32 +48,58 @@ export class ChatComponent implements OnDestroy {
   }
 
   public onSelectAssitant(assistantId?: string): void {
+    if (this.assistantId === assistantId) return;
+    this.submitSequence.abort();
     this.assistantId = assistantId;
   }
 
-  public async onSelectThread(threadId?: string): Promise<void> {
+  public onSelectThread(threadId?: string): void {
+    if (this.threadId === threadId) return;
+    this.submitSequence.abort();
+    // Reset thread messages
+    this.threadMessages = undefined;
     this.threadId = threadId;
-    await this.fetchThread();
-    this.fetchThreadMessages();
+    if (threadId) this.handleChangeThread();
   }
 
   public async onSubmitMessage(message: string): Promise<void> {
     try {
+      this.loadingMessage = true;
       this.message = message;
       if (!this.threadId && !this.assistantId) return;
-      // Create thread
+
+      // Create thread if not exists
       if (!this.threadId) await this.createThread();
       else await this.fetchThread();
-      // Send message to thread
-      await this.createThreadMessage();
-      // Fetching posted message
-      this.fetchThreadMessages();
-      await this.runThread();
-      this.fetchThreadMessages();
+
+      // Execute submit sequence
+      await this.executeSubmitSequence();
+      this.loadingMessage = false;
     } catch (err) {
       console.error(err);
       this.runSubscription?.unsubscribe();
     }
+  }
+
+  private async handleChangeThread(): Promise<void> {
+    this.loadingThread = true;
+    await this.fetchThread();
+    // Updating thread messages
+    await this.fetchThreadMessages();
+    this.loadingThread = false;
+  }
+
+  private async executeSubmitSequence(): Promise<void> {
+    this.submitSequence = new Sequence(
+      this.createThreadMessage.bind(this),
+      this.fetchThreadMessages.bind(this),
+      this.runThread.bind(this),
+      this.fetchThreadMessages.bind(this),
+    );
+    this.submitSequence.onAbort(() => {
+      this.loadingMessage = false
+    });
+    await this.submitSequence.run();
   }
 
   private async fetchThread(): Promise<void> {
@@ -85,6 +117,7 @@ export class ChatComponent implements OnDestroy {
     const profile = this.configService.getActiveProfile()!;
     profile.threads.push({ name: `${this.message!.substring(0, 17)}...`, id: this.thread.id, assistantId: this.assistantId! });
     this.configService.updateProfile(profile);
+    this.chatSidebarComponent.loadAssistants();
   }
 
   private async createThreadMessage(): Promise<void> {

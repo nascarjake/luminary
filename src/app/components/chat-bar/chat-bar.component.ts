@@ -21,11 +21,12 @@ export class ChatBarComponent implements OnChanges {
 
   @Input() public threadId?: string;
   @Input() public assistantId?: string;
+  @Input() public loading: boolean = false;
   @Output() public onSubmitMessage = new EventEmitter<string>();
 
   public messageForm = new FormGroup({
     message: new FormControl(
-      { value: '', disabled: !this.assistantId },
+      { value: '', disabled: !this.assistantId || this.loading },
       [ Validators.required ]
     ),
   });

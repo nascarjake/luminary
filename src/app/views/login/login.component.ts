@@ -4,13 +4,15 @@ import { FormControl, FormGroup, FormsModule, ReactiveFormsModule, Validators } 
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectButtonModule } from 'primeng/selectbutton';
-import { DropdownModule } from 'primeng/dropdown';
+import { ListboxModule } from 'primeng/listbox';
 import { FormElementComponent } from '../../components/form-element/form-element.component';
 import { AuthService } from '../../services/auth.service';
 import { OpenAiApiService } from '../../services/open-ai-api.service';
 import { ConfigService } from '../../services/config.service';
 import { v4 as uuid } from 'uuid';
 import { AppConfig } from '../../../lib/entities/AppConfig';
+import { MessageService } from 'primeng/api';
+import { ToastModule } from 'primeng/toast';
 
 @Component({
   selector: 'app-login',
@@ -23,7 +25,11 @@ import { AppConfig } from '../../../lib/entities/AppConfig';
     ReactiveFormsModule,
     FormElementComponent,
     SelectButtonModule,
-    DropdownModule
+    ListboxModule,
+    ToastModule
+  ],
+  providers: [
+    MessageService
   ],
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss'
@@ -47,7 +53,8 @@ export class LoginComponent {
   constructor(
     private readonly openAiApiService: OpenAiApiService,
     private readonly authService: AuthService,
-    private readonly configService: ConfigService
+    private readonly configService: ConfigService,
+    private readonly messageService: MessageService
   ) {}
 
   public async onSelectProfile(): Promise<void> {
@@ -73,6 +80,11 @@ export class LoginComponent {
   public onRegisterFailure(): void {
     this.registerError = true;
     this.authService.authSubject.next(false);
+    this.messageService.add({
+      severity: 'error',
+      summary: 'Invalid API Key',
+      detail: 'Please check your API Key and try again.',
+    });
   }
 
   private registerProfile(): void {

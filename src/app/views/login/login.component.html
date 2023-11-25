@@ -27,14 +27,17 @@
     </form>
   }
   @else {
-    <p-dropdown
-      class="selectProfile"
-      [options]="profiles"
-      [(ngModel)]="selectedProfile"
-      optionLabel="name"
-      [showClear]="true"
-      placeholder="Select a Profile"
-    />
-    <p-button icon="pi pi-arrow-right" iconPos="right" label="Login" [disabled]="!selectedProfile" (click)="onSelectProfile()" />
+    <div class="profile">
+      <p-listbox
+        class="selectProfile"
+        [options]="profiles"
+        [(ngModel)]="selectedProfile"
+        [style]="{'width':'15rem'}"
+        optionLabel="name"
+        placeholder="Select a Profile"
+      />
+      <p-button icon="pi pi-arrow-right" iconPos="right" label="Login" [disabled]="!selectedProfile" (click)="onSelectProfile()" />
+    </div>
   }
 </div>
+<p-toast></p-toast>

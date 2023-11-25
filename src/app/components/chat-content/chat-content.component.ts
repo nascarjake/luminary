@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, Input, OnChanges, SimpleChanges, ViewContainerRef } from '@angular/core';
 import { AvatarModule } from 'primeng/avatar';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { tick } from '../../../lib/classes/Helper';
 import { OAThreadMessage } from '../../../lib/entities/OAThreadMessage';
 import { MarkPipe } from '../../pipes/mark.pipe';
@@ -11,6 +12,7 @@ import { MarkPipe } from '../../pipes/mark.pipe';
   imports: [
     CommonModule,
     AvatarModule,
+    ProgressSpinnerModule,
     MarkPipe
   ],
   templateUrl: './chat-content.component.html',
@@ -18,6 +20,7 @@ import { MarkPipe } from '../../pipes/mark.pipe';
 })
 export class ChatContentComponent implements OnChanges {
 
+  @Input() public loading?: boolean;
   @Input() public assistantId?: string;
   @Input() public threadId?: string;
   @Input() public threadMessages?: OAThreadMessage[];
