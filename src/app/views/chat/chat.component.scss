@@ -17,7 +17,7 @@
   app-chat-bar {
     position: fixed;
     bottom: 0;
-    left: 20%;
+    left: max(20%, ptr(200px));
     right: 0;
     z-index: 1;
   }
