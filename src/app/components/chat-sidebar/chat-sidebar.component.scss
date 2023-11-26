@@ -13,9 +13,21 @@
     margin-top: ptr(16px);
     text-align: center;
   }
+  p-dialog {
+    p-listbox {
+      display: block;
+      margin-bottom: ptr(20px);
+    }
+  }
   ::ng-deep {
     .p-panelmenu .p-panelmenu-header .p-panelmenu-header-content .p-panelmenu-header-action {
       font-weight: 400;
+    }
+    .p-panelmenu .p-menuitem.deleteThreads .p-menuitem-content .p-menuitem-link span {
+      color: var(--red-300);
+    }
+    .p-panelmenu .p-menuitem.newThread .p-menuitem-content .p-menuitem-link span {
+      color: var(--primary-500);
     }
     .p-panelmenu .p-panelmenu-header .p-panelmenu-header-content {
       border-top: unset;

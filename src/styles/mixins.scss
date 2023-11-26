@@ -3,7 +3,6 @@
     @content;
   }
 }
-
 @mixin markdown {
   color: rgba(white, .87);
   line-height: 1.5;
@@ -16,6 +15,11 @@
 
   b, strong {
     font-weight: 600;
+  }
+
+  pre {
+    max-width: 100%;
+    overflow-x: scroll;
   }
 
   pre,

@@ -78,7 +78,8 @@
         "height": 600,
         "resizable": true,
         "title": "GPT assistant UI",
-        "width": 800
+        "minWidth": 1100,
+        "minHeight": 800
       }
     ]
   }

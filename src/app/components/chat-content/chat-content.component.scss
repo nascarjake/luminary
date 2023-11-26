@@ -35,7 +35,8 @@
     max-width: ptr(700px);
     margin: 0 auto ptr(20px);
     .content {
-      border-radius: ptr(16px);
+      max-width: calc(100% - ptr(30px) - ptr(16px));
+      border-radius: ptr(12px);
       padding: ptr(16px);
       background-color: var(--surface-b);
       border: 1px solid $color-black-secondary;

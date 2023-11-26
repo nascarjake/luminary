@@ -36,9 +36,9 @@ export class HeaderComponent implements OnInit, OnDestroy {
         command: () => this.authService.authSubject.next(false)
       });
     }
-    this.items.push({
-      label: 'Settings',
-      icon: 'pi pi-fw pi-cog'
-    });
+    // this.items.push({
+    //   label: 'Settings',
+    //   icon: 'pi pi-fw pi-cog'
+    // });
   }
 }

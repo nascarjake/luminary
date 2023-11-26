@@ -10,6 +10,7 @@ import { ChatContentComponent } from '../../components/chat-content/chat-content
 import { ChatSidebarComponent } from '../../components/chat-sidebar/chat-sidebar.component';
 import { ConfigService } from '../../services/config.service';
 import { OpenAiApiService } from '../../services/open-ai-api.service';
+import { tick } from '../../../lib/classes/Helper';
 
 @Component({
   selector: 'app-chat',
@@ -117,7 +118,13 @@ export class ChatComponent implements OnDestroy {
     const profile = this.configService.getActiveProfile()!;
     profile.threads.push({ name: `${this.message!.substring(0, 17)}...`, id: this.thread.id, assistantId: this.assistantId! });
     this.configService.updateProfile(profile);
-    this.chatSidebarComponent.loadAssistants();
+    // Do not await for it
+    this.chatSidebarComponent.loadAssistants()
+      .then(() => tick(100)
+        .then(() => {
+          this.chatSidebarComponent.setSelectedAssistant(this.assistantId!);
+          this.chatSidebarComponent.setSelectedThread(this.thread!.id)
+        }));
   }
 
   private async createThreadMessage(): Promise<void> {

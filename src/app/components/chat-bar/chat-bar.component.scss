@@ -9,8 +9,10 @@
     max-width: ptr(700px);
     margin: 0 auto;
     textarea {
+      margin-left: ptr(30px) + ptr(16px);
+      border-radius: ptr(12px);
       resize: none;
-      width: 100%;
+      width: calc(100% - ptr(30px) - ptr(16px));
     }
     p-button {
       position: absolute;

@@ -1,6 +1,6 @@
 <aside>
   @if (!loading) {
-    <p-panelMenu styleClass="panel" [model]="items" />
+    <p-panelMenu #menu styleClass="panel" [model]="items" />
     <div class="actions">
       <p-button
         icon="pi pi-replay"
@@ -15,3 +15,30 @@
     <p-skeleton height="3.5rem" class="skeleton"></p-skeleton>
   }
 </aside>
+<p-dialog header="Delete threads" [(visible)]="showDeleteDialog" [style]="{width: '50vw'}">
+  @if (activeThreads.length) {
+    <p>
+      Select the threads you want to delete...
+    </p>
+    <p-listbox
+      [options]="activeThreads"
+      [style]="{ width: '100%' }"
+      [multiple]="true"
+      optionLabel="name"
+      [(ngModel)]="selectedThreads"
+    />
+  } @else {
+    <p>
+      There are no threads to delete.
+    </p>
+  }
+  <p-button
+    [loading]="loadingDelete"
+    label="Delete"
+    icon="pi pi-trash"
+    (click)="onClickDialogDelete()"
+    [disabled]="!selectedThreads.length"
+    styleClass="p-button-danger"
+  />
+</p-dialog>
+<p-toast></p-toast>
