@@ -1,27 +1,72 @@
-# ChatAssistant
+# GPT Assistant UI
 
-This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 17.0.1.
+## Description
 
-## Development server
+GPT Assistant UI is an open-source project that offers a sleek and intuitive user interface for interacting with a General Purpose Text (GPT) assistant. Whether you're a developer looking to integrate GPT functionalities, or an end-user keen on exploring AI-assisted text generation, this platform is crafted to cater to your needs.
 
-Run `ng serve` for a dev server. Navigate to `http://localhost:4200/`. The application will automatically reload if you change any of the source files.
+Built with cutting-edge technologies such as Tauri for a seamless multi-platform experience, Angular 17 for a robust frontend framework, and PrimeNG for a rich set of UI components, GPT Assistant UI is designed to be both lightweight and user-friendly.
 
-## Code scaffolding
+## Features
 
-Run `ng generate component component-name` to generate a new component. You can also use `ng generate directive|pipe|service|class|guard|interface|enum|module`.
+- __Multi-Platform Compatibility__: Thanks to Tauri, our application runs natively on Windows, MacOS, and Linux.
+- __Modern Frontend__: Utilizing Angular 17, we ensure a fast and responsive user interface.
+- __Rich UI Components__: With PrimeNG, the application is equipped with a wide range of UI components.
+- __Enhanced Security__: Our app uses the HTTP Tauri module and operates within strict security constraints. No data leaves your device excepted the ones sent to OpenAI.
+- __Local Data Management__: All your data remains on your device, stored securely in your user folder without any external web database interactions.
+- __Open-Source License__: Released under the MIT License, granting you the freedom to modify, distribute, and use the software however you wish.
 
-## Build
+## Installation
 
-Run `ng build` to build the project. The build artifacts will be stored in the `dist/` directory.
+To get started with GPT Assistant UI, you will need to set up your development environment. Here are the basic steps:
 
-## Running unit tests
+### Clone the repository:
 
-Run `ng test` to execute the unit tests via [Karma](https://karma-runner.github.io).
+```bash
+git clone https://github.com/PaulWeinsberg/gpt-assistant-ui
+cd gpt-assistant-ui
+```
 
-## Running end-to-end tests
+### Run project:
 
-Run `ng e2e` to execute the end-to-end tests via a platform of your choice. To use this command, you need to first add a package that implements end-to-end testing capabilities.
+As the GPT Assistant UI is built with Tauri and Angular, you will need to install them first.
+See [Tauri docs](https://tauri.app/v1/guides/) and [Angular docs](https://angular.dev) for more information.
 
-## Further help
+To build the project run:
 
-To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI Overview and Command Reference](https://angular.io/cli) page.
+```bash
+cargo tauri build
+```
+
+To run the project in development mode run:
+
+```bash
+cargo tauri dev
+```
+
+## Usage
+
+Once you have the GPT Assistant UI running, simply adds a profile name and your OpenAI API key to get started. You can have multiple profiles with the same API key.
+
+## Security
+
+We take security seriously:
+
+The application uses the HTTP Tauri module, and it's locked down to strict permissions.
+User data is never sent to or saved on external web databases.
+Filesystem access is restricted to the user's system folder only in the app subfolder.
+
+## Contributions
+
+We welcome contributions! If you would like to contribute to GPT Assistant UI, please contact me to get added to the project or create a pull request.
+
+## License
+
+GPT Assistant UI is licensed under the MIT License. This means you have the liberty to do anything you wish with the source code, subject to the conditions of the license. For more details, see the included LICENSE file in the repository.
+
+## Support
+
+If you encounter any issues or have any questions about the GPT Assistant UI, please file an issue on the project's GitHub issue tracker.
+
+We hope you enjoy using GPT Assistant UI as much as we enjoyed building it!
+
+Disclaimer: This project is not affiliated with OpenAI and does not include any direct integrations with GPT or any other proprietary AI models provided by OpenAI.
