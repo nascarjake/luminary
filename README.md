@@ -43,9 +43,13 @@ To run the project in development mode run:
 cargo tauri dev
 ```
 
+![Screenshot](https://raw.githubusercontent.com/PaulWeinsberg/gpt-assistant-ui/main/screenshot.png)
+
 ## Usage
 
-Once you have the GPT Assistant UI running, simply adds a profile name and your OpenAI API key to get started. You can have multiple profiles with the same API key.
+Configure your GPT assistants by using the OpenAI platform. You can find more information on the [OpenAI platform](https://platform.openai.com).
+
+Run the GPT Assistant UI and simply adds a profile name of your choice and your OpenAI API key to get started. You can have multiple profiles with the same API key.
 
 ## Security
 
