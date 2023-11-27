@@ -3,7 +3,7 @@
     "beforeBuildCommand": "npm run build",
     "beforeDevCommand": "npm run dev",
     "devPath": "http://localhost:4200",
-    "distDir": "../dist"
+    "distDir": "../dist/gpt-assistant-ui/browser"
   },
   "package": {
     "productName": "GPT assistant UI",

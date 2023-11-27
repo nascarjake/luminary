@@ -12,10 +12,13 @@
       margin-left: ptr(30px) + ptr(16px);
       border-radius: ptr(12px);
       resize: none;
+      padding-right: ptr(70px);
       width: calc(100% - ptr(30px) - ptr(16px));
     }
     p-button {
       position: absolute;
+      top: ptr(16px);
+      right: ptr(16px);
       bottom: ptr(16px);
       right: ptr(16px);
     }
