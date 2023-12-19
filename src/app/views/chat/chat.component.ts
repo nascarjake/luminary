@@ -11,6 +11,8 @@ import { ChatSidebarComponent } from '../../components/chat-sidebar/chat-sidebar
 import { ConfigService } from '../../services/config.service';
 import { OpenAiApiService } from '../../services/open-ai-api.service';
 import { tick } from '../../../lib/classes/Helper';
+import { ToastModule } from 'primeng/toast';
+import { MessageService } from 'primeng/api';
 
 @Component({
   selector: 'app-chat',
@@ -19,7 +21,11 @@ import { tick } from '../../../lib/classes/Helper';
     CommonModule,
     ChatSidebarComponent,
     ChatContentComponent,
-    ChatBarComponent
+    ChatBarComponent,
+    ToastModule
+  ],
+  providers: [
+    MessageService
   ],
   templateUrl: './chat.component.html',
   styleUrl: './chat.component.scss'
@@ -42,6 +48,7 @@ export class ChatComponent implements OnDestroy {
   constructor(
     private readonly openAiApiService: OpenAiApiService,
     private readonly configService: ConfigService,
+    private readonly messageService: MessageService
   ) { }
 
   ngOnDestroy(): void {
@@ -97,6 +104,14 @@ export class ChatComponent implements OnDestroy {
       this.runThread.bind(this),
       this.fetchThreadMessages.bind(this),
     );
+    this.submitSequence.onFail(err => {
+      this.loadingMessage = false;
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: `Error while running thread: "${err?.message}"`,
+      });
+    });
     this.submitSequence.onAbort(() => {
       this.loadingMessage = false
     });
@@ -136,20 +151,24 @@ export class ChatComponent implements OnDestroy {
 
   private runThread(): Promise<void> {
     return new Promise(async (resolve, reject) => {
-      this.run = await this.openAiApiService.runThread(this.thread!, { id: this.assistantId! });
-      this.runSubscription = interval(500).subscribe({
-        next: async () => {
-          this.run = await this.openAiApiService.runStatus(this.run!);
-          if (this.run!.status === 'completed') {
-            resolve();
-            this.runSubscription!.unsubscribe();
-          } else if (!['in_progress', 'queued'].includes(this.run!.status)) {
-            reject(this.run);
-            this.runSubscription!.unsubscribe();
-          }
-        },
-        error: reject
-      });
+      try {
+        this.run = await this.openAiApiService.runThread(this.thread!, { id: this.assistantId! });
+        this.runSubscription = interval(500).subscribe({
+          next: async () => {
+            this.run = await this.openAiApiService.runStatus(this.run!);
+            if (this.run!.status === 'completed') {
+              resolve();
+              this.runSubscription!.unsubscribe();
+            } else if (!['in_progress', 'queued'].includes(this.run!.status)) {
+              reject(this.run);
+              this.runSubscription!.unsubscribe();
+            }
+          },
+          error: reject
+        });
+      } catch (err) {
+        reject(err);
+      }
     });
   }
 }

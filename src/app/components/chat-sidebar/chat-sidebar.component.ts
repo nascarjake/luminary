@@ -136,15 +136,23 @@ export class ChatSidebarComponent implements OnInit {
     this.loadingDelete = true;
     const profile = this.configService.getActiveProfile()!;
     for (const thread of this.selectedThreads) {
+      // If you can't get a thread, it means it's already deleted
+      let exists = false;
       try {
-        await this.openAiApiService.deleteThread(thread as unknown as OAThread);
+        await this.openAiApiService.getThread(thread.id);
+        exists = true;
+      } catch (err) {
+        exists = false;
+      }
+      try {
+        if (exists) await this.openAiApiService.deleteThread(thread as unknown as OAThread);
         profile.threads = profile.threads.filter(({ id }) => id !== thread.id);
         this.activeThreads = this.activeThreads.filter(({ id }) => id !== thread.id);
         this.selectedThreads = this.selectedThreads.filter(({ id }) => id !== thread.id);
       } catch (err) {
         this.messageService.add({
           severity: 'error',
-          summary: 'HTTP Error',
+          summary: 'Error',
           detail: `Failed to delete thread ${thread.name} ${thread.id}`
         });
       }
@@ -153,6 +161,7 @@ export class ChatSidebarComponent implements OnInit {
     await this.buildMenu();
     await tick(100);
     this.setSelectedAssistant(this.activeAssistant!.id)
+    this.onSelectThread.emit();
     this.loadingDelete = false;
   }
 
