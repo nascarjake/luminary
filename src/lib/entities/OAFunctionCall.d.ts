@@ -17,7 +17,7 @@ export type OARequiredAction = {
 export type AvailableFunction = (...args: any[]) => Promise<any>;
 
 export interface AvailableFunctions {
-  sendOutline: AvailableFunction;
+  sendOutlines: AvailableFunction;
   sendScript: AvailableFunction;
   sendToPictory: AvailableFunction;
 }
