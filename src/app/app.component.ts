@@ -7,20 +7,22 @@ import { AuthService } from './services/auth.service';
 import { ConfigService } from './services/config.service';
 import { OpenAiApiService } from './services/open-ai-api.service';
 import { HttpClientModule } from '@angular/common/http';
+import { ToastModule } from 'primeng/toast';
 
 @Component({
   selector: 'app-root',
   standalone: true,
   imports: [
     CommonModule,
+    RouterModule,
     RouterOutlet,
     HeaderComponent,
     MainComponent,
-    RouterModule,
-    HttpClientModule
+    HttpClientModule,
+    ToastModule
   ],
   templateUrl: './app.component.html',
-  styleUrl: './app.component.scss',
+  styleUrls: ['./app.component.scss'],
   host: {
     '[class.hasSidebar]': 'hasSidebar'
   }
@@ -28,13 +30,14 @@ import { HttpClientModule } from '@angular/common/http';
 export class AppComponent implements OnInit, OnDestroy {
   public title = 'gpt-assistant-ui';
   public loading = true;
+  public hasSidebar = false;
 
   constructor(
-    private readonly router: Router,
-    private readonly authService: AuthService,
     private readonly configService: ConfigService,
-    private readonly openAiApiService: OpenAiApiService
-  ) {}
+    private readonly authService: AuthService,
+    private readonly openAiApiService: OpenAiApiService,
+    private readonly router: Router
+  ) { }
 
   async ngOnInit() {
     this.authService.authSubject.subscribe(this.authObserver.bind(this));
@@ -42,7 +45,7 @@ export class AppComponent implements OnInit, OnDestroy {
     this.loading = false;
   }
 
-  ngOnDestroy() {
+  ngOnDestroy(): void {
     this.authService.authSubject.unsubscribe();
   }
 
@@ -65,5 +68,4 @@ export class AppComponent implements OnInit, OnDestroy {
       this.router.navigate(['/chat']);
     }
   }
-
 }
