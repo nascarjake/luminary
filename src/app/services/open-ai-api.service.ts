@@ -8,12 +8,12 @@ import { OAThreadMessage } from '../../lib/entities/OAThreadMessage';
 import { OAThreadRun } from '../../lib/entities/OAThreadRun';
 import { OAResponseList } from '../../lib/objects/OAResponseList';
 import { AvailableFunctions, OARequiredAction } from '../../lib/entities/OAFunctionCall';
+import { Observable } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
 })
 export class OpenAiApiService {
-
   private apiUrl: string = environment.openai.apiUrl;
   private apiKey: string = '<unknown>';
 
@@ -42,7 +42,7 @@ export class OpenAiApiService {
   private getHeaders(): HttpHeaders {
     return new HttpHeaders({
       Authorization: `Bearer ${this.apiKey}`,
-      'OpenAI-Beta': 'assistants=v1'
+      'OpenAI-Beta': 'assistants=v2'  // Update to v2
     });
   }
 
@@ -101,19 +101,19 @@ export class OpenAiApiService {
   }
 
   public updateAssistant(assistant: OAAsistant): Promise<OAAsistant> {
-    return this.http.put<OAAsistant>(`${this.apiUrl}/assistants/${assistant.id}`, assistant, { headers: this.getHeaders() })
+    return this.http.post<OAAsistant>(`${this.apiUrl}/assistants/${assistant.id}`, assistant, { headers: this.getHeaders() })
       .pipe(catchError(this.handleError))
       .toPromise();
   }
 
   public updateThread(thread: OAThread): Promise<OAThread> {
-    return this.http.put<OAThread>(`${this.apiUrl}/threads/${thread.id}`, thread, { headers: this.getHeaders() })
+    return this.http.post<OAThread>(`${this.apiUrl}/threads/${thread.id}`, thread, { headers: this.getHeaders() })
       .pipe(catchError(this.handleError))
       .toPromise();
   }
 
   public updateThreadMessage(thread: OAThread, message: OAThreadMessage): Promise<OAThreadMessage> {
-    return this.http.put<OAThreadMessage>(`${this.apiUrl}/threads/${thread.id}/messages/${message.id}`, message, { headers: this.getHeaders() })
+    return this.http.post<OAThreadMessage>(`${this.apiUrl}/threads/${thread.id}/messages/${message.id}`, message, { headers: this.getHeaders() })
       .pipe(catchError(this.handleError))
       .toPromise();
   }

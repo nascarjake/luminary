@@ -47,7 +47,7 @@ export class ChatComponent implements OnDestroy {
   private thread?: OAThread;
   private runSubscription?: Subscription;
   private availableFunctions: AvailableFunctions = {
-    sendOutline: async (outline: string) => {
+    sendOutlines: async (outline: string) => {
       console.log('Sending outline:', outline);
       return 'Outline sent successfully';
     },
