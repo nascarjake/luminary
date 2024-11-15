@@ -1,4 +1,5 @@
 export type OAThreadRun = {
+  required_action: OARequiredAction;
   id: string;
   object: 'thread.run';
   created_at: number;

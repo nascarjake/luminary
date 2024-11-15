@@ -4,6 +4,7 @@ import { Subscription, interval } from 'rxjs';
 import { OAThread } from '../../../lib/entities/OAThread';
 import { OAThreadMessage } from '../../../lib/entities/OAThreadMessage';
 import { OAThreadRun } from '../../../lib/entities/OAThreadRun';
+import { AvailableFunctions, OARequiredAction } from '../../../lib/entities/OAFunctionCall';
 import { Sequence } from '../../classes/sequence';
 import { ChatBarComponent } from '../../components/chat-bar/chat-bar.component';
 import { ChatContentComponent } from '../../components/chat-content/chat-content.component';
@@ -44,6 +45,20 @@ export class ChatComponent implements OnDestroy {
   private run?: OAThreadRun;
   private thread?: OAThread;
   private runSubscription?: Subscription;
+  private availableFunctions: AvailableFunctions = {
+    sendOutline: async (outline: string) => {
+      console.log('Sending outline:', outline);
+      return 'Outline sent successfully';
+    },
+    sendScript: async (script: string) => {
+      console.log('Sending script:', script);
+      return 'Script sent successfully';
+    },
+    sendToPictory: async (content: string) => {
+      console.log('Sending to Pictory:', content);
+      return 'Content sent to Pictory successfully';
+    }
+  };
 
   constructor(
     private readonly openAiApiService: OpenAiApiService,
@@ -156,7 +171,28 @@ export class ChatComponent implements OnDestroy {
         this.runSubscription = interval(500).subscribe({
           next: async () => {
             this.run = await this.openAiApiService.runStatus(this.run!);
-            if (this.run!.status === 'completed') {
+            
+            if (this.run!.status === 'requires_action') {
+              const requiredAction = this.run!.required_action as OARequiredAction;
+              if (requiredAction.type === 'submit_tool_outputs') {
+                const toolOutputs = await Promise.all(
+                  requiredAction.submit_tool_outputs.tool_calls.map(async (toolCall) => {
+                    const func = this.availableFunctions[toolCall.function.name as keyof AvailableFunctions];
+                    if (!func) {
+                      throw new Error(`Function ${toolCall.function.name} not found`);
+                    }
+                    const args = JSON.parse(toolCall.function.arguments);
+                    const output = await func(...Object.values(args));
+                    return {
+                      tool_call_id: toolCall.id,
+                      output: JSON.stringify(output)
+                    };
+                  })
+                );
+                
+                this.run = await this.openAiApiService.submitToolOutputs(this.run!, toolOutputs);
+              }
+            } else if (this.run!.status === 'completed') {
               resolve();
               this.runSubscription!.unsubscribe();
             } else if (!['in_progress', 'queued'].includes(this.run!.status)) {

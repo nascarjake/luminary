@@ -1,86 +1,38 @@
 {
+  "$schema": "https://schema.tauri.app/config/2.0.0-rc",
+  "productName": "gpt-assistant-ui",
+  "version": "0.1.0",
+  "identifier": "com.gpt-assistant-ui.dev",
   "build": {
-    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist/gpt-assistant-ui/browser",
+    "devUrl": "http://localhost:4200",
     "beforeDevCommand": "npm run dev",
-    "devPath": "http://localhost:4200",
-    "distDir": "../dist/gpt-assistant-ui/browser"
+    "beforeBuildCommand": "npm run build"
   },
-  "package": {
-    "productName": "GPT assistant UI",
-    "version": "0.1.0"
-  },
-  "tauri": {
-    "allowlist": {
-      "fs": {
-        "all": true,
-        "readFile": true,
-        "writeFile": true,
-        "readDir": true,
-        "createDir": true,
-        "exists": true,
-        "scope": [
-          "$APPCONFIG",
-          "$APPCONFIG/**/*"
-        ]
-      },
-      "path": {
-        "all": true
-      },
-      "http": {
-        "request": true,
-        "scope": [
-          "https://api.openai.com/v1/*"
-        ]
-      }
-    },
-    "bundle": {
-      "active": true,
-      "category": "DeveloperTool",
-      "copyright": "",
-      "deb": {
-        "depends": []
-      },
-      "externalBin": [],
-      "icon": [
-        "icons/32x32.png",
-        "icons/128x128.png",
-        "icons/128x128@2x.png",
-        "icons/icon.icns",
-        "icons/icon.ico"
-      ],
-      "identifier": "com.gpt-assistant-ui.dev",
-      "longDescription": "",
-      "macOS": {
-        "entitlements": null,
-        "exceptionDomain": "",
-        "frameworks": [],
-        "providerShortName": null,
-        "signingIdentity": null
-      },
-      "resources": [],
-      "shortDescription": "",
-      "targets": "all",
-      "windows": {
-        "certificateThumbprint": null,
-        "digestAlgorithm": "sha256",
-        "timestampUrl": ""
-      }
-    },
-    "security": {
-      "csp": null
-    },
-    "updater": {
-      "active": false
-    },
+  "app": {
     "windows": [
       {
-        "fullscreen": false,
+        "title": "gpt-assistant-ui",
+        "width": 800,
         "height": 600,
         "resizable": true,
-        "title": "GPT assistant UI",
-        "minWidth": 1100,
-        "minHeight": 800
+        "fullscreen": false
+
       }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
     ]
   }
 }

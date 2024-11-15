@@ -1,12 +1,13 @@
 import { Injectable } from '@angular/core';
-import { Body, Client, HttpOptions, getClient } from "@tauri-apps/api/http";
+import { HttpClient, HttpHeaders, HttpErrorResponse } from '@angular/common/http';
 import { environment } from '../../environments/environment';
-import { HttpError } from '../../lib/classes/HttpError';
+import { catchError, throwError } from 'rxjs';
 import { OAAsistant } from '../../lib/entities/OAAssistant';
 import { OAThread } from '../../lib/entities/OAThread';
 import { OAThreadMessage } from '../../lib/entities/OAThreadMessage';
 import { OAThreadRun } from '../../lib/entities/OAThreadRun';
 import { OAResponseList } from '../../lib/objects/OAResponseList';
+import { AvailableFunctions, OARequiredAction } from '../../lib/entities/OAFunctionCall';
 
 @Injectable({
   providedIn: 'root'
@@ -14,12 +15,9 @@ import { OAResponseList } from '../../lib/objects/OAResponseList';
 export class OpenAiApiService {
 
   private apiUrl: string = environment.openai.apiUrl;
-  private apiKey: string = '<unknown>'
-  private client?: Client;
+  private apiKey: string = '<unknown>';
 
-  constructor() {
-    getClient().then(client => this.client = client);
-  }
+  constructor(private http: HttpClient) {}
 
   public getApiKey(): string {
     return this.apiKey;
@@ -29,114 +27,133 @@ export class OpenAiApiService {
     this.apiKey = apiKey;
   }
 
-  public async validateApiKey(): Promise<boolean> {
-    try {
-      const { ok } = await this.client!.get(`${this.apiUrl}/models`, { headers: this.getHeaders() });
-      return ok;
-    } catch {
-      return false;
-    }
+  public validateApiKey(): Promise<boolean> {
+    return this.http.get(`${this.apiUrl}/models`, { headers: this.getHeaders() })
+      .pipe(
+        catchError(() => {
+          return throwError(() => new Error('Invalid API key'));
+        })
+      )
+      .toPromise()
+      .then(() => true)
+      .catch(() => false);
   }
 
-  private getHeaders(): HttpOptions['headers'] {
-    return {
+  private getHeaders(): HttpHeaders {
+    return new HttpHeaders({
       Authorization: `Bearer ${this.apiKey}`,
       'OpenAI-Beta': 'assistants=v1'
-    };
+    });
   }
 
-  public async getAssistant(id: string): Promise<OAAsistant> {
-    const { data, ok, status } = await this.client!.get<OAAsistant>(`${this.apiUrl}/assistants/${id}`, { headers: this.getHeaders() });
-    if (!ok) throw new HttpError('Failed to get assistants', status);
-    return data;
+  public getAssistant(id: string): Promise<OAAsistant> {
+    return this.http.get<OAAsistant>(`${this.apiUrl}/assistants/${id}`, { headers: this.getHeaders() })
+      .pipe(catchError(this.handleError))
+      .toPromise();
   }
 
-  public async getThread(id: string): Promise<OAThread> {
-    const { data, ok, status } = await this.client!.get<OAThread>(`${this.apiUrl}/threads/${id}`, { headers: this.getHeaders() });
-    if (!ok) throw new HttpError('Failed to get threads', status);
-    return data;
+  public getThread(id: string): Promise<OAThread> {
+    return this.http.get<OAThread>(`${this.apiUrl}/threads/${id}`, { headers: this.getHeaders() })
+      .pipe(catchError(this.handleError))
+      .toPromise();
   }
 
-  public async getThreadMessage(thread: OAThread, id: string): Promise<OAThreadMessage> {
-    const { data, ok, status } = await this.client!.get<OAThreadMessage>(`${this.apiUrl}/threads/${thread.id}/messages/${id}`, { headers: this.getHeaders() });
-    if (!ok) throw new HttpError('Failed to get thread message', status);
-    return data;
+  public getThreadMessage(thread: OAThread, id: string): Promise<OAThreadMessage> {
+    return this.http.get<OAThreadMessage>(`${this.apiUrl}/threads/${thread.id}/messages/${id}`, { headers: this.getHeaders() })
+      .pipe(catchError(this.handleError))
+      .toPromise();
   }
 
-  public async listAssistants(): Promise<OAResponseList<OAAsistant>> {
-    const { data, ok, status } = await this.client!.get<OAResponseList<OAAsistant>>(`${this.apiUrl}/assistants`, { headers: this.getHeaders() });
-    if (!ok) throw new HttpError('Failed to get assistants', status);
-    return data;
+  public listAssistants(): Promise<OAResponseList<OAAsistant>> {
+    return this.http.get<OAResponseList<OAAsistant>>(`${this.apiUrl}/assistants`, { headers: this.getHeaders() })
+      .pipe(catchError(this.handleError))
+      .toPromise();
   }
 
-  public async listThreads(): Promise<OAResponseList<OAThread>> {
-    const { data, ok, status } = await this.client!.get<OAResponseList<OAThread>>(`${this.apiUrl}/threads`, { headers: this.getHeaders() });
-    if (!ok) throw new HttpError('Failed to get threads', status);
-    return data;
+  public listThreads(): Promise<OAResponseList<OAThread>> {
+    return this.http.get<OAResponseList<OAThread>>(`${this.apiUrl}/threads`, { headers: this.getHeaders() })
+      .pipe(catchError(this.handleError))
+      .toPromise();
   }
 
-  public async listThreadMessages(thread: Partial<OAThread>): Promise<OAResponseList<OAThreadMessage>> {
-    const { data, ok, status } = await this.client!.get<OAResponseList<OAThreadMessage>>(`${this.apiUrl}/threads/${thread.id}/messages`, { headers: this.getHeaders() });
-    if (!ok) throw new HttpError('Failed to get thread messages', status);
-    return data;
+  public listThreadMessages(thread: Partial<OAThread>): Promise<OAResponseList<OAThreadMessage>> {
+    return this.http.get<OAResponseList<OAThreadMessage>>(`${this.apiUrl}/threads/${thread.id}/messages`, { headers: this.getHeaders() })
+      .pipe(catchError(this.handleError))
+      .toPromise();
   }
 
-  public async createAssistant(assistant: Partial<OAAsistant>): Promise<OAAsistant> {
-    const { data, ok, status } = await this.client!.post<OAAsistant>(`${this.apiUrl}/assistants`, Body.json(assistant), { headers: this.getHeaders() });
-    if (!ok) throw new HttpError('Failed to create assistant', status);
-    return data;
+  public createAssistant(assistant: Partial<OAAsistant>): Promise<OAAsistant> {
+    return this.http.post<OAAsistant>(`${this.apiUrl}/assistants`, assistant, { headers: this.getHeaders() })
+      .pipe(catchError(this.handleError))
+      .toPromise();
   }
 
-  public async createThread(): Promise<OAThread> {
-    const { data, ok, status } = await this.client!.post<OAThread>(`${this.apiUrl}/threads`, undefined, { headers: this.getHeaders() });
-    if (!ok) throw new HttpError('Failed to create thread', status);
-    return data;
+  public createThread(): Promise<OAThread> {
+    return this.http.post<OAThread>(`${this.apiUrl}/threads`, {}, { headers: this.getHeaders() })
+      .pipe(catchError(this.handleError))
+      .toPromise();
   }
 
-  public async createThreadMessage(thread: Partial<OAThread>, message: { content: string; role: 'user', file_ids?: string[] }): Promise<OAThreadMessage> {
-    const { data, ok, status } = await this.client!.post<OAThreadMessage>(`${this.apiUrl}/threads/${thread.id}/messages`, Body.json(message), { headers: this.getHeaders() });
-    if (!ok) throw new HttpError('Failed to create thread message', status);
-    return data;
+  public createThreadMessage(thread: Partial<OAThread>, message: { content: string; role: 'user', file_ids?: string[] }): Promise<OAThreadMessage> {
+    return this.http.post<OAThreadMessage>(`${this.apiUrl}/threads/${thread.id}/messages`, message, { headers: this.getHeaders() })
+      .pipe(catchError(this.handleError))
+      .toPromise();
   }
 
-  public async updateAssistant(assistant: OAAsistant): Promise<OAAsistant> {
-    const { data, ok, status } = await this.client!.post<OAAsistant>(`${this.apiUrl}/assistants/${assistant.id}`, Body.json(assistant), { headers: this.getHeaders() });
-    if (!ok) throw new HttpError('Failed to update assistant', status);
-    return data;
+  public updateAssistant(assistant: OAAsistant): Promise<OAAsistant> {
+    return this.http.put<OAAsistant>(`${this.apiUrl}/assistants/${assistant.id}`, assistant, { headers: this.getHeaders() })
+      .pipe(catchError(this.handleError))
+      .toPromise();
   }
 
-  public async updateThread(thread: OAThread): Promise<OAThread> {
-    const { data, ok, status } = await this.client!.post<OAThread>(`${this.apiUrl}/threads/${thread.id}`, Body.json(thread), { headers: this.getHeaders() });
-    if (!ok) throw new HttpError('Failed to update thread', status);
-    return data;
+  public updateThread(thread: OAThread): Promise<OAThread> {
+    return this.http.put<OAThread>(`${this.apiUrl}/threads/${thread.id}`, thread, { headers: this.getHeaders() })
+      .pipe(catchError(this.handleError))
+      .toPromise();
   }
 
-  public async updateThreadMessage(thread: OAThread, message: OAThreadMessage): Promise<OAThreadMessage> {
-    const { data, ok, status } = await this.client!.post<OAThreadMessage>(`${this.apiUrl}/threads/${thread.id}/messages/${message.id}`, Body.json(message), { headers: this.getHeaders() });
-    if (!ok) throw new HttpError('Failed to update thread message', status);
-    return data;
+  public updateThreadMessage(thread: OAThread, message: OAThreadMessage): Promise<OAThreadMessage> {
+    return this.http.put<OAThreadMessage>(`${this.apiUrl}/threads/${thread.id}/messages/${message.id}`, message, { headers: this.getHeaders() })
+      .pipe(catchError(this.handleError))
+      .toPromise();
   }
 
-  public async deleteAssistant(assistant: OAAsistant): Promise<void> {
-    const { ok, status } = await this.client!.delete(`${this.apiUrl}/assistants/${assistant.id}`, { headers: this.getHeaders() });
-    if (!ok) throw new HttpError('Failed to delete assistant', status);
+  public deleteAssistant(assistant: OAAsistant): Promise<void> {
+    return this.http.delete<void>(`${this.apiUrl}/assistants/${assistant.id}`, { headers: this.getHeaders() })
+      .pipe(catchError(this.handleError))
+      .toPromise();
   }
 
-  public async deleteThread(thread: OAThread): Promise<void> {
-    const { ok, status } = await this.client!.delete(`${this.apiUrl}/threads/${thread.id}`, { headers: this.getHeaders() });
-    if (!ok) throw new HttpError('Failed to delete thread', status);
+  public deleteThread(thread: OAThread): Promise<void> {
+    return this.http.delete<void>(`${this.apiUrl}/threads/${thread.id}`, { headers: this.getHeaders() })
+      .pipe(catchError(this.handleError))
+      .toPromise();
   }
 
-  public async runStatus(run: OAThreadRun): Promise<OAThreadRun> {
-    const { data, ok, status } = await this.client!.get<OAThreadRun>(`${this.apiUrl}/threads/${run.thread_id}/runs/${run.id}`, { headers: this.getHeaders() });
-    if (!ok) throw new HttpError('Failed to get run status', status);
-    return data;
+  public runStatus(run: OAThreadRun): Promise<OAThreadRun> {
+    return this.http.get<OAThreadRun>(`${this.apiUrl}/threads/${run.thread_id}/runs/${run.id}`, { headers: this.getHeaders() })
+      .pipe(catchError(this.handleError))
+      .toPromise();
   }
 
-  public async runThread(thread: Partial<OAThread>, assistant: Partial<OAAsistant>): Promise<OAThreadRun> {
-    const { data, ok, status } = await this.client!.post<OAThreadRun>(`${this.apiUrl}/threads/${thread.id}/runs`, Body.json({ assistant_id: assistant.id }), { headers: this.getHeaders() });
-    if (!ok) throw new HttpError('Failed to run thread', status);
-    return data;
+  public runThread(thread: Partial<OAThread>, assistant: Partial<OAAsistant>): Promise<OAThreadRun> {
+    return this.http.post<OAThreadRun>(`${this.apiUrl}/threads/${thread.id}/runs`, { assistant_id: assistant.id }, { headers: this.getHeaders() })
+      .pipe(catchError(this.handleError))
+      .toPromise();
   }
 
+  public submitToolOutputs(run: OAThreadRun, toolOutputs: { tool_call_id: string, output: string }[]): Promise<OAThreadRun> {
+    return this.http.post<OAThreadRun>(
+      `${this.apiUrl}/threads/${run.thread_id}/runs/${run.id}/submit_tool_outputs`,
+      { tool_outputs: toolOutputs },
+      { headers: this.getHeaders() }
+    )
+    .pipe(catchError(this.handleError))
+    .toPromise();
+  }
+
+  private handleError(error: HttpErrorResponse): Promise<never> {
+    const errorMsg = error.error instanceof ErrorEvent ? error.error.message : `Server returned code ${error.status}`;
+    return Promise.reject(new Error(errorMsg));
+  }
 }

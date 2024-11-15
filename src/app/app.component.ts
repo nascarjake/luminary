@@ -6,6 +6,7 @@ import { MainComponent } from './layouts/main/main.component';
 import { AuthService } from './services/auth.service';
 import { ConfigService } from './services/config.service';
 import { OpenAiApiService } from './services/open-ai-api.service';
+import { HttpClientModule } from '@angular/common/http';
 
 @Component({
   selector: 'app-root',
@@ -15,7 +16,8 @@ import { OpenAiApiService } from './services/open-ai-api.service';
     RouterOutlet,
     HeaderComponent,
     MainComponent,
-    RouterModule
+    RouterModule,
+    HttpClientModule
   ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
