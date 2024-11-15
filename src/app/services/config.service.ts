@@ -1,13 +1,14 @@
 import { Injectable } from '@angular/core';
-import { fs, path } from '@tauri-apps/api';
 import { AppConfig } from '../../lib/entities/AppConfig';
+
+// Use `import()` for dynamic imports
+let fs: any, path: any;
 
 @Injectable({
   providedIn: 'root'
 })
 export class ConfigService {
-
-  private activeProfile: AppConfig['profiles'][number]|undefined;
+  private activeProfile: AppConfig['profiles'][number] | undefined;
   private config: AppConfig = {
     version: '0.0.1',
     profiles: []
@@ -16,10 +17,11 @@ export class ConfigService {
   constructor() {}
 
   public async initialize(): Promise<any> {
-    if (!await this.configDirExists()) {
+    if (await this.configDirExists()) {
+      await this.load();
+    } else {
       await this.configDirCreate();
     }
-    await this.load();
   }
 
   public createProfile(profile: AppConfig['profiles'][number]): void {
@@ -28,7 +30,7 @@ export class ConfigService {
   }
 
   public updateProfile(profile: AppConfig['profiles'][number]): void {
-    this.config.profiles = this.config.profiles.map(p => p.id === profile.id ? profile : p);
+    this.config.profiles = this.config.profiles.map(p => (p.id === profile.id ? profile : p));
     this.save();
   }
 
@@ -41,11 +43,11 @@ export class ConfigService {
     return this.config.profiles;
   }
 
-  public getDefaultProfile(): AppConfig['profiles'][number]|undefined {
+  public getDefaultProfile(): AppConfig['profiles'][number] | undefined {
     return this.config.profiles.find(p => p.default);
   }
 
-  public getActiveProfile(): AppConfig['profiles'][number]|undefined {
+  public getActiveProfile(): AppConfig['profiles'][number] | undefined {
     return this.activeProfile;
   }
 
@@ -59,24 +61,67 @@ export class ConfigService {
   }
 
   private async configDirCreate(): Promise<void> {
-    return await fs.createDir(await path.appConfigDir());
+    if (!fs || !path) {
+      await this.loadTauriApis();  // Load Tauri APIs dynamically
+    }
+    if (fs && path) {
+      const dirPath = await path.appConfigDir();
+      return fs.createDir(dirPath, { recursive: true });
+    }
   }
 
   private async configDirExists(): Promise<boolean> {
-    return await fs.exists(await path.appConfigDir());
+    if (!fs || !path) {
+      await this.loadTauriApis();  // Load Tauri APIs dynamically
+    }
+    if (fs && path) {
+      const dirPath = await path.appConfigDir();
+      return fs.exists(dirPath);
+    } else {
+      return localStorage.getItem('appConfig') !== null;
+    }
   }
 
   private async load(): Promise<any> {
-    const configPath = await path.join(await path.appConfigDir(), 'config.json');
-    if (await fs.exists(configPath)) {
-      this.config = JSON.parse(await fs.readTextFile(configPath));
+    if (!fs || !path) {
+      await this.loadTauriApis();  // Load Tauri APIs dynamically
+    }
+    if (fs && path) {
+      const configPath = await path.join(await path.appConfigDir(), 'config.json');
+      if (await fs.exists(configPath)) {
+        this.config = JSON.parse(await fs.readTextFile(configPath));
+      } else {
+        await this.save();
+      }
     } else {
-      await this.save();
+      const localConfig = localStorage.getItem('appConfig');
+      if (localConfig) {
+        this.config = JSON.parse(localConfig);
+      } else {
+        await this.save();
+      }
     }
   }
 
   private async save(): Promise<any> {
-    const configPath = await path.join(await path.appConfigDir(), 'config.json');
-    await fs.writeTextFile(configPath, JSON.stringify(this.config));
+    if (!fs || !path) {
+      await this.loadTauriApis();  // Load Tauri APIs dynamically
+    }
+    if (fs && path) {
+      const configPath = await path.join(await path.appConfigDir(), 'config.json');
+      await fs.writeTextFile(configPath, JSON.stringify(this.config));
+    } else {
+      localStorage.setItem('appConfig', JSON.stringify(this.config));
+    }
+  }
+
+  // Dynamically import the Tauri APIs
+  private async loadTauriApis(): Promise<void> {
+    try {
+      fs = (await import('@tauri-apps/api/fs')).default;
+      path = (await import('@tauri-apps/api/path')).default;
+    } catch (error) {
+      console.warn('Tauri APIs not found, falling back to localStorage.');
+    }
   }
 }
