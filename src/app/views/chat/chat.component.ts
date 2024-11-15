@@ -11,6 +11,7 @@ import { ChatContentComponent } from '../../components/chat-content/chat-content
 import { ChatSidebarComponent } from '../../components/chat-sidebar/chat-sidebar.component';
 import { ConfigService } from '../../services/config.service';
 import { OpenAiApiService } from '../../services/open-ai-api.service';
+import { AiFunctionService } from '../../services/ai-function.service';
 import { tick } from '../../../lib/classes/Helper';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
@@ -63,6 +64,7 @@ export class ChatComponent implements OnDestroy {
   constructor(
     private readonly openAiApiService: OpenAiApiService,
     private readonly configService: ConfigService,
+    private readonly aiFunctionService: AiFunctionService,
     private readonly messageService: MessageService
   ) { }
 
@@ -177,12 +179,12 @@ export class ChatComponent implements OnDestroy {
               if (requiredAction.type === 'submit_tool_outputs') {
                 const toolOutputs = await Promise.all(
                   requiredAction.submit_tool_outputs.tool_calls.map(async (toolCall) => {
-                    const func = this.availableFunctions[toolCall.function.name as keyof AvailableFunctions];
+                    const func = this.aiFunctionService[toolCall.function.name as keyof AvailableFunctions];
                     if (!func) {
                       throw new Error(`Function ${toolCall.function.name} not found`);
                     }
                     const args = JSON.parse(toolCall.function.arguments);
-                    const output = await func(...Object.values(args));
+                    const output = await func.call(this.aiFunctionService, ...Object.values(args));
                     return {
                       tool_call_id: toolCall.id,
                       output: JSON.stringify(output)
