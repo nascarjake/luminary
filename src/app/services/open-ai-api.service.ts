@@ -152,6 +152,16 @@ export class OpenAiApiService {
     .toPromise();
   }
 
+  public cancelRun(threadId: string, runId: string): Promise<OAThreadRun> {
+    return this.http.post<OAThreadRun>(
+      `${this.apiUrl}/threads/${threadId}/runs/${runId}/cancel`,
+      {},
+      { headers: this.getHeaders() }
+    )
+    .pipe(catchError(this.handleError))
+    .toPromise();
+  }
+
   private handleError(error: HttpErrorResponse): Promise<never> {
     const errorMsg = error.error instanceof ErrorEvent ? error.error.message : `Server returned code ${error.status}`;
     return Promise.reject(new Error(errorMsg));

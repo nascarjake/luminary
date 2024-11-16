@@ -3,6 +3,7 @@ import { Component, OnDestroy, OnInit } from '@angular/core';
 import { Router, RouterModule, RouterOutlet } from '@angular/router';
 import { HeaderComponent } from './layouts/header/header.component';
 import { MainComponent } from './layouts/main/main.component';
+import { ObjectSidebarComponent } from './components/object-sidebar/object-sidebar.component';
 import { AuthService } from './services/auth.service';
 import { ConfigService } from './services/config.service';
 import { OpenAiApiService } from './services/open-ai-api.service';
@@ -18,6 +19,7 @@ import { ToastModule } from 'primeng/toast';
     RouterOutlet,
     HeaderComponent,
     MainComponent,
+    ObjectSidebarComponent,
     HttpClientModule,
     ToastModule
   ],

@@ -1,19 +1,24 @@
 @if (threadId) {
   @for (message of threadMessages ?? []; track message.id) {
-    <div class="message">
-      <p-avatar
-        class="avatar"
-        shape="circle"
-        icon="pi pi-user"
-        [label]="message.role === 'assistant' ? 'A' : undefined"
-        [style]="message.role === 'assistant'
-        ? { 'background-color': 'var(--blue-500)', color: '#ffffff' }
-        : {}"
-        size="normal"
-      />
-      <div class="content" [innerHTML]="message.content.at(0)!.text!.value | mark"></div>
-    </div>
-
+    @if (message.role === 'system') {
+      <div class="message system-message">
+        <div class="content system-content" [innerHTML]="message.content.at(0)!.text!.value | mark"></div>
+      </div>
+    } @else {
+      <div class="message">
+        <p-avatar
+          class="avatar"
+          shape="circle"
+          icon="pi pi-user"
+          [label]="message.role === 'assistant' ? 'A' : 'U'"
+          [style]="message.role === 'assistant'
+            ? { 'background-color': 'var(--blue-500)', color: '#ffffff' }
+            : { 'background-color': 'var(--surface-200)', color: 'var(--text-color)' }"
+          size="normal"
+        />
+        <div class="content" [innerHTML]="message.content.at(0)!.text!.value | mark"></div>
+      </div>
+    }
   }
 }
 @else if (assistantId) {

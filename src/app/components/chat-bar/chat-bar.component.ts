@@ -23,6 +23,7 @@ export class ChatBarComponent implements OnChanges {
   @Input() public assistantId?: string;
   @Input() public loading: boolean = false;
   @Output() public onSubmitMessage = new EventEmitter<string>();
+  @Output() public onCancelRun = new EventEmitter<void>();
 
   public messageForm = new FormGroup({
     message: new FormControl(
@@ -39,6 +40,14 @@ export class ChatBarComponent implements OnChanges {
         this.messageForm.get('message')!.disable();
       }
     }
+    
+    if (changes['loading']) {
+      if (changes['loading'].currentValue) {
+        this.messageForm.get('message')!.disable();
+      } else if (this.assistantId) {
+        this.messageForm.get('message')!.enable();
+      }
+    }
   }
 
   @HostListener('document:keydown.control.enter', ['$event'])
@@ -46,11 +55,19 @@ export class ChatBarComponent implements OnChanges {
   public async onKeydownHandler(event: KeyboardEvent): Promise<void> {
     event.preventDefault();
     event.stopPropagation();
-    if (this.messageForm.valid) await this.onSubmit();
+    if (this.messageForm.valid && !this.loading) await this.onSubmit();
   }
 
   public async onSubmit(): Promise<void> {
-    this.onSubmitMessage.emit(this.messageForm.value.message!);
-    this.messageForm.reset();
+    if (this.loading) {
+      this.onCancelRun.emit();
+      return;
+    }
+    
+    const message = this.messageForm.get('message')!.value;
+    if (message) {
+      this.onSubmitMessage.emit(message);
+      this.messageForm.reset();
+    }
   }
 }

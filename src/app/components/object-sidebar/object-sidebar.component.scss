@@ -1,0 +1,75 @@
+@import 'manifest';
+
+:host {
+  display: flex;
+  height: 100%;
+  border-left: 1px solid $color-black-secondary;
+  background: var(--surface-ground);
+}
+
+aside {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  
+  .top-pane {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: ptr(16px);
+    border-bottom: 1px solid $color-black-secondary;
+    
+    ::ng-deep .object-tree {
+      border: none;
+      background: transparent;
+      
+      .p-tree-container {
+        padding: 0;
+      }
+      
+      .p-treenode {
+        padding: ptr(4px) 0;
+      }
+    }
+  }
+  
+  .bottom-pane {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding: ptr(16px);
+    
+    ::ng-deep .p-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      
+      .p-panel-header {
+        flex: 0 0 auto;
+        background: transparent;
+        border: none;
+        padding: 0 0 ptr(16px) 0;
+      }
+      
+      .p-panel-content {
+        flex: 1;
+        min-height: 0;
+        background: transparent;
+        border: none;
+        padding: 0;
+        overflow-y: auto;
+      }
+    }
+    
+    pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      font-family: ui-monospace, 'SF Mono', Menlo, Monaco, 'Cascadia Mono', 'Segoe UI Mono', 'Roboto Mono', monospace;
+      font-size: ptr(14px);
+    }
+  }
+}

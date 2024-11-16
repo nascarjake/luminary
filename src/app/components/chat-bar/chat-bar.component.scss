@@ -4,6 +4,8 @@
   display: block;
   border-top: 1px solid $color-black-secondary;
   padding: ptr(16px);
+  padding-right: calc(300px + ptr(16px)); // Account for right sidebar width plus padding
+  
   form {
     position: relative;
     max-width: ptr(700px);
@@ -18,8 +20,6 @@
     p-button {
       position: absolute;
       top: ptr(16px);
-      right: ptr(16px);
-      bottom: ptr(16px);
       right: ptr(16px);
     }
   }
