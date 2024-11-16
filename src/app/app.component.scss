@@ -1,9 +1,37 @@
 :host {
-  display: block;
+  display: flex;
+  flex-direction: column;
   height: 100vh;
   width: 100vw;
-  &.hasSidebar {
+  overflow: hidden;
+
+  app-header {
+    flex: 0 0 auto;
+    z-index: 2; // Ensure header is above sidebars
+  }
+
+  app-main {
+    flex: 1;
     display: flex;
-    flex-direction: row;
+    overflow: hidden;
+    position: relative;
+    padding-top: 56px; // Match header height
+  }
+
+  ::ng-deep router-outlet + * {
+    flex: 1;
+    height: 100%;
+    min-width: 0; // Prevent flex items from overflowing
+    display: flex;
+    padding-right: 300px; // Account for right sidebar width
+  }
+
+  app-object-sidebar {
+    position: absolute;
+    right: 0;
+    top: 44px; // Account for header height
+    bottom: 0;
+    width: 300px;
+    z-index: 1;
   }
 }

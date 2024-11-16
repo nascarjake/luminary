@@ -19,6 +19,6 @@ export type OAThreadRun = {
   tools: {
     type: string;
   }[];
-  file_ids: string[];
+  file_ids?: string[];
   metadata: Record<string, unknown>;
 }

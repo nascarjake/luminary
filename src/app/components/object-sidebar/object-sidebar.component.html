@@ -1,0 +1,28 @@
+<aside>
+  <div class="top-pane">
+    <p-tree
+      [value]="treeData"
+      selectionMode="single"
+      [(selection)]="selectedNode"
+      (onNodeSelect)="onNodeSelect($event)"
+      styleClass="object-tree"
+    />
+  </div>
+  <div class="bottom-pane">
+    @if (selectedObject) {
+      <p-panel [header]="selectedNode?.label || 'Details'">
+        @switch (selectedNode?.data?.type) {
+          @case ('outline') {
+            <pre>{{ selectedObject | json }}</pre>
+          }
+          @case ('script') {
+            <pre>{{ selectedObject.content }}</pre>
+          }
+          @case ('pictory') {
+            <pre>{{ selectedObject | json }}</pre>
+          }
+        }
+      </p-panel>
+    }
+  </div>
+</aside>

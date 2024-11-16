@@ -1,4 +1,3 @@
-
 <form [formGroup]="messageForm">
   <textarea
     class="textarea"
@@ -12,9 +11,9 @@
 
   <p-button
     class="button"
-    icon="pi pi-send"
-    [disabled]="!messageForm.valid || !assistantId"
+    [icon]="loading ? 'pi pi-times' : 'pi pi-send'"
+    [disabled]="(!messageForm.valid || !assistantId) && !loading"
     (click)="onSubmit()"
-    styleClass="p-button-secondary p-button-rounded p-button-outlined"
+    [styleClass]="loading ? 'p-button-danger p-button-rounded p-button-outlined' : 'p-button-secondary p-button-rounded p-button-outlined'"
   />
 </form>

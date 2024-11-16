@@ -4,12 +4,8 @@ import { MessageService } from 'primeng/api';
 import { AvailableFunctions } from '../../lib/entities/OAFunctionCall';
 import { OpenAiApiService } from './open-ai-api.service';
 import { environment } from '../../environments/environment';
-
-interface ScriptOutline {
-  // TODO: Define the structure of your outline object
-  [key: string]: any;
-  title?: string;
-}
+import { Subject } from 'rxjs';
+import { GeneratedObjectsService, ScriptOutline } from './generated-objects.service';
 
 interface ProjectCounters {
   scripts: number;
@@ -19,7 +15,7 @@ interface ProjectCounters {
 @Injectable({
   providedIn: 'root'
 })
-export class AiFunctionService implements AvailableFunctions {
+export class AiFunctionService {
   // TODO: Move these to environment config
   private readonly SCRIPT_ASSISTANT_ID = 'asst_c79BRUGFLalWEhogodtMf53y';
   private readonly PICTORY_ASSISTANT_ID = 'asst_s0Hhqom7vmDUbdFRdTMNZlt1';
@@ -30,10 +26,19 @@ export class AiFunctionService implements AvailableFunctions {
   // Project-level counters
   private projectCounters: Map<string, ProjectCounters> = new Map();
 
+  // Event emitter for system messages
+  private systemMessageSource = new Subject<string>();
+  systemMessage$ = this.systemMessageSource.asObservable();
+
+  private emitSystemMessage(message: string) {
+    this.systemMessageSource.next(message);
+  }
+
   constructor(
     private messageService: MessageService,
     private openAiApiService: OpenAiApiService,
-    private http: HttpClient
+    private http: HttpClient,
+    private generatedObjects: GeneratedObjectsService
   ) {}
 
   /**
@@ -74,9 +79,14 @@ export class AiFunctionService implements AvailableFunctions {
 
       // Process each outline
       console.log(`🔄 Processing ${outlines.length} outline(s)`);
+      this.emitSystemMessage(`Processing ${outlines.length} outline${outlines.length !== 1 ? 's' : ''}...`);
+      
       const results = await Promise.all(
         outlines.map(async (outline, index) => {
           console.log(`\n--- Processing outline ${index + 1}/${outlines.length} ---`);
+          const outlineTitle = outline.title || `Outline ${index + 1}`;
+          this.emitSystemMessage(`Processing ${outlineTitle} (${index + 1}/${outlines.length})`);
+          
           try {
             // Create a new thread for each outline
             console.log('📨 Creating new thread');
@@ -96,6 +106,15 @@ export class AiFunctionService implements AvailableFunctions {
             const run = await this.openAiApiService.runThread(thread, { id: this.SCRIPT_ASSISTANT_ID });
             console.log('✅ Assistant started, run ID:', run.id, 'for thread:', thread.id);
             
+            // Add outline to generated objects
+            this.generatedObjects.addOutline(outline);
+            
+            this.messageService.add({
+              severity: 'success',
+              summary: 'Outline Processing',
+              detail: `Processed ${outlineTitle} (${index + 1}/${outlines.length})`
+            });
+
             return { success: true as const };
           } catch (error) {
             console.error(`❌ Error processing outline ${index + 1}/${outlines.length}:`, error);
@@ -105,13 +124,7 @@ export class AiFunctionService implements AvailableFunctions {
       );
 
       console.log('✅ All outlines processed successfully');
-
-      // Notify user of results
-      this.messageService.add({
-        severity: 'success',
-        summary: 'Outline Processing',
-        detail: `Processed ${outlines.length} outline${outlines.length !== 1 ? 's' : ''}`
-      });
+      this.emitSystemMessage(`✅ Completed processing all ${outlines.length} outline${outlines.length !== 1 ? 's' : ''}`);
 
       return { success: true };
     } catch (error) {
@@ -122,6 +135,7 @@ export class AiFunctionService implements AvailableFunctions {
         summary: 'Error',
         detail: `Failed to process outline: ${errorMessage}`
       });
+      this.emitSystemMessage(`❌ Error: Failed to process outline: ${errorMessage}`);
       throw error;
     }
   }
@@ -159,6 +173,13 @@ export class AiFunctionService implements AvailableFunctions {
       const run = await this.openAiApiService.runThread(thread, { id: this.PICTORY_ASSISTANT_ID });
       console.log('✅ Assistant started, run ID:', run.id);
 
+      // Add script to generated objects
+      this.generatedObjects.addScript({
+        content: script,
+        title,
+        threadId: thread.id
+      });
+
       this.messageService.add({
         severity: 'success',
         summary: 'Script Processing',
@@ -175,6 +196,7 @@ export class AiFunctionService implements AvailableFunctions {
         summary: 'Error',
         detail: `Failed to process script: ${errorMessage}`
       });
+      this.emitSystemMessage(`❌ Error: Failed to process script: ${errorMessage}`);
       throw error;
     }
   }
@@ -218,6 +240,13 @@ export class AiFunctionService implements AvailableFunctions {
       await this.http.post(this.PICTORY_API_URL, content, { headers }).toPromise();
       console.log('✅ Pictory API request successful');
 
+      // Add Pictory request to generated objects
+      this.generatedObjects.addPictoryRequest({
+        content,
+        title,
+        threadId
+      });
+
       this.messageService.add({
         severity: 'success',
         summary: 'Video Generation',
@@ -234,6 +263,7 @@ export class AiFunctionService implements AvailableFunctions {
         summary: 'Error',
         detail: `Failed to send to Pictory: ${errorMessage}`
       });
+      this.emitSystemMessage(`❌ Error: Failed to send to Pictory: ${errorMessage}`);
       throw error;
     }
   }

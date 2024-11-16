@@ -12,6 +12,7 @@ import { ChatSidebarComponent } from '../../components/chat-sidebar/chat-sidebar
 import { ConfigService } from '../../services/config.service';
 import { OpenAiApiService } from '../../services/open-ai-api.service';
 import { AiFunctionService } from '../../services/ai-function.service';
+import { AiMessageService } from '../../services/ai-message.service';
 import { tick } from '../../../lib/classes/Helper';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
@@ -46,27 +47,63 @@ export class ChatComponent implements OnDestroy {
   private run?: OAThreadRun;
   private thread?: OAThread;
   private runSubscription?: Subscription;
-  private availableFunctions: AvailableFunctions = {
-    sendOutlines: async (outline: string) => {
-      console.log('Sending outline:', outline);
-      return 'Outline sent successfully';
-    },
-    sendScript: async (script: string) => {
-      console.log('Sending script:', script);
-      return 'Script sent successfully';
-    },
-    sendToPictory: async (content: string) => {
-      console.log('Sending to Pictory:', content);
-      return 'Content sent to Pictory successfully';
-    }
-  };
+
+  private addUserMessage(content: string) {
+    if (!this.threadMessages) this.threadMessages = [];
+    this.threadMessages.push({
+      id: `temp-${Date.now()}`,
+      created_at: Date.now(),
+      thread_id: this.threadId || '',
+      role: 'user',
+      object: 'thread.message',
+      content: [{
+        type: 'text',
+        text: {
+          value: content,
+          annotations: []
+        }
+      }],
+      file_ids: [],
+      assistant_id: null,
+      run_id: null,
+      metadata: {}
+    });
+  }
+
+  private addSystemMessage(content: string) {
+    if (!this.threadMessages) this.threadMessages = [];
+    this.threadMessages.push({
+      id: `system-${Date.now()}`,
+      created_at: Date.now(),
+      thread_id: this.threadId || '',
+      role: 'system',
+      object: 'thread.message',
+      content: [{
+        type: 'text',
+        text: {
+          value: content,
+          annotations: []
+        }
+      }],
+      file_ids: [],
+      assistant_id: null,
+      run_id: null,
+      metadata: {}
+    });
+  }
 
   constructor(
     private readonly openAiApiService: OpenAiApiService,
     private readonly configService: ConfigService,
     private readonly aiFunctionService: AiFunctionService,
-    private readonly messageService: MessageService
-  ) { }
+    private readonly messageService: MessageService,
+    private readonly aiMessageService: AiMessageService
+  ) {
+    // Subscribe to system messages
+    this.aiMessageService.systemMessage$.subscribe(message => {
+      this.addSystemMessage(message);
+    });
+  }
 
   ngOnDestroy(): void {
     this.runSubscription?.unsubscribe();
@@ -93,6 +130,9 @@ export class ChatComponent implements OnDestroy {
       this.message = message;
       if (!this.threadId && !this.assistantId) return;
 
+      // Add user message immediately
+      this.addUserMessage(message);
+
       // Create thread if not exists
       if (!this.threadId) await this.createThread();
       else await this.fetchThread();
@@ -106,6 +146,30 @@ export class ChatComponent implements OnDestroy {
     }
   }
 
+  public async onCancelRun(): Promise<void> {
+    if (!this.threadId) return;
+
+    try {
+      // Get the current run ID from the service
+      const currentRun = await this.aiMessageService.getCurrentRun(this.threadId);
+      if (currentRun) {
+        await this.aiMessageService.cleanupFailedRun(this.threadId, currentRun.id, 'Run cancelled by user');
+        this.messageService.add({
+          severity: 'info',
+          summary: 'Cancelled',
+          detail: 'Assistant run cancelled'
+        });
+      }
+    } catch (error) {
+      console.error('Failed to cancel run:', error);
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'Failed to cancel run'
+      });
+    }
+  }
+
   private async handleChangeThread(): Promise<void> {
     this.loadingThread = true;
     await this.fetchThread();
@@ -116,9 +180,7 @@ export class ChatComponent implements OnDestroy {
 
   private async executeSubmitSequence(): Promise<void> {
     this.submitSequence = new Sequence(
-      this.createThreadMessage.bind(this),
-      this.fetchThreadMessages.bind(this),
-      this.runThread.bind(this),
+      this.generateAIResponse.bind(this),
       this.fetchThreadMessages.bind(this),
     );
     this.submitSequence.onFail(err => {
@@ -159,54 +221,16 @@ export class ChatComponent implements OnDestroy {
         }));
   }
 
-  private async createThreadMessage(): Promise<void> {
-    await this.openAiApiService.createThreadMessage(this.thread!, {
-      content: this.message!,
-      role: 'user',
-    });
-  }
-
-  private runThread(): Promise<void> {
-    return new Promise(async (resolve, reject) => {
-      try {
-        this.run = await this.openAiApiService.runThread(this.thread!, { id: this.assistantId! });
-        this.runSubscription = interval(500).subscribe({
-          next: async () => {
-            this.run = await this.openAiApiService.runStatus(this.run!);
-            
-            if (this.run!.status === 'requires_action') {
-              const requiredAction = this.run!.required_action as OARequiredAction;
-              if (requiredAction.type === 'submit_tool_outputs') {
-                const toolOutputs = await Promise.all(
-                  requiredAction.submit_tool_outputs.tool_calls.map(async (toolCall) => {
-                    const func = this.aiFunctionService[toolCall.function.name as keyof AvailableFunctions];
-                    if (!func) {
-                      throw new Error(`Function ${toolCall.function.name} not found`);
-                    }
-                    const args = JSON.parse(toolCall.function.arguments);
-                    const output = await func.call(this.aiFunctionService, ...Object.values(args));
-                    return {
-                      tool_call_id: toolCall.id,
-                      output: JSON.stringify(output)
-                    };
-                  })
-                );
-                
-                this.run = await this.openAiApiService.submitToolOutputs(this.run!, toolOutputs);
-              }
-            } else if (this.run!.status === 'completed') {
-              resolve();
-              this.runSubscription!.unsubscribe();
-            } else if (!['in_progress', 'queued'].includes(this.run!.status)) {
-              reject(this.run);
-              this.runSubscription!.unsubscribe();
-            }
-          },
-          error: reject
-        });
-      } catch (err) {
-        reject(err);
-      }
-    });
+  private async generateAIResponse(): Promise<void> {
+    try {
+      await this.aiMessageService.generateAIResponse({
+        message: this.message!,
+        assistantId: this.assistantId!,
+        threadId: this.threadId
+      });
+    } catch (err) {
+      console.error('Error generating AI response:', err);
+      throw err;
+    }
   }
 }
