@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { TreeModule } from 'primeng/tree';
 import { TreeNode } from 'primeng/api';
 import { PanelModule } from 'primeng/panel';
+import { PrettyJsonPipe } from '../../pipes/pretty-json.pipe';
 import { GeneratedObjectsService, ScriptOutline, Script, PictoryRequest } from '../../services/generated-objects.service';
 
 @Component({
@@ -11,10 +12,11 @@ import { GeneratedObjectsService, ScriptOutline, Script, PictoryRequest } from '
   imports: [
     CommonModule,
     TreeModule,
-    PanelModule
+    PanelModule,
+    PrettyJsonPipe
   ],
   templateUrl: './object-sidebar.component.html',
-  styleUrl: './object-sidebar.component.scss'
+  styleUrls: ['./object-sidebar.component.scss']
 })
 export class ObjectSidebarComponent implements OnInit {
   treeData: TreeNode[] = [];

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input, OnChanges, SimpleChanges, ViewContainerRef } from '@angular/core';
+import { AfterViewChecked, Component, ElementRef, Input, OnChanges, SimpleChanges } from '@angular/core';
 import { AvatarModule } from 'primeng/avatar';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { tick } from '../../../lib/classes/Helper';
@@ -18,21 +18,37 @@ import { MarkPipe } from '../../pipes/mark.pipe';
   templateUrl: './chat-content.component.html',
   styleUrl: './chat-content.component.scss'
 })
-export class ChatContentComponent implements OnChanges {
+export class ChatContentComponent implements OnChanges, AfterViewChecked {
 
   @Input() public loading?: boolean;
   @Input() public assistantId?: string;
   @Input() public threadId?: string;
   @Input() public threadMessages?: OAThreadMessage[];
 
-  constructor(
-    private readonly viewRef: ViewContainerRef,
-  ) { }
+  private shouldScroll = false;
+
+  constructor(private elementRef: ElementRef) {}
 
   async ngOnChanges(changes: SimpleChanges): Promise<void> {
     if (changes['threadMessages']?.currentValue !== changes['threadMessages']?.previousValue) {
-      await tick(150);
-      this.viewRef.element.nativeElement.scrollTop = this.viewRef.element.nativeElement.scrollHeight;
+      this.shouldScroll = true;
+    }
+  }
+
+  async ngAfterViewChecked(): Promise<void> {
+    if (this.shouldScroll) {
+      await this.scrollToBottom();
+      this.shouldScroll = false;
+    }
+  }
+
+  private async scrollToBottom(): Promise<void> {
+    try {
+      await tick(50); // Small delay to ensure content is rendered
+      const element = this.elementRef.nativeElement;
+      element.scrollTop = element.scrollHeight;
+    } catch (error) {
+      console.error('Error scrolling to bottom:', error);
     }
   }
 }

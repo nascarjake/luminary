@@ -19,19 +19,6 @@ aside {
     overflow-y: auto;
     padding: ptr(16px);
     border-bottom: 1px solid $color-black-secondary;
-    
-    ::ng-deep .object-tree {
-      border: none;
-      background: transparent;
-      
-      .p-tree-container {
-        padding: 0;
-      }
-      
-      .p-treenode {
-        padding: ptr(4px) 0;
-      }
-    }
   }
   
   .bottom-pane {
@@ -39,37 +26,38 @@ aside {
     min-height: 0;
     display: flex;
     flex-direction: column;
-    padding: ptr(16px);
     
-    ::ng-deep .p-panel {
-      flex: 1;
+    p-panel {
+      height: 100%;
       display: flex;
       flex-direction: column;
-      min-height: 0;
+      overflow: auto;
+      margin-bottom:44px;
       
       .p-panel-header {
         flex: 0 0 auto;
-        background: transparent;
-        border: none;
-        padding: 0 0 ptr(16px) 0;
       }
       
       .p-panel-content {
         flex: 1;
         min-height: 0;
-        background: transparent;
-        border: none;
         padding: 0;
-        overflow-y: auto;
+        overflow: hidden; // Prevent double scrollbars
       }
     }
     
-    pre {
-      margin: 0;
-      white-space: pre-wrap;
-      word-wrap: break-word;
-      font-family: ui-monospace, 'SF Mono', Menlo, Monaco, 'Cascadia Mono', 'Segoe UI Mono', 'Roboto Mono', monospace;
-      font-size: ptr(14px);
+    .scrollable-content {
+      height: 100%;
+      overflow-y: auto;
+      padding: ptr(16px);
+      
+      pre {
+        margin: 0;
+        font-size: ptr(12px);
+        font-family: 'JetBrains Mono', monospace;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+      }
     }
   }
 }

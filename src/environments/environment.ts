@@ -1,6 +1,6 @@
 export const environment = {
   production: true,
   openai: {
-    apiUrl: 'https://api.openai.com/v2'
+    apiUrl: 'https://api.openai.com/v1'
   }
 };

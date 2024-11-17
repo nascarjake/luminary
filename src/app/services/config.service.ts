@@ -1,9 +1,6 @@
 import { Injectable } from '@angular/core';
 import { AppConfig } from '../../lib/entities/AppConfig';
 
-// Use `import()` for dynamic imports
-let fs: any, path: any;
-
 @Injectable({
   providedIn: 'root'
 })
@@ -14,14 +11,46 @@ export class ConfigService {
     profiles: []
   };
 
-  constructor() {}
+  constructor() {
+    this.initialize().catch(error => {
+      console.error('Failed to initialize ConfigService:', error);
+    });
+  }
 
   public async initialize(): Promise<any> {
+    console.log('Initializing ConfigService...');
     if (await this.configDirExists()) {
+      console.log('Config directory exists, loading config...');
       await this.load();
     } else {
+      console.log('Config directory does not exist, creating...');
       await this.configDirCreate();
     }
+
+    // Set active profile to default profile if not set
+    if (!this.activeProfile) {
+      console.log('No active profile, setting to default...');
+      this.activeProfile = this.getDefaultProfile();
+      if (!this.activeProfile && this.config.profiles.length > 0) {
+        console.log('No default profile, setting first profile as active...');
+        this.activeProfile = this.config.profiles[0];
+      } else if (!this.activeProfile) {
+        console.log('No profiles exist, creating default profile...');
+        const defaultProfile: AppConfig['profiles'][number] = {
+          id: crypto.randomUUID(),
+          name: 'Default Profile',
+          default: true,
+          openai: {
+            apiKey: ''
+          },
+          threads: []
+        };
+        this.createProfile(defaultProfile);
+        this.activeProfile = defaultProfile;
+      }
+    }
+    
+    console.log('ConfigService initialized with active profile:', this.activeProfile);
   }
 
   public createProfile(profile: AppConfig['profiles'][number]): void {
@@ -61,35 +90,29 @@ export class ConfigService {
   }
 
   private async configDirCreate(): Promise<void> {
-    if (!fs || !path) {
-      await this.loadTauriApis();  // Load Tauri APIs dynamically
-    }
-    if (fs && path) {
-      const dirPath = await path.appConfigDir();
-      return fs.createDir(dirPath, { recursive: true });
+    if (window.electron) {
+      const dirPath = await window.electron.path.appConfigDir();
+      return window.electron.fs.createDir(dirPath, { recursive: true });
     }
   }
 
   private async configDirExists(): Promise<boolean> {
-    if (!fs || !path) {
-      await this.loadTauriApis();  // Load Tauri APIs dynamically
-    }
-    if (fs && path) {
-      const dirPath = await path.appConfigDir();
-      return fs.exists(dirPath);
+    if (window.electron) {
+      const dirPath = await window.electron.path.appConfigDir();
+      return window.electron.fs.exists(dirPath);
     } else {
       return localStorage.getItem('appConfig') !== null;
     }
   }
 
   private async load(): Promise<any> {
-    if (!fs || !path) {
-      await this.loadTauriApis();  // Load Tauri APIs dynamically
-    }
-    if (fs && path) {
-      const configPath = await path.join(await path.appConfigDir(), 'config.json');
-      if (await fs.exists(configPath)) {
-        this.config = JSON.parse(await fs.readTextFile(configPath));
+    if (window.electron) {
+      const configPath = await window.electron.path.join(
+        await window.electron.path.appConfigDir(),
+        'config.json'
+      );
+      if (await window.electron.fs.exists(configPath)) {
+        this.config = JSON.parse(await window.electron.fs.readTextFile(configPath));
       } else {
         await this.save();
       }
@@ -104,24 +127,14 @@ export class ConfigService {
   }
 
   private async save(): Promise<any> {
-    if (!fs || !path) {
-      await this.loadTauriApis();  // Load Tauri APIs dynamically
-    }
-    if (fs && path) {
-      const configPath = await path.join(await path.appConfigDir(), 'config.json');
-      await fs.writeTextFile(configPath, JSON.stringify(this.config));
+    if (window.electron) {
+      const configPath = await window.electron.path.join(
+        await window.electron.path.appConfigDir(),
+        'config.json'
+      );
+      await window.electron.fs.writeTextFile(configPath, JSON.stringify(this.config));
     } else {
       localStorage.setItem('appConfig', JSON.stringify(this.config));
-    }
-  }
-
-  // Dynamically import the Tauri APIs
-  private async loadTauriApis(): Promise<void> {
-    try {
-      fs = (await import('@tauri-apps/api/fs')).default;
-      path = (await import('@tauri-apps/api/path')).default;
-    } catch (error) {
-      console.warn('Tauri APIs not found, falling back to localStorage.');
     }
   }
 }
