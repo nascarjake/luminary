@@ -19,10 +19,15 @@ export interface Script {
 
 export interface PictoryRequest {
   id: string;
-  content: any;
+  content?: any;
   title?: string;
-  threadId: string;
+  threadId?: string;
   createdAt: string;
+  jobId?: string;
+  preview?: any;
+  video?: any;
+  thumbnail?: any;
+  duration?: any;
 }
 
 export interface StoredObjects {
