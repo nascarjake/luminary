@@ -293,7 +293,8 @@ export class AiFunctionService {
         'X-Pictory-User-Id': environment.pictory.userId
       });
 
-      if(content.webhook) delete content.webhook;
+      if(content.webhook != undefined) delete content.webhook;
+      if(content.videoDescription) content.videoDescription = content.videoDescription.substring(0, 100);
       if(content.brandLogo) content.brandLogo.url = 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Test-Logo.svg/2560px-Test-Logo.svg.png';
 
       // Send request to Pictory API
@@ -325,18 +326,19 @@ export class AiFunctionService {
 
       if (!renderStatus.data.videoURL) {
         throw new Error('No video URL received');
-      }
+      } 
 
       // Add to generated objects
       this.generatedObjects.addPictoryRequest({
-        jobId: response.jobId,
-        preview: jobStatus.data.preview,
+        jobId: renderStatus.job_id,
+        preview: renderStatus.data.preview,
         video: renderStatus.data.videoURL,
         thumbnail: renderStatus.data.thumbnail,
         duration: renderStatus.data.videoDuration
       });
 
       this.emitSystemMessage('✨ Video generation complete!');
+      this.emitSystemMessage(renderStatus.data.videoURL);
       console.log('✨ Video generation complete!', renderStatus);
       return {success: true};
 
@@ -357,6 +359,7 @@ export class AiFunctionService {
     const authToken = await this.getPictoryAuthToken();
     const headers = new HttpHeaders({
       'Authorization': `Bearer ${authToken}`,
+      'X-Pictory-User-Id': environment.pictory.userId,
       'Content-Type': 'application/json'
     });
 
@@ -389,6 +392,7 @@ export class AiFunctionService {
     const authToken = await this.getPictoryAuthToken();
     const headers = new HttpHeaders({
       'Authorization': `Bearer ${authToken}`,
+      'X-Pictory-User-Id': environment.pictory.userId,
       'Content-Type': 'application/json'
     });
 
@@ -403,7 +407,7 @@ export class AiFunctionService {
     }
 
     // Poll until render is complete
-    return this.pollJobUntilComplete(response.jobId);
+    return this.pollJobUntilComplete(response.data.job_id);
   }
 
   // Get Pictory auth token, using cache if available
