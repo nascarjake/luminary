@@ -19,6 +19,38 @@ interface PictoryAuth {
   expiration_time?: number;
 }
 
+interface PictoryJobResponse {
+  jobId: string;
+  success: boolean;
+  data: {
+    job_id: string;
+  };
+}
+
+interface PictoryJobStatus {
+  job_id: string;
+  success: boolean;
+  data: {
+    status?: string;
+    renderParams?: {
+      audio: any;
+      output: any;
+      scenes: any[];
+      next_generation_video: boolean;
+      containsTextToImage: boolean;
+    };
+    preview?: string;
+    txtFile?: string;
+    audioURL?: string;
+    thumbnail?: string;
+    videoDuration?: number;
+    videoURL?: string;
+    vttFile?: string;
+    srtFile?: string;
+    shareVideoURL?: string;
+  };
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -31,6 +63,9 @@ export class AiFunctionService {
   private readonly PICTORY_CLIENT_ID = 'oqqfosh7c8m9ql5r6627j8j8d';
   private readonly PICTORY_CLIENT_SECRET = 'AQICAHhZHg7OR+8D6W0rh82dGpyRZ7ID33czntuqbdVLgOrR3AFOPm9QYl5gWVvoDg485dbhAAAAlDCBkQYJKoZIhvcNAQcGoIGDMIGAAgEAMHsGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMehxJpkpYjlFpPdlfAgEQgE7AVAL1qSm3LVtz6F9riYuoKItZ39An2WAkdbaNgra1LWT/mLPEmIiZ81lfkQbrllfI0WcV24I2jXfERmno4inWpt6FF8Ivaj/LaS4CYqU=';
   private readonly PICTORY_USER_ID = 'Eric';
+  private readonly PICTORY_JOB_URL = 'https://api.pictory.ai/pictoryapis/v1/jobs';
+  private readonly PICTORY_RENDER_URL = 'https://api.pictory.ai/pictoryapis/v1/video/render';
+  private readonly JOB_POLL_INTERVAL = 5000; // 5 seconds
 
   // Pictory auth token cache
   private pictoryAuthToken: PictoryAuth | null = null;
@@ -255,35 +290,112 @@ export class AiFunctionService {
 
       // Send request to Pictory API
       console.log('📤 Sending request to Pictory API', content);
-      await this.http.post(this.PICTORY_API_URL, content, { headers }).toPromise();
-      console.log('✅ Pictory API request successful');
+      const response = await this.http.post<PictoryJobResponse>(
+        this.PICTORY_API_URL, 
+        content, 
+        { headers }
+      ).toPromise();
 
-      // Add Pictory request to generated objects
+      if (!response || !response.success) {
+        throw new Error('Failed to create video storyboard');
+      }
+
+      console.log('✅ Pictory API request successful, job ID:', response.jobId);
+      this.emitSystemMessage(`🎥 Video generation started. Job ID: ${response.jobId}`);
+
+      // Poll until the job is complete and we get render params
+      this.emitSystemMessage('⏳ Waiting for video preview...');
+      const jobStatus = await this.pollJobUntilComplete(response.jobId);
+
+      if (!jobStatus.data.renderParams) {
+        throw new Error('No render parameters received');
+      }
+
+      // Start the render process
+      this.emitSystemMessage('🎬 Starting video render...');
+      const renderStatus = await this.renderVideo(jobStatus.data.renderParams);
+
+      if (!renderStatus.data.videoURL) {
+        throw new Error('No video URL received');
+      }
+
+      // Add to generated objects
       this.generatedObjects.addPictoryRequest({
-        content,
-        title,
-        threadId
+        jobId: response.jobId,
+        preview: jobStatus.data.preview,
+        video: renderStatus.data.videoURL,
+        thumbnail: renderStatus.data.thumbnail,
+        duration: renderStatus.data.videoDuration
       });
 
-      this.messageService.add({
-        severity: 'success',
-        summary: 'Video Generation',
-        detail: `Generating Video #${counters.videos}${title ? ` - ${title}` : ''}`
-      });
+      this.emitSystemMessage('✨ Video generation complete!');
+      console.log('✨ Video generation complete!', renderStatus);
+      return {success: true};
 
-      console.log('✅ Pictory processing completed successfully');
-      return { success: true };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error('❌ Error in sendToPictory:', error);
       this.messageService.add({
         severity: 'error',
-        summary: 'Error',
-        detail: `Failed to send to Pictory: ${errorMessage}`
+        summary: 'Pictory Error',
+        detail: errorMessage
       });
       this.emitSystemMessage(`❌ Error: Failed to send to Pictory: ${errorMessage}`);
       throw error;
     }
+  }
+
+  private async checkJobStatus(jobId: string): Promise<PictoryJobStatus> {
+    const authToken = await this.getPictoryAuthToken();
+    const headers = new HttpHeaders({
+      'Authorization': `Bearer ${authToken}`,
+      'Content-Type': 'application/json'
+    });
+
+    const response = await this.http.get<PictoryJobStatus>(
+      `${this.PICTORY_JOB_URL}/${jobId}`,
+      { headers }
+    ).toPromise();
+
+    if (!response || !response.success) {
+      throw new Error('Failed to get job status');
+    }
+
+    return response;
+  }
+
+  private async pollJobUntilComplete(jobId: string): Promise<PictoryJobStatus> {
+    while (true) {
+      const status = await this.checkJobStatus(jobId);
+      
+      if (status.data.status === 'completed' || status.data.renderParams) {
+        return status;
+      }
+
+      // Wait before next poll
+      await new Promise(resolve => setTimeout(resolve, this.JOB_POLL_INTERVAL));
+    }
+  }
+
+  private async renderVideo(renderParams: any): Promise<PictoryJobStatus> {
+    const authToken = await this.getPictoryAuthToken();
+    const headers = new HttpHeaders({
+      'Authorization': `Bearer ${authToken}`,
+      'Content-Type': 'application/json'
+    });
+
+    const response = await this.http.post<PictoryJobResponse>(
+      this.PICTORY_RENDER_URL,
+      renderParams,
+      { headers }
+    ).toPromise();
+
+    if (!response || !response.success) {
+      throw new Error('Failed to start video render');
+    }
+
+    // Poll until render is complete
+    return this.pollJobUntilComplete(response.jobId);
   }
 
   // Get Pictory auth token, using cache if available
