@@ -7,6 +7,7 @@ import { OAThreadMessage } from '../../lib/entities/OAThreadMessage';
 import { OAThread } from '../../lib/entities/OAThread';
 import { OAThreadRun } from '../../lib/entities/OAThreadRun';
 import { MessageService } from 'primeng/api';
+import { AiCommunicationService } from './ai-communication.service';
 import { Subject } from 'rxjs';
 
 @Injectable({
@@ -19,12 +20,13 @@ export class AiMessageService {
   constructor(
     private readonly openAiApiService: OpenAiApiService,
     private readonly aiFunctionService: AiFunctionService,
-    private readonly messageService: MessageService
+    private readonly messageService: MessageService,
+    private readonly aiCommunicationService: AiCommunicationService
   ) {
     this.initializeOpenAI();
-    // Subscribe to system messages from AiFunctionService
-    this.aiFunctionService.systemMessage$.subscribe(message => {
-      this.systemMessageSource.next(message);
+    // Subscribe to system messages
+    this.aiCommunicationService.systemMessage$.subscribe(message => {
+      this.emitSystemMessage(message);
     });
   }
 
