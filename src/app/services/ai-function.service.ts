@@ -73,7 +73,7 @@ export class AiFunctionService {
         }
         console.log('📝 Parsed outlines:', outlines);
       } catch (error) {
-        console.error('❌ JSON parsing failed:', error);
+        console.error('❌ JSON parsing failed:', error, outlineJson);
         throw new Error('Invalid JSON format for outline');
       }
 

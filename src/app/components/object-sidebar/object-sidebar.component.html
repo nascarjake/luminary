@@ -13,13 +13,19 @@
       <p-panel [header]="selectedNode?.label || 'Details'">
         @switch (selectedNode?.data?.type) {
           @case ('outline') {
-            <pre>{{ selectedObject | json }}</pre>
+            <div class="scrollable-content">
+              <pre>{{ selectedObject | prettyJson }}</pre>
+            </div>
           }
           @case ('script') {
-            <pre>{{ selectedObject.content }}</pre>
+            <div class="scrollable-content">
+              <pre>{{ selectedObject.content }}</pre>
+            </div>
           }
           @case ('pictory') {
-            <pre>{{ selectedObject | json }}</pre>
+            <div class="scrollable-content">
+              <pre>{{ selectedObject | prettyJson }}</pre>
+            </div>
           }
         }
       </p-panel>
