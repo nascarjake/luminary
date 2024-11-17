@@ -6,6 +6,7 @@ import { OpenAiApiService } from './open-ai-api.service';
 import { environment } from '../../environments/environment';
 import { Subject } from 'rxjs';
 import { GeneratedObjectsService, ScriptOutline } from './generated-objects.service';
+import { AiCommunicationService } from './ai-communication.service';
 
 interface ProjectCounters {
   scripts: number;
@@ -58,35 +59,26 @@ export class AiFunctionService {
   // TODO: Move these to environment config
   private readonly SCRIPT_ASSISTANT_ID = 'asst_c79BRUGFLalWEhogodtMf53y';
   private readonly PICTORY_ASSISTANT_ID = 'asst_s0Hhqom7vmDUbdFRdTMNZlt1';
-  private readonly PICTORY_API_URL = 'https://api.pictory.ai/pictoryapis/v1/video/storyboard';
-  private readonly PICTORY_AUTH_URL = 'https://api.pictory.ai/pictoryapis/v1/oauth2/token';
-  private readonly PICTORY_CLIENT_ID = 'oqqfosh7c8m9ql5r6627j8j8d';
-  private readonly PICTORY_CLIENT_SECRET = 'AQICAHhZHg7OR+8D6W0rh82dGpyRZ7ID33czntuqbdVLgOrR3AFOPm9QYl5gWVvoDg485dbhAAAAlDCBkQYJKoZIhvcNAQcGoIGDMIGAAgEAMHsGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMehxJpkpYjlFpPdlfAgEQgE7AVAL1qSm3LVtz6F9riYuoKItZ39An2WAkdbaNgra1LWT/mLPEmIiZ81lfkQbrllfI0WcV24I2jXfERmno4inWpt6FF8Ivaj/LaS4CYqU=';
-  private readonly PICTORY_USER_ID = 'Eric';
-  private readonly PICTORY_JOB_URL = 'https://api.pictory.ai/pictoryapis/v1/jobs';
-  private readonly PICTORY_RENDER_URL = 'https://api.pictory.ai/pictoryapis/v1/video/render';
-  private readonly JOB_POLL_INTERVAL = 5000; // 5 seconds
-
-  // Pictory auth token cache
-  private pictoryAuthToken: PictoryAuth | null = null;
-
-  // Project-level counters
-  private projectCounters: Map<string, ProjectCounters> = new Map();
+  private readonly BATCH_SIZE = 3;
+  private readonly BATCH_DELAY = 60000; // 60 seconds
+  private readonly projectCounters = new Map<string, ProjectCounters>();
 
   // Event emitter for system messages
   private systemMessageSource = new Subject<string>();
   systemMessage$ = this.systemMessageSource.asObservable();
 
-  private emitSystemMessage(message: string) {
-    this.systemMessageSource.next(message);
-  }
-
   constructor(
     private messageService: MessageService,
     private openAiApiService: OpenAiApiService,
     private http: HttpClient,
-    private generatedObjects: GeneratedObjectsService
+    private generatedObjects: GeneratedObjectsService,
+    private aiCommunicationService: AiCommunicationService
   ) {}
+
+  private emitSystemMessage(message: string) {
+    this.systemMessageSource.next(message);
+    this.aiCommunicationService.emitSystemMessage(message);
+  }
 
   /**
    * Gets or creates project counters for a given thread
@@ -96,6 +88,28 @@ export class AiFunctionService {
       this.projectCounters.set(threadId, { scripts: 0, videos: 0 });
     }
     return this.projectCounters.get(threadId)!;
+  }
+
+  private async processBatch<T>(
+    items: T[],
+    processItem: (item: T, index: number) => Promise<void>,
+    batchSize: number = this.BATCH_SIZE,
+    delayBetweenBatches: number = this.BATCH_DELAY
+  ): Promise<void> {
+    for (let i = 0; i < items.length; i += batchSize) {
+      const batch = items.slice(i, i + batchSize);
+      
+      // Process items in current batch concurrently
+      await Promise.all(batch.map((item, batchIndex) => 
+        processItem(item, i + batchIndex)
+      ));
+      
+      // If there are more items to process, wait before next batch
+      if (i + batchSize < items.length) {
+        this.emitSystemMessage(`Waiting ${delayBetweenBatches/1000} seconds before processing next batch...`);
+        await new Promise(resolve => setTimeout(resolve, delayBetweenBatches));
+      }
+    }
   }
 
   /**
@@ -110,7 +124,6 @@ export class AiFunctionService {
       let outlines: ScriptOutline[];
       try {
         const parsed = JSON.parse(outlineJson);
-        // Check if the input is an object with a videos array
         if (parsed.videos && Array.isArray(parsed.videos)) {
           outlines = parsed.videos;
         } else if (Array.isArray(parsed)) {
@@ -124,51 +137,46 @@ export class AiFunctionService {
         throw new Error('Invalid JSON format for outline');
       }
 
-      // Process each outline
       console.log(`🔄 Processing ${outlines.length} outline(s)`);
       this.emitSystemMessage(`Processing ${outlines.length} outline${outlines.length !== 1 ? 's' : ''}...`);
       
-      const results = await Promise.all(
-        outlines.map(async (outline, index) => {
-          console.log(`\n--- Processing outline ${index + 1}/${outlines.length} ---`);
-          const outlineTitle = outline.title || `Outline ${index + 1}`;
-          this.emitSystemMessage(`Processing ${outlineTitle} (${index + 1}/${outlines.length})`);
+      // Process outlines in batches
+      await this.processBatch(outlines, async (outline, index) => {
+        const outlineTitle = outline.title || `Outline ${index + 1}`;
+        this.emitSystemMessage(`Processing ${outlineTitle} (${index + 1}/${outlines.length})`);
+        
+        try {
+          // Create a new thread for the outline
+          console.log('📨 Creating new thread');
+          const thread = await this.openAiApiService.createThread();
+          console.log('✅ Thread created:', thread.id);
           
-          try {
-            // Create a new thread for each outline
-            console.log('📨 Creating new thread');
-            const thread = await this.openAiApiService.createThread();
-            console.log('✅ Thread created:', thread.id);
-            
-            // Send the outline as a message
-            console.log('📤 Sending outline as message to thread:', thread.id);
-            await this.openAiApiService.createThreadMessage(thread, {
-              content: JSON.stringify(outline),
-              role: 'user'
-            });
-            console.log('✅ Message sent to thread:', thread.id);
+          // Send the outline as a message
+          console.log('📤 Sending outline as message to thread:', thread.id);
+          await this.openAiApiService.createThreadMessage(thread, {
+            content: JSON.stringify(outline),
+            role: 'user'
+          });
+          console.log('✅ Message sent to thread:', thread.id);
 
-            // Start the assistant
-            console.log(`🤖 Starting assistant for outline ${index + 1}/${outlines.length} on thread:`, thread.id);
-            const run = await this.openAiApiService.runThread(thread, { id: this.SCRIPT_ASSISTANT_ID });
-            console.log('✅ Assistant started, run ID:', run.id, 'for thread:', thread.id);
-            
-            // Add outline to generated objects
-            this.generatedObjects.addOutline(outline);
-            
-            this.messageService.add({
-              severity: 'success',
-              summary: 'Outline Processing',
-              detail: `Processed ${outlineTitle} (${index + 1}/${outlines.length})`
-            });
-
-            return { success: true as const };
-          } catch (error) {
-            console.error(`❌ Error processing outline ${index + 1}/${outlines.length}:`, error);
-            throw error;
-          }
-        })
-      );
+          // Start the assistant
+          console.log(`🤖 Starting assistant for outline on thread:`, thread.id);
+          const run = await this.openAiApiService.runThread(thread, { id: this.SCRIPT_ASSISTANT_ID });
+          console.log('✅ Assistant started, run ID:', run.id, 'for thread:', thread.id);
+          
+          // Add outline to generated objects
+          this.generatedObjects.addOutline(outline);
+          
+          this.messageService.add({
+            severity: 'success',
+            summary: 'Outline Processing',
+            detail: `Processed ${outlineTitle}`
+          });
+        } catch (error) {
+          console.error(`❌ Error processing outline:`, error);
+          throw error;
+        }
+      });
 
       console.log('✅ All outlines processed successfully');
       this.emitSystemMessage(`✅ Completed processing all ${outlines.length} outline${outlines.length !== 1 ? 's' : ''}`);
@@ -215,7 +223,7 @@ export class AiFunctionService {
       });
       console.log('✅ Message sent');
 
-      // Start the assistant
+      // Start the assistant with rate limiting
       console.log('🤖 Starting assistant');
       const run = await this.openAiApiService.runThread(thread, { id: this.PICTORY_ASSISTANT_ID });
       console.log('✅ Assistant started, run ID:', run.id);
@@ -256,7 +264,7 @@ export class AiFunctionService {
    * @returns A promise that resolves with {success: true}
    */
   async sendToPictory(contentJson: string, threadId: string, title?: string): Promise<{ success: true }> {
-    console.log('🚀 sendToPictory started:', { threadId, title });
+    console.log('🚀 sendToPictory started with:', { contentJson, threadId, title });
     try {
       // Increment video counter for this project
       const counters = this.getProjectCounters(threadId);
@@ -273,16 +281,16 @@ export class AiFunctionService {
         throw new Error('Invalid JSON format for Pictory content');
       }
 
-      // Get Pictory auth token
+      // Get auth token
       const authToken = await this.getPictoryAuthToken();
 
-      // Set up headers for Pictory API
+      // Set up headers
       console.log('🔧 Setting up Pictory API headers');
       const headers = new HttpHeaders({
         'accept': 'application/json',
         'content-type': 'application/json',
         'Authorization': `Bearer ${authToken}`,
-        'X-Pictory-User-Id': this.PICTORY_USER_ID
+        'X-Pictory-User-Id': environment.pictory.userId
       });
 
       if(content.webhook) delete content.webhook;
@@ -291,7 +299,7 @@ export class AiFunctionService {
       // Send request to Pictory API
       console.log('📤 Sending request to Pictory API', content);
       const response = await this.http.post<PictoryJobResponse>(
-        this.PICTORY_API_URL, 
+        environment.pictory.apiUrl + '/video/storyboard', 
         content, 
         { headers }
       ).toPromise();
@@ -353,7 +361,7 @@ export class AiFunctionService {
     });
 
     const response = await this.http.get<PictoryJobStatus>(
-      `${this.PICTORY_JOB_URL}/${jobId}`,
+      `${environment.pictory.apiUrl}/jobs/${jobId}`,
       { headers }
     ).toPromise();
 
@@ -373,7 +381,7 @@ export class AiFunctionService {
       }
 
       // Wait before next poll
-      await new Promise(resolve => setTimeout(resolve, this.JOB_POLL_INTERVAL));
+      await new Promise(resolve => setTimeout(resolve, 5000));
     }
   }
 
@@ -385,7 +393,7 @@ export class AiFunctionService {
     });
 
     const response = await this.http.post<PictoryJobResponse>(
-      this.PICTORY_RENDER_URL,
+      `${environment.pictory.apiUrl}/video/render`,
       renderParams,
       { headers }
     ).toPromise();
@@ -400,19 +408,13 @@ export class AiFunctionService {
 
   // Get Pictory auth token, using cache if available
   private async getPictoryAuthToken(): Promise<string> {
-    // Check if we have a valid cached token
-    if (this.pictoryAuthToken && this.pictoryAuthToken.expiration_time 
-        && Date.now() < this.pictoryAuthToken.expiration_time) {
-      return this.pictoryAuthToken.access_token;
-    }
-
-    // Get new token
     try {
+      // Get new token
       const response = await this.http.post<PictoryAuth>(
-        this.PICTORY_AUTH_URL,
+        `${environment.pictory.apiUrl}/oauth2/token`,
         {
-          client_id: this.PICTORY_CLIENT_ID,
-          client_secret: this.PICTORY_CLIENT_SECRET
+          client_id: environment.pictory.clientId,
+          client_secret: environment.pictory.clientSecret
         }
       ).toPromise();
 
@@ -420,13 +422,7 @@ export class AiFunctionService {
         throw new Error('Failed to get Pictory auth token');
       }
 
-      // Cache the token with expiration time
-      this.pictoryAuthToken = {
-        ...response,
-        expiration_time: Date.now() + (response.expires_in * 1000) // Convert seconds to milliseconds
-      };
-
-      return this.pictoryAuthToken.access_token;
+      return response.access_token;
     } catch (error) {
       console.error('Error getting Pictory auth token:', error);
       throw new Error('Failed to authenticate with Pictory');
