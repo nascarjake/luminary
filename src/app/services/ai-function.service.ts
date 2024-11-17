@@ -12,6 +12,13 @@ interface ProjectCounters {
   videos: number;
 }
 
+interface PictoryAuth {
+  access_token: string;
+  expires_in: number;
+  token_type: string;
+  expiration_time?: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -20,8 +27,13 @@ export class AiFunctionService {
   private readonly SCRIPT_ASSISTANT_ID = 'asst_c79BRUGFLalWEhogodtMf53y';
   private readonly PICTORY_ASSISTANT_ID = 'asst_s0Hhqom7vmDUbdFRdTMNZlt1';
   private readonly PICTORY_API_URL = 'https://api.pictory.ai/pictoryapis/v1/video/storyboard';
-  private readonly PICTORY_AUTH_TOKEN = 'your_pictory_auth_token';
-  private readonly PICTORY_USER_ID = 'your_pictory_user_id';
+  private readonly PICTORY_AUTH_URL = 'https://api.pictory.ai/pictoryapis/v1/oauth2/token';
+  private readonly PICTORY_CLIENT_ID = 'oqqfosh7c8m9ql5r6627j8j8d';
+  private readonly PICTORY_CLIENT_SECRET = 'AQICAHhZHg7OR+8D6W0rh82dGpyRZ7ID33czntuqbdVLgOrR3AFOPm9QYl5gWVvoDg485dbhAAAAlDCBkQYJKoZIhvcNAQcGoIGDMIGAAgEAMHsGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMehxJpkpYjlFpPdlfAgEQgE7AVAL1qSm3LVtz6F9riYuoKItZ39An2WAkdbaNgra1LWT/mLPEmIiZ81lfkQbrllfI0WcV24I2jXfERmno4inWpt6FF8Ivaj/LaS4CYqU=';
+  private readonly PICTORY_USER_ID = 'Eric';
+
+  // Pictory auth token cache
+  private pictoryAuthToken: PictoryAuth | null = null;
 
   // Project-level counters
   private projectCounters: Map<string, ProjectCounters> = new Map();
@@ -226,17 +238,23 @@ export class AiFunctionService {
         throw new Error('Invalid JSON format for Pictory content');
       }
 
+      // Get Pictory auth token
+      const authToken = await this.getPictoryAuthToken();
+
       // Set up headers for Pictory API
       console.log('🔧 Setting up Pictory API headers');
       const headers = new HttpHeaders({
         'accept': 'application/json',
         'content-type': 'application/json',
-        'Authorization': this.PICTORY_AUTH_TOKEN,
+        'Authorization': `Bearer ${authToken}`,
         'X-Pictory-User-Id': this.PICTORY_USER_ID
       });
 
+      if(content.webhook) delete content.webhook;
+      if(content.brandLogo) content.brandLogo.url = 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Test-Logo.svg/2560px-Test-Logo.svg.png';
+
       // Send request to Pictory API
-      console.log('📤 Sending request to Pictory API');
+      console.log('📤 Sending request to Pictory API', content);
       await this.http.post(this.PICTORY_API_URL, content, { headers }).toPromise();
       console.log('✅ Pictory API request successful');
 
@@ -265,6 +283,41 @@ export class AiFunctionService {
       });
       this.emitSystemMessage(`❌ Error: Failed to send to Pictory: ${errorMessage}`);
       throw error;
+    }
+  }
+
+  // Get Pictory auth token, using cache if available
+  private async getPictoryAuthToken(): Promise<string> {
+    // Check if we have a valid cached token
+    if (this.pictoryAuthToken && this.pictoryAuthToken.expiration_time 
+        && Date.now() < this.pictoryAuthToken.expiration_time) {
+      return this.pictoryAuthToken.access_token;
+    }
+
+    // Get new token
+    try {
+      const response = await this.http.post<PictoryAuth>(
+        this.PICTORY_AUTH_URL,
+        {
+          client_id: this.PICTORY_CLIENT_ID,
+          client_secret: this.PICTORY_CLIENT_SECRET
+        }
+      ).toPromise();
+
+      if (!response) {
+        throw new Error('Failed to get Pictory auth token');
+      }
+
+      // Cache the token with expiration time
+      this.pictoryAuthToken = {
+        ...response,
+        expiration_time: Date.now() + (response.expires_in * 1000) // Convert seconds to milliseconds
+      };
+
+      return this.pictoryAuthToken.access_token;
+    } catch (error) {
+      console.error('Error getting Pictory auth token:', error);
+      throw new Error('Failed to authenticate with Pictory');
     }
   }
 }
