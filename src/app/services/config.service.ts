@@ -27,27 +27,25 @@ export class ConfigService {
       await this.configDirCreate();
     }
 
-    // Set active profile to default profile if not set
-    if (!this.activeProfile) {
-      console.log('No active profile, setting to default...');
-      this.activeProfile = this.getDefaultProfile();
-      if (!this.activeProfile && this.config.profiles.length > 0) {
-        console.log('No default profile, setting first profile as active...');
-        this.activeProfile = this.config.profiles[0];
-      } else if (!this.activeProfile) {
-        console.log('No profiles exist, creating default profile...');
-        const defaultProfile: AppConfig['profiles'][number] = {
-          id: crypto.randomUUID(),
-          name: 'Default Profile',
-          default: true,
-          openai: {
-            apiKey: ''
-          },
-          threads: []
-        };
-        this.createProfile(defaultProfile);
+    // Handle profile selection based on number of profiles
+    if (this.config.profiles.length === 1) {
+      // If there's exactly one profile, use it
+      console.log('Single profile found, setting as active...');
+      this.activeProfile = this.config.profiles[0];
+    } else if (this.config.profiles.length > 1) {
+      // If there are multiple profiles, check for a default
+      const defaultProfile = this.getDefaultProfile();
+      if (defaultProfile) {
+        console.log('Multiple profiles found, using default profile...');
         this.activeProfile = defaultProfile;
+      } else {
+        console.log('Multiple profiles found, no default set. User selection required.');
+        this.activeProfile = undefined;
       }
+    } else {
+      // No profiles exist, start with blank slate
+      console.log('No profiles exist. User needs to create one.');
+      this.activeProfile = undefined;
     }
     
     console.log('ConfigService initialized with active profile:', this.activeProfile);
