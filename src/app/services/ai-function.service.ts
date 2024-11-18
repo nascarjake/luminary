@@ -7,6 +7,13 @@ import { environment } from '../../environments/environment';
 import { Subject } from 'rxjs';
 import { GeneratedObjectsService, ScriptOutline } from './generated-objects.service';
 import { AiCommunicationService } from './ai-communication.service';
+import type { Electron } from 'electron-api';
+
+declare global {
+  interface Window {
+    electron: Electron;
+  }
+}
 
 interface ProjectCounters {
   scripts: number;
@@ -50,6 +57,28 @@ interface PictoryJobStatus {
     srtFile?: string;
     shareVideoURL?: string;
   };
+}
+
+interface PictoryRequest {
+  jobId: string;
+  content: any;
+  title: string;
+  threadId: string;
+  preview: string;
+}
+
+interface PictoryRender {
+  jobId: string;
+  preview: string;
+  video: string;
+  thumbnail: string;
+  duration: number;
+}
+
+interface Video {
+  name: string;
+  file: string;
+  url: string;
 }
 
 @Injectable({
@@ -258,23 +287,23 @@ export class AiFunctionService {
 
   /**
    * Sends content to Pictory API for processing
-   * @param contentJson JSON string containing the content to send to Pictory
+   * @param scriptJson JSON string containing the content to send to Pictory
    * @param threadId The thread ID for tracking project counters
    * @param title Optional title of the video
    * @returns A promise that resolves with {success: true}
    */
-  async sendToPictory(contentJson: string, threadId: string, title?: string): Promise<{ success: true }> {
-    console.log('🚀 sendToPictory started with:', { contentJson, threadId, title });
+  async sendToPictory(scriptJson: string, threadId: string, title: string): Promise<{ success: true }> {
+    console.log('🚀 sendToPictory started with:', { scriptJson, threadId, title });
     try {
-      // Increment video counter for this project
-      const counters = this.getProjectCounters(threadId);
-      counters.videos++;
-      console.log('📊 Video counter incremented:', counters.videos);
-
-      // Parse and validate JSON
+       // Increment video counter for this project
+       const counters = this.getProjectCounters(threadId);
+       counters.videos++;
+       console.log('📊 Video counter incremented:', counters.videos);
+      
+       // Parse JSON content
       let content: any;
       try {
-        content = JSON.parse(contentJson);
+        content = JSON.parse(scriptJson);
         console.log('📝 Parsed content:', content);
       } catch (error) {
         console.error('❌ JSON parsing failed:', error);
@@ -300,36 +329,44 @@ export class AiFunctionService {
       // Send request to Pictory API
       console.log('📤 Sending request to Pictory API', content);
       const response = await this.http.post<PictoryJobResponse>(
-        environment.pictory.apiUrl + '/video/storyboard', 
-        content, 
+        environment.pictory.apiUrl + '/video/storyboard',
+        content,
         { headers }
       ).toPromise();
 
       if (!response || !response.success) {
-        throw new Error('Failed to create video storyboard');
+        throw new Error('Failed to create storyboard');
       }
 
       console.log('✅ Pictory API request successful, job ID:', response.jobId);
       this.emitSystemMessage(`🎥 Video generation started. Job ID: ${response.jobId}`);
 
-      // Poll until the job is complete and we get render params
+      // Save initial Pictory request
+      this.generatedObjects.addPictoryRequest({
+        jobId: response.jobId,
+        content: content,
+        title: title,
+        threadId: threadId
+      });
+
+      // Poll for job completion
+      console.log('⏳ Waiting for video preview...');
       this.emitSystemMessage('⏳ Waiting for video preview...');
       const jobStatus = await this.pollJobUntilComplete(response.jobId);
 
       if (!jobStatus.data.renderParams) {
         throw new Error('No render parameters received');
       }
-
-      // Start the render process
+      // Start video render
       this.emitSystemMessage('🎬 Starting video render...');
       const renderStatus = await this.renderVideo(jobStatus.data.renderParams);
 
       if (!renderStatus.data.videoURL) {
         throw new Error('No video URL received');
-      } 
+      }
 
-      // Add to generated objects
-      this.generatedObjects.addPictoryRequest({
+      // Save the render status
+      this.generatedObjects.addPictoryRender({
         jobId: renderStatus.job_id,
         preview: renderStatus.data.preview,
         video: renderStatus.data.videoURL,
@@ -337,8 +374,18 @@ export class AiFunctionService {
         duration: renderStatus.data.videoDuration
       });
 
-      this.emitSystemMessage('✨ Video generation complete!');
-      this.emitSystemMessage(renderStatus.data.videoURL);
+      // Download and save the video
+      const videoName = title || `video-${renderStatus.job_id}`;
+      const videoPath = await this.downloadVideo(renderStatus.data.videoURL, videoName);
+
+      // Save video object
+      this.generatedObjects.addVideo({
+        name: videoName,
+        file: videoPath,
+        url: renderStatus.data.videoURL
+      });
+
+      this.emitSystemMessage(`✨ Video generated and saved to: ${videoPath}`);
       console.log('✨ Video generation complete!', renderStatus);
       return {success: true};
 
@@ -348,10 +395,43 @@ export class AiFunctionService {
       this.messageService.add({
         severity: 'error',
         summary: 'Pictory Error',
-        detail: errorMessage
+        detail: `Failed to generate video: ${errorMessage}`
       });
-      this.emitSystemMessage(`❌ Error: Failed to send to Pictory: ${errorMessage}`);
+      this.emitSystemMessage(`❌ Error: Failed to generate video: ${errorMessage}`);
       throw error;
+    }
+  }
+
+  private async downloadVideo(url: string, name: string): Promise<string> {
+    console.log('📥 Downloading video:', { url, name });
+    try {
+      // Get app config directory
+      const configDir = await window.electron.path.appConfigDir();
+      const videoDir = await window.electron.path.join(configDir, 'videos');
+      
+      // Create videos directory if it doesn't exist
+      await window.electron.fs.createDir(videoDir, { recursive: true });
+      
+      // Create file path
+      const filePath = await window.electron.path.join(videoDir, `${name}.mp4`);
+      
+      // Check if file already exists
+      const exists = await window.electron.fs.exists(filePath);
+      if (exists) {
+        console.log('🎥 Video already exists:', filePath);
+        return filePath;
+      }
+
+      this.emitSystemMessage('⬇️ Downloading video...');
+      
+      // Download the file using Electron's main process
+      await window.electron.download.downloadFile(url, filePath);
+      this.emitSystemMessage('✅ Video downloaded successfully');
+
+      return filePath;
+    } catch (error) {
+      console.error('Error downloading video:', error);
+      throw new Error('Failed to download video');
     }
   }
 

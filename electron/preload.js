@@ -24,6 +24,12 @@ contextBridge.exposeInMainWorld('electron', {
     async join(...paths) {
       return ipcRenderer.invoke('path:join', ...paths);
     }
+  },
+  download: {
+    async downloadFile(url, filePath) {
+      console.log('Preload: Initiating download from', url, 'to', filePath);
+      return ipcRenderer.invoke('download:file', url, filePath);
+    }
   }
 });
 

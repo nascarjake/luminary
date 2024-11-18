@@ -2,10 +2,16 @@ const { app, BrowserWindow, ipcMain, protocol } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
+const https = require('https');
 const url = require('url');
 
 console.log('Starting Electron app');
 console.log('Current directory:', __dirname);
+
+// Register local-resource protocol
+protocol.registerSchemesAsPrivileged([
+  { scheme: 'local-resource', privileges: { secure: true, standard: true, supportFetchAPI: true, stream: true } }
+]);
 
 // IPC Handlers
 ipcMain.handle('fs:exists', async (_, path) => {
@@ -18,6 +24,7 @@ ipcMain.handle('fs:readTextFile', async (_, path) => {
   return fs.readFileSync(path, 'utf8');
 });
 
+console.log('Registering fs:writeTextFile handler');
 ipcMain.handle('fs:writeTextFile', async (_, path, contents) => {
   console.log('Writing file:', path);
   fs.writeFileSync(path, contents);
@@ -40,6 +47,37 @@ ipcMain.handle('path:join', async (_, ...paths) => {
   return result;
 });
 
+console.log('Registering download:file handler');
+ipcMain.handle('download:file', async (_, fileUrl, filePath) => {
+  console.log('Main Process: Downloading file:', fileUrl, 'to:', filePath);
+  return new Promise((resolve, reject) => {
+    const file = fs.createWriteStream(filePath);
+    console.log('Main Process: Created write stream');
+    
+    https.get(fileUrl, (response) => {
+      console.log('Main Process: Got response from server, status:', response.statusCode);
+      response.pipe(file);
+      
+      file.on('finish', () => {
+        console.log('Main Process: Download completed');
+        file.close();
+        resolve(true);
+      });
+
+      file.on('error', (err) => {
+        console.error('Main Process: File write error:', err);
+        fs.unlink(filePath, () => {});
+        reject(err);
+      });
+    }).on('error', (err) => {
+      console.error('Main Process: HTTPS request error:', err);
+      fs.unlink(filePath, () => {});
+      reject(err);
+    });
+  });
+});
+console.log('Registered download:file handler');
+
 function createWindow() {
   console.log('Creating window');
   
@@ -57,37 +95,23 @@ function createWindow() {
     }
   });
 
-  // Open DevTools
-  win.webContents.openDevTools();
-
-  const appPath = path.join(__dirname, '../dist/browser');
-  console.log('App directory:', appPath);
-  console.log('App directory exists:', fs.existsSync(appPath));
-  
-  // Load the built Angular app
-  win.loadFile(path.join(appPath, 'index.html'), {
-    search: `?baseUrl=${encodeURIComponent(url.pathToFileURL(appPath).href)}`
-  });
-
-  // Log when window is ready
-  win.webContents.on('did-finish-load', () => {
-    console.log('Window finished loading');
-  });
-}
-
-// Handle creating/removing shortcuts on Windows when installing/uninstalling
-if (require('electron-squirrel-startup')) {
-  app.quit();
+  // Load the app
+  win.loadFile('dist/gpt-assistant-ui/browser/index.html');
 }
 
 app.whenReady().then(() => {
-  // Register protocol handler for serving local files
-  protocol.registerFileProtocol('file', (request, callback) => {
-    const pathname = decodeURI(request.url.replace('file:///', ''));
-    callback(pathname);
+  console.log('Electron app is ready');
+
+  // Register local-resource protocol handler
+  protocol.registerFileProtocol('local-resource', (request, callback) => {
+    const filePath = request.url.replace('local-resource://', '');
+    try {
+      return callback(decodeURIComponent(filePath));
+    } catch (error) {
+      console.error('Error handling local-resource protocol:', error);
+    }
   });
 
-  console.log('Electron app is ready');
   createWindow();
 
   app.on('activate', () => {
@@ -96,6 +120,11 @@ app.whenReady().then(() => {
     }
   });
 });
+
+// Handle creating/removing shortcuts on Windows when installing/uninstalling
+if (require('electron-squirrel-startup')) {
+  app.quit();
+}
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
