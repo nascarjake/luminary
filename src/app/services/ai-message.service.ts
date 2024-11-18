@@ -98,24 +98,35 @@ export class AiMessageService {
     assistantId: string;
     threadId?: string;
   }): Promise<OAThreadMessage> {
-    if (!threadId) {
-      return this.generateThread({ message, initMessage }, assistantId);
+    try {
+      if (!threadId) {
+        return this.generateThread({ message, initMessage }, assistantId);
+      }
+
+      const request: any = {
+        assistant_id: assistantId,
+        stream: true,
+        additional_messages: [
+          { role: "user", content: message },
+        ],
+      }
+
+      const stream = await this.openai.beta.threads.runs.create(
+        threadId,
+        request
+      );
+
+      return this.handleResponse(stream);
+    } catch (error) {
+      // Extract error message
+      const errorMessage = error instanceof Error ? error.message : 'Unknown OpenAI API error';
+      
+      // Emit system message with the error
+      this.emitSystemMessage(`❌ OpenAI API Error: ${errorMessage}`);
+      
+      // Re-throw the error
+      throw error;
     }
-
-    const request: any = {
-      assistant_id: assistantId,
-      stream: true,
-      additional_messages: [
-        { role: "user", content: message },
-      ],
-    }
-
-    const stream = await this.openai.beta.threads.runs.create(
-      threadId,
-      request
-    );
-
-    return this.handleResponse(stream);
   }
 
   /**

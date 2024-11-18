@@ -28,6 +28,13 @@ export interface PictoryJobStatus {
       next_generation_video: boolean;
       containsTextToImage: boolean;
     };
+    error_code: string;
+    error_message: {
+      error_code: string;
+      message: string;
+      scene: number;
+      error_type: string;
+    }
     preview?: string;
     txtFile?: string;
     audioURL?: string;
@@ -64,9 +71,15 @@ export interface Video {
 }
 
 export class PictoryUtils {
+  private authToken: string | null = null;
+
   constructor(private http: HttpClient) {}
 
-  async getPictoryAuthToken(): Promise<string> {
+  private async getAuthToken(): Promise<string> {
+    if (this.authToken) {
+      return this.authToken;
+    }
+    
     try {
       const response = await this.http.post<PictoryAuth>(
         `${environment.pictory.apiUrl}/oauth2/token`,
@@ -80,70 +93,18 @@ export class PictoryUtils {
         throw new Error('Failed to get Pictory auth token');
       }
 
-      return response.access_token;
+      this.authToken = response.access_token;
+      return this.authToken;
     } catch (error) {
       console.error('Error getting Pictory auth token:', error);
       throw new Error('Failed to authenticate with Pictory');
     }
   }
 
-  async checkJobStatus(jobId: string): Promise<PictoryJobStatus> {
-    const authToken = await this.getPictoryAuthToken();
-    const headers = new HttpHeaders({
-      'Authorization': `Bearer ${authToken}`,
-      'X-Pictory-User-Id': environment.pictory.userId,
-      'Content-Type': 'application/json'
-    });
-
-    const response = await this.http.get<PictoryJobStatus>(
-      `${environment.pictory.apiUrl}/jobs/${jobId}`,
-      { headers }
-    ).toPromise();
-
-    if (!response || !response.success) {
-      throw new Error('Failed to get job status');
-    }
-
-    return response;
-  }
-
-  async pollJobUntilComplete(jobId: string): Promise<PictoryJobStatus> {
-    while (true) {
-      const status = await this.checkJobStatus(jobId);
-      
-      if (status.data.status === 'completed' || status.data.renderParams) {
-        return status;
-      }
-
-      // Wait before next poll
-      await new Promise(resolve => setTimeout(resolve, 5000));
-    }
-  }
-
-  async renderVideo(renderParams: any): Promise<PictoryJobStatus> {
-    const authToken = await this.getPictoryAuthToken();
-    const headers = new HttpHeaders({
-      'Authorization': `Bearer ${authToken}`,
-      'X-Pictory-User-Id': environment.pictory.userId,
-      'Content-Type': 'application/json'
-    });
-
-    const response = await this.http.post<PictoryJobResponse>(
-      `${environment.pictory.apiUrl}/video/render`,
-      renderParams,
-      { headers }
-    ).toPromise();
-
-    if (!response || !response.success) {
-      throw new Error('Failed to start video render');
-    }
-
-    // Poll until render is complete
-    return this.pollJobUntilComplete(response.data.job_id);
-  }
-
   async createStoryboard(content: any): Promise<PictoryJobResponse> {
-    const authToken = await this.getPictoryAuthToken();
+    // Get fresh token at start of new video generation
+    this.authToken = null;
+    const authToken = await this.getAuthToken();
     const headers = new HttpHeaders({
       'accept': 'application/json',
       'content-type': 'application/json',
@@ -167,6 +128,70 @@ export class PictoryUtils {
     }
 
     return response;
+  }
+
+  async checkJobStatus(jobId: string): Promise<PictoryJobStatus> {
+    const authToken = await this.getAuthToken();
+    const headers = new HttpHeaders({
+      'Authorization': `Bearer ${authToken}`,
+      'X-Pictory-User-Id': environment.pictory.userId,
+      'Content-Type': 'application/json'
+    });
+
+    const response = await this.http.get<PictoryJobStatus>(
+      `${environment.pictory.apiUrl}/jobs/${jobId}`,
+      { headers }
+    ).toPromise();
+
+    if (!response) {
+      throw new Error('Failed to get job status');
+    }
+
+    return response;
+  }
+
+  async pollJobUntilComplete(jobId: string): Promise<PictoryJobStatus> {
+    while (true) {
+      const status = await this.checkJobStatus(jobId);
+      
+      if (!status.success) {
+        // Handle Pictory error response
+        if (status.data?.error_message) {
+          const error = status.data.error_message;
+          throw new Error(`Pictory Error: ${error.message || error.error_code || 'Unknown error'}`);
+        }
+        throw new Error('Failed to get job status');
+      }
+      
+      if (status.data.status === 'completed' || status.data.renderParams) {
+        return status;
+      }
+
+      // Wait before next poll
+      await new Promise(resolve => setTimeout(resolve, 5000));
+    }
+  }
+
+  async renderVideo(renderParams: any): Promise<PictoryJobStatus> {
+    const authToken = await this.getAuthToken();
+    const headers = new HttpHeaders({
+      'Authorization': `Bearer ${authToken}`,
+      'X-Pictory-User-Id': environment.pictory.userId,
+      'Content-Type': 'application/json'
+    });
+
+    const response = await this.http.post<PictoryJobResponse>(
+      `${environment.pictory.apiUrl}/video/render`,
+      renderParams,
+      { headers }
+    ).toPromise();
+
+    if (!response || !response.success) {
+      throw new Error('Failed to start video render');
+    }
+
+    // Poll until render is complete
+    return this.pollJobUntilComplete(response.data.job_id);
   }
 
   async downloadVideo(url: string, name: string): Promise<string> {
