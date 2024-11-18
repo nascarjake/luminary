@@ -102,7 +102,7 @@ export class ObjectSidebarComponent implements OnInit {
 
   private createLeafNode(item: any, type: string): TreeNode {
     return {
-      label: item.title || item.name || `Item ${item.id}`,
+      label: item.title || item.name || `${item.id}`,
       data: { type: type, id: item.id },
       icon: 'pi pi-file'
     };
