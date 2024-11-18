@@ -6,6 +6,59 @@
   height: 100%;
   background-color: var(--surface-ground);
   border-left: 1px solid var(--surface-border);
+
+  ::ng-deep {
+    .p-tree {
+      border: none;
+      padding: 0;
+      background: transparent;
+    }
+
+    .p-treenode-label{
+      width:100%;
+    }
+
+    // Target our custom tree node
+    div[class*="tree-node"] {
+      position: relative;
+      display: flex;
+      align-items: flex-start;
+      width: 100%;
+      min-height: 1rem;
+      padding-right: 2rem;
+
+      > span {
+        flex: 1;
+        min-width: 0;
+        max-width: calc(100% - .2rem);
+        line-height: 1;
+        padding: 0.1rem 0;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        word-break: break-word;
+      }
+
+      > .p-button {
+        position: absolute !important;
+        right: 0;
+        top: -4px;
+        width: 2rem;
+        height: 2rem;
+        margin: 0;
+        padding: 0;
+        opacity: 0.7;
+        transition: opacity 0.2s, background-color 0.2s;
+
+        &:hover {
+          opacity: 1;
+          background-color: var(--surface-hover) !important;
+        }
+      }
+    }
+  }
 }
 
 aside {
@@ -22,53 +75,6 @@ aside {
 
     .object-tree {
       width: 100%;
-      
-      ::ng-deep {
-        .p-tree {
-          border: none;
-          padding: 0;
-          background: transparent;
-        }
-
-        .tree-node {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          width: 100%;
-          padding: 0.25rem;
-
-          span {
-            flex: 1;
-          }
-
-          .p-button {
-            visibility: hidden;
-            padding: 0;
-            width: 2rem;
-            height: 2rem;
-          }
-
-          &:hover {
-            .p-button {
-              visibility: visible;
-            }
-          }
-        }
-
-        .p-treenode-content {
-          padding: 0.5rem;
-          border-radius: 6px;
-
-          &:hover {
-            background: var(--surface-hover);
-          }
-
-          &.p-highlight {
-            background: var(--primary-color);
-            color: var(--primary-color-text);
-          }
-        }
-      }
     }
   }
 
