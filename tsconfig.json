@@ -21,10 +21,7 @@
       "ES2022",
       "dom"
     ],
-    "typeRoots": [
-      "node_modules/@types",
-      "src"
-    ]
+    "types": ["node"]
   },
   "include": [
     "src/**/*.ts",

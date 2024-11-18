@@ -1,20 +1,29 @@
-interface ElectronFS {
-  exists(path: string): Promise<boolean>;
-  readTextFile(path: string): Promise<string>;
-  writeTextFile(path: string, contents: string): Promise<void>;
-  createDir(path: string, options?: { recursive?: boolean }): Promise<void>;
-}
+declare module 'electron-api' {
+  interface ElectronFS {
+    exists(path: string): Promise<boolean>;
+    readTextFile(path: string): Promise<string>;
+    writeTextFile(path: string, contents: string): Promise<void>;
+    createDir(path: string, options?: { recursive?: boolean }): Promise<void>;
+  }
 
-interface ElectronPath {
-  appConfigDir(): Promise<string>;
-  join(...paths: string[]): Promise<string>;
-}
+  interface ElectronPath {
+    appConfigDir(): Promise<string>;
+    join(...paths: string[]): Promise<string>;
+  }
 
-interface Electron {
-  fs: ElectronFS;
-  path: ElectronPath;
-}
+  interface ElectronDownload {
+    downloadFile(url: string, filePath: string): Promise<boolean>;
+  }
 
-declare interface Window {
-  electron: Electron;
+  interface Electron {
+    fs: ElectronFS;
+    path: ElectronPath;
+    download: ElectronDownload;
+  }
+
+  global {
+    interface Window {
+      electron: Electron;
+    }
+  }
 }

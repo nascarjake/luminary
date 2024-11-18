@@ -23,17 +23,34 @@ export interface PictoryRequest {
   title?: string;
   threadId?: string;
   createdAt: string;
-  jobId?: string;
-  preview?: any;
-  video?: any;
-  thumbnail?: any;
-  duration?: any;
+  jobId: string;
+  preview?: string;
+}
+
+export interface PictoryRender {
+  id: string;
+  jobId: string;
+  preview?: string;
+  video?: string;
+  thumbnail?: string;
+  duration?: number;
+  createdAt: string;
+}
+
+export interface Video {
+  id: string;
+  file: string;  // Local file path
+  url: string;   // Original URL
+  name: string;
+  createdAt: string;
 }
 
 export interface StoredObjects {
   outlines: ScriptOutline[];
   scripts: Script[];
   pictoryRequests: PictoryRequest[];
+  pictoryRenders: PictoryRender[];
+  videos: Video[];
 }
 
 @Injectable({
@@ -43,11 +60,15 @@ export class GeneratedObjectsService {
   private outlines$ = new BehaviorSubject<ScriptOutline[]>([]);
   private scripts$ = new BehaviorSubject<Script[]>([]);
   private pictoryRequests$ = new BehaviorSubject<PictoryRequest[]>([]);
+  private pictoryRenders$ = new BehaviorSubject<PictoryRender[]>([]);
+  private videos$ = new BehaviorSubject<Video[]>([]);
 
   // Observable streams
   readonly outlines = this.outlines$.asObservable();
   readonly scripts = this.scripts$.asObservable();
   readonly pictoryRequests = this.pictoryRequests$.asObservable();
+  readonly pictoryRenders = this.pictoryRenders$.asObservable();
+  readonly videos = this.videos$.asObservable();
 
   constructor(private configService: ConfigService) {
     // Check if we're running in Electron
@@ -68,11 +89,15 @@ export class GeneratedObjectsService {
     console.log('GeneratedObjectsService initialized');
   }
 
+  private generateId(): string {
+    return crypto.randomUUID();
+  }
+
   // Add methods with persistence
   async addOutline(outline: Omit<ScriptOutline, 'id' | 'createdAt'>) {
     const newOutline: ScriptOutline = {
       ...outline,
-      id: crypto.randomUUID(),
+      id: this.generateId(),
       createdAt: new Date().toISOString()
     };
     const current = this.outlines$.getValue();
@@ -83,7 +108,7 @@ export class GeneratedObjectsService {
   async addScript(script: Omit<Script, 'id' | 'createdAt'>) {
     const newScript: Script = {
       ...script,
-      id: crypto.randomUUID(),
+      id: this.generateId(),
       createdAt: new Date().toISOString()
     };
     const current = this.scripts$.getValue();
@@ -94,11 +119,33 @@ export class GeneratedObjectsService {
   async addPictoryRequest(request: Omit<PictoryRequest, 'id' | 'createdAt'>) {
     const newRequest: PictoryRequest = {
       ...request,
-      id: crypto.randomUUID(),
+      id: this.generateId(),
       createdAt: new Date().toISOString()
     };
     const current = this.pictoryRequests$.getValue();
     this.pictoryRequests$.next([...current, newRequest]);
+    await this.saveObjects();
+  }
+
+  async addPictoryRender(render: Omit<PictoryRender, 'id' | 'createdAt'>) {
+    const newRender: PictoryRender = {
+      ...render,
+      id: this.generateId(),
+      createdAt: new Date().toISOString()
+    };
+    const current = this.pictoryRenders$.getValue();
+    this.pictoryRenders$.next([...current, newRender]);
+    await this.saveObjects();
+  }
+
+  async addVideo(video: Omit<Video, 'id' | 'createdAt'>) {
+    const newVideo: Video = {
+      ...video,
+      id: this.generateId(),
+      createdAt: new Date().toISOString()
+    };
+    const current = this.videos$.getValue();
+    this.videos$.next([...current, newVideo]);
     await this.saveObjects();
   }
 
@@ -118,10 +165,22 @@ export class GeneratedObjectsService {
     await this.saveObjects();
   }
 
+  async clearPictoryRenders() {
+    this.pictoryRenders$.next([]);
+    await this.saveObjects();
+  }
+
+  async clearVideos() {
+    this.videos$.next([]);
+    await this.saveObjects();
+  }
+
   async clearAll() {
     this.outlines$.next([]);
     this.scripts$.next([]);
     this.pictoryRequests$.next([]);
+    this.pictoryRenders$.next([]);
+    this.videos$.next([]);
     await this.saveObjects();
   }
 
@@ -136,6 +195,14 @@ export class GeneratedObjectsService {
 
   getCurrentPictoryRequests(): PictoryRequest[] {
     return this.pictoryRequests$.getValue();
+  }
+
+  getCurrentPictoryRenders(): PictoryRender[] {
+    return this.pictoryRenders$.getValue();
+  }
+
+  getCurrentVideos(): Video[] {
+    return this.videos$.getValue();
   }
 
   // File system operations
@@ -167,6 +234,8 @@ export class GeneratedObjectsService {
         this.outlines$.next(objects.outlines || []);
         this.scripts$.next(objects.scripts || []);
         this.pictoryRequests$.next(objects.pictoryRequests || []);
+        this.pictoryRenders$.next(objects.pictoryRenders || []);
+        this.videos$.next(objects.videos || []);
         
         console.log('Objects loaded successfully');
       } else {
@@ -194,7 +263,9 @@ export class GeneratedObjectsService {
       const objects: StoredObjects = {
         outlines: this.getCurrentOutlines(),
         scripts: this.getCurrentScripts(),
-        pictoryRequests: this.getCurrentPictoryRequests()
+        pictoryRequests: this.getCurrentPictoryRequests(),
+        pictoryRenders: this.getCurrentPictoryRenders(),
+        videos: this.getCurrentVideos()
       };
 
       // Ensure the directory exists
@@ -213,5 +284,10 @@ export class GeneratedObjectsService {
     
     const dirPath = await window.electron.path.appConfigDir();
     return window.electron.path.join(dirPath, `objects-${profileId}.json`);
+  }
+
+  getObjectById(type: keyof StoredObjects, id: string): any {
+    const objects = this[`${type}$`].getValue();
+    return objects.find(obj => obj.id === id);
   }
 }

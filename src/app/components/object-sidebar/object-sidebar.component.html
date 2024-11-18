@@ -27,6 +27,35 @@
               <pre>{{ selectedObject | prettyJson }}</pre>
             </div>
           }
+          @case ('render') {
+            <div class="scrollable-content">
+              @if (selectedObject.video) {
+                <div class="video-preview">
+                  <video controls>
+                    <source [src]="selectedObject.video" type="video/mp4">
+                    Your browser does not support the video tag.
+                  </video>
+                </div>
+              }
+              @if (selectedObject.preview) {
+                <div class="preview-image">
+                  <img [src]="selectedObject.preview" alt="Preview">
+                </div>
+              }
+              <pre>{{ selectedObject | prettyJson }}</pre>
+            </div>
+          }
+          @case ('video') {
+            <div class="scrollable-content">
+              <div class="video-preview">
+                <video controls>
+                  <source [src]="selectedObject.file" type="video/mp4">
+                  Your browser does not support the video tag.
+                </video>
+              </div>
+              <pre>{{ selectedObject | prettyJson }}</pre>
+            </div>
+          }
         }
       </p-panel>
     }
