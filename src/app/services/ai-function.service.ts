@@ -3,10 +3,11 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { MessageService } from 'primeng/api';
 import { AvailableFunctions } from '../../lib/entities/OAFunctionCall';
 import { OpenAiApiService } from './open-ai-api.service';
-import { environment } from '../../environments/environment';
 import { Subject } from 'rxjs';
+import { environment } from '../../environments/environment';
 import { GeneratedObjectsService, ScriptOutline } from './generated-objects.service';
 import { AiCommunicationService } from './ai-communication.service';
+import { PictoryUtils, PictoryJobResponse, PictoryJobStatus } from '../utils/pictory.utils';
 import type { Electron } from 'electron-api';
 
 declare global {
@@ -20,81 +21,18 @@ interface ProjectCounters {
   videos: number;
 }
 
-interface PictoryAuth {
-  access_token: string;
-  expires_in: number;
-  token_type: string;
-  expiration_time?: number;
-}
-
-interface PictoryJobResponse {
-  jobId: string;
-  success: boolean;
-  data: {
-    job_id: string;
-  };
-}
-
-interface PictoryJobStatus {
-  job_id: string;
-  success: boolean;
-  data: {
-    status?: string;
-    renderParams?: {
-      audio: any;
-      output: any;
-      scenes: any[];
-      next_generation_video: boolean;
-      containsTextToImage: boolean;
-    };
-    preview?: string;
-    txtFile?: string;
-    audioURL?: string;
-    thumbnail?: string;
-    videoDuration?: number;
-    videoURL?: string;
-    vttFile?: string;
-    srtFile?: string;
-    shareVideoURL?: string;
-  };
-}
-
-interface PictoryRequest {
-  jobId: string;
-  content: any;
-  title: string;
-  threadId: string;
-  preview: string;
-}
-
-interface PictoryRender {
-  jobId: string;
-  preview: string;
-  video: string;
-  thumbnail: string;
-  duration: number;
-}
-
-interface Video {
-  name: string;
-  file: string;
-  url: string;
-}
-
 @Injectable({
   providedIn: 'root'
 })
 export class AiFunctionService {
-  // TODO: Move these to environment config
   private readonly SCRIPT_ASSISTANT_ID = 'asst_c79BRUGFLalWEhogodtMf53y';
   private readonly PICTORY_ASSISTANT_ID = 'asst_s0Hhqom7vmDUbdFRdTMNZlt1';
   private readonly BATCH_SIZE = 3;
-  private readonly BATCH_DELAY = 60000; // 60 seconds
+  private readonly BATCH_DELAY = 60000;
   private readonly projectCounters = new Map<string, ProjectCounters>();
-
-  // Event emitter for system messages
   private systemMessageSource = new Subject<string>();
   systemMessage$ = this.systemMessageSource.asObservable();
+  private pictoryUtils: PictoryUtils;
 
   constructor(
     private messageService: MessageService,
@@ -102,7 +40,9 @@ export class AiFunctionService {
     private http: HttpClient,
     private generatedObjects: GeneratedObjectsService,
     private aiCommunicationService: AiCommunicationService
-  ) {}
+  ) {
+    this.pictoryUtils = new PictoryUtils(http);
+  }
 
   private emitSystemMessage(message: string) {
     this.systemMessageSource.next(message);
@@ -310,34 +250,9 @@ export class AiFunctionService {
         throw new Error('Invalid JSON format for Pictory content');
       }
 
-      // Get auth token
-      const authToken = await this.getPictoryAuthToken();
-
-      // Set up headers
-      console.log('🔧 Setting up Pictory API headers');
-      const headers = new HttpHeaders({
-        'accept': 'application/json',
-        'content-type': 'application/json',
-        'Authorization': `Bearer ${authToken}`,
-        'X-Pictory-User-Id': environment.pictory.userId
-      });
-
-      if(content.webhook != undefined) delete content.webhook;
-      if(content.videoDescription) content.videoDescription = content.videoDescription.substring(0, 100);
-      if(content.brandLogo) content.brandLogo.url = 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Test-Logo.svg/2560px-Test-Logo.svg.png';
-
-      // Send request to Pictory API
-      console.log('📤 Sending request to Pictory API', content);
-      const response = await this.http.post<PictoryJobResponse>(
-        environment.pictory.apiUrl + '/video/storyboard',
-        content,
-        { headers }
-      ).toPromise();
-
-      if (!response || !response.success) {
-        throw new Error('Failed to create storyboard');
-      }
-
+      // Create storyboard
+      console.log('📤 Creating storyboard with Pictory API');
+      const response = await this.pictoryUtils.createStoryboard(content);
       console.log('✅ Pictory API request successful, job ID:', response.jobId);
       this.emitSystemMessage(`🎥 Video generation started. Job ID: ${response.jobId}`);
 
@@ -346,20 +261,22 @@ export class AiFunctionService {
         jobId: response.jobId,
         content: content,
         title: title,
-        threadId: threadId
+        threadId: threadId,
+        preview: ''
       });
 
       // Poll for job completion
       console.log('⏳ Waiting for video preview...');
       this.emitSystemMessage('⏳ Waiting for video preview...');
-      const jobStatus = await this.pollJobUntilComplete(response.jobId);
+      const jobStatus = await this.pictoryUtils.pollJobUntilComplete(response.jobId);
 
       if (!jobStatus.data.renderParams) {
         throw new Error('No render parameters received');
       }
+
       // Start video render
       this.emitSystemMessage('🎬 Starting video render...');
-      const renderStatus = await this.renderVideo(jobStatus.data.renderParams);
+      const renderStatus = await this.pictoryUtils.renderVideo(jobStatus.data.renderParams);
 
       if (!renderStatus.data.videoURL) {
         throw new Error('No video URL received');
@@ -368,26 +285,27 @@ export class AiFunctionService {
       // Save the render status
       this.generatedObjects.addPictoryRender({
         jobId: renderStatus.job_id,
-        preview: renderStatus.data.preview,
+        preview: renderStatus.data.preview || '',
         video: renderStatus.data.videoURL,
-        thumbnail: renderStatus.data.thumbnail,
-        duration: renderStatus.data.videoDuration
+        thumbnail: renderStatus.data.thumbnail || '',
+        duration: renderStatus.data.videoDuration || 0
       });
 
       // Download and save the video
       const videoName = title || `video-${renderStatus.job_id}`;
-      const videoPath = await this.downloadVideo(renderStatus.data.videoURL, videoName);
+      const videoPath = await this.pictoryUtils.downloadVideo(renderStatus.data.videoURL, videoName);
 
       // Save video object
       this.generatedObjects.addVideo({
         name: videoName,
         file: videoPath,
-        url: renderStatus.data.videoURL
+        url: renderStatus.data.videoURL,
+        thumbnail: renderStatus.data.thumbnail || ''
       });
 
       this.emitSystemMessage(`✨ Video generated and saved to: ${videoPath}`);
       console.log('✨ Video generation complete!', renderStatus);
-      return {success: true};
+      return { success: true };
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -399,117 +317,6 @@ export class AiFunctionService {
       });
       this.emitSystemMessage(`❌ Error: Failed to generate video: ${errorMessage}`);
       throw error;
-    }
-  }
-
-  private async downloadVideo(url: string, name: string): Promise<string> {
-    console.log('📥 Downloading video:', { url, name });
-    try {
-      // Get app config directory
-      const configDir = await window.electron.path.appConfigDir();
-      const videoDir = await window.electron.path.join(configDir, 'videos');
-      
-      // Create videos directory if it doesn't exist
-      await window.electron.fs.createDir(videoDir, { recursive: true });
-      
-      // Create file path
-      const filePath = await window.electron.path.join(videoDir, `${name}.mp4`);
-      
-      // Check if file already exists
-      const exists = await window.electron.fs.exists(filePath);
-      if (exists) {
-        console.log('🎥 Video already exists:', filePath);
-        return filePath;
-      }
-
-      this.emitSystemMessage('⬇️ Downloading video...');
-      
-      // Download the file using Electron's main process
-      await window.electron.download.downloadFile(url, filePath);
-      this.emitSystemMessage('✅ Video downloaded successfully');
-
-      return filePath;
-    } catch (error) {
-      console.error('Error downloading video:', error);
-      throw new Error('Failed to download video');
-    }
-  }
-
-  private async checkJobStatus(jobId: string): Promise<PictoryJobStatus> {
-    const authToken = await this.getPictoryAuthToken();
-    const headers = new HttpHeaders({
-      'Authorization': `Bearer ${authToken}`,
-      'X-Pictory-User-Id': environment.pictory.userId,
-      'Content-Type': 'application/json'
-    });
-
-    const response = await this.http.get<PictoryJobStatus>(
-      `${environment.pictory.apiUrl}/jobs/${jobId}`,
-      { headers }
-    ).toPromise();
-
-    if (!response || !response.success) {
-      throw new Error('Failed to get job status');
-    }
-
-    return response;
-  }
-
-  private async pollJobUntilComplete(jobId: string): Promise<PictoryJobStatus> {
-    while (true) {
-      const status = await this.checkJobStatus(jobId);
-      
-      if (status.data.status === 'completed' || status.data.renderParams) {
-        return status;
-      }
-
-      // Wait before next poll
-      await new Promise(resolve => setTimeout(resolve, 5000));
-    }
-  }
-
-  private async renderVideo(renderParams: any): Promise<PictoryJobStatus> {
-    const authToken = await this.getPictoryAuthToken();
-    const headers = new HttpHeaders({
-      'Authorization': `Bearer ${authToken}`,
-      'X-Pictory-User-Id': environment.pictory.userId,
-      'Content-Type': 'application/json'
-    });
-
-    const response = await this.http.post<PictoryJobResponse>(
-      `${environment.pictory.apiUrl}/video/render`,
-      renderParams,
-      { headers }
-    ).toPromise();
-
-    if (!response || !response.success) {
-      throw new Error('Failed to start video render');
-    }
-
-    // Poll until render is complete
-    return this.pollJobUntilComplete(response.data.job_id);
-  }
-
-  // Get Pictory auth token, using cache if available
-  private async getPictoryAuthToken(): Promise<string> {
-    try {
-      // Get new token
-      const response = await this.http.post<PictoryAuth>(
-        `${environment.pictory.apiUrl}/oauth2/token`,
-        {
-          client_id: environment.pictory.clientId,
-          client_secret: environment.pictory.clientSecret
-        }
-      ).toPromise();
-
-      if (!response) {
-        throw new Error('Failed to get Pictory auth token');
-      }
-
-      return response.access_token;
-    } catch (error) {
-      console.error('Error getting Pictory auth token:', error);
-      throw new Error('Failed to authenticate with Pictory');
     }
   }
 }

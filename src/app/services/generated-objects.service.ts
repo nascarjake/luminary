@@ -42,6 +42,7 @@ export interface Video {
   file: string;  // Local file path
   url: string;   // Original URL
   name: string;
+  thumbnail: string;
   createdAt: string;
 }
 

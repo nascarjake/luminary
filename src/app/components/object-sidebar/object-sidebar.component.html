@@ -1,4 +1,5 @@
 <aside>
+  <p-confirmDialog [style]="{width: '450px'}"></p-confirmDialog>
   <div class="top-pane">
     <p-tree
       [value]="treeData"
@@ -6,46 +7,57 @@
       [(selection)]="selectedNode"
       (onNodeSelect)="onNodeSelect($event)"
       styleClass="object-tree"
-    />
+    >
+      <ng-template pTemplate="default" let-node>
+        <div class="tree-node">
+          <span>{{ node.label }}</span>
+          @if (node.data?.type && node.data?.type !== 'item') {
+            <button pButton 
+                    type="button" 
+                    icon="pi pi-times" 
+                    class="p-button-rounded p-button-danger p-button-text" 
+                    (click)="confirmClearType(node.data.type, node.label)">
+            </button>
+          }
+        </div>
+      </ng-template>
+    </p-tree>
   </div>
   <div class="bottom-pane">
     @if (selectedObject) {
       <p-panel [header]="selectedNode?.label || 'Details'">
+        @if (selectedObject.createdAt) {
+          <div class="timestamp">
+            {{ selectedObject.createdAt | date:'medium' }} ({{ selectedObject.createdAt | timeAgo }})
+          </div>
+        }
         @switch (selectedNode?.data?.type) {
-          @case ('outline') {
+          @case ('outlines') {
             <div class="scrollable-content">
               <pre>{{ selectedObject | prettyJson }}</pre>
             </div>
           }
-          @case ('script') {
+          @case ('scripts') {
             <div class="scrollable-content">
               <pre>{{ selectedObject.content }}</pre>
             </div>
           }
-          @case ('pictory') {
+          @case ('pictoryRequests') {
             <div class="scrollable-content">
               <pre>{{ selectedObject | prettyJson }}</pre>
             </div>
           }
-          @case ('render') {
+          @case ('pictoryRenders') {
             <div class="scrollable-content">
-              @if (selectedObject.video) {
-                <div class="video-preview">
-                  <video controls>
-                    <source [src]="selectedObject.video" type="video/mp4">
-                    Your browser does not support the video tag.
-                  </video>
-                </div>
-              }
-              @if (selectedObject.preview) {
+              @if (selectedObject.thumbnail) {
                 <div class="preview-image">
-                  <img [src]="selectedObject.preview" alt="Preview">
+                  <img [src]="selectedObject.thumbnail" alt="Thumbnail">
                 </div>
               }
               <pre>{{ selectedObject | prettyJson }}</pre>
             </div>
           }
-          @case ('video') {
+          @case ('videos') {
             <div class="scrollable-content">
               <div class="video-preview">
                 <video controls>
