@@ -150,6 +150,37 @@ export class GeneratedObjectsService {
     await this.saveObjects();
   }
 
+  // Remove individual items
+  async removeOutline(id: string) {
+    const current = this.outlines$.getValue();
+    this.outlines$.next(current.filter(item => item.id !== id));
+    await this.saveObjects();
+  }
+
+  async removeScript(id: string) {
+    const current = this.scripts$.getValue();
+    this.scripts$.next(current.filter(item => item.id !== id));
+    await this.saveObjects();
+  }
+
+  async removePictoryRequest(id: string) {
+    const current = this.pictoryRequests$.getValue();
+    this.pictoryRequests$.next(current.filter(item => item.id !== id));
+    await this.saveObjects();
+  }
+
+  async removePictoryRender(id: string) {
+    const current = this.pictoryRenders$.getValue();
+    this.pictoryRenders$.next(current.filter(item => item.id !== id));
+    await this.saveObjects();
+  }
+
+  async removeVideo(id: string) {
+    const current = this.videos$.getValue();
+    this.videos$.next(current.filter(item => item.id !== id));
+    await this.saveObjects();
+  }
+
   // Clear methods with persistence
   async clearOutlines() {
     this.outlines$.next([]);

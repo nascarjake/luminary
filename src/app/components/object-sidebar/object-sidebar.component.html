@@ -16,7 +16,7 @@
                     type="button" 
                     icon="pi pi-times" 
                     class="p-button-rounded p-button-danger p-button-text" 
-                    (click)="confirmClearType(node.data.type, node.label)">
+                    (click)="confirmClearType(node.data.type, node.label, node.data?.id)">
             </button>
           }
         </div>
@@ -34,17 +34,41 @@
         @switch (selectedNode?.data?.type) {
           @case ('outlines') {
             <div class="scrollable-content">
-              <pre>{{ selectedObject | prettyJson }}</pre>
+              <div class="pre-container">
+                <pre>{{ selectedObject | prettyJson }}</pre>
+                <button pButton 
+                        type="button" 
+                        icon="pi pi-copy" 
+                        class="p-button-rounded p-button-text copy-button"
+                        (click)="copyToClipboard(selectedObject)">
+                </button>
+              </div>
             </div>
           }
           @case ('scripts') {
             <div class="scrollable-content">
-              <pre>{{ selectedObject.content }}</pre>
+              <div class="pre-container">
+                <pre>{{ selectedObject.content }}</pre>
+                <button pButton 
+                        type="button" 
+                        icon="pi pi-copy" 
+                        class="p-button-rounded p-button-text copy-button"
+                        (click)="copyToClipboard(selectedObject.content)">
+                </button>
+              </div>
             </div>
           }
           @case ('pictoryRequests') {
             <div class="scrollable-content">
-              <pre>{{ selectedObject | prettyJson }}</pre>
+              <div class="pre-container">
+                <pre>{{ selectedObject | prettyJson }}</pre>
+                <button pButton 
+                        type="button" 
+                        icon="pi pi-copy" 
+                        class="p-button-rounded p-button-text copy-button"
+                        (click)="copyToClipboard(selectedObject)">
+                </button>
+              </div>
             </div>
           }
           @case ('pictoryRenders') {
@@ -54,7 +78,15 @@
                   <img [src]="selectedObject.thumbnail" alt="Thumbnail">
                 </div>
               }
-              <pre>{{ selectedObject | prettyJson }}</pre>
+              <div class="pre-container">
+                <pre>{{ selectedObject | prettyJson }}</pre>
+                <button pButton 
+                        type="button" 
+                        icon="pi pi-copy" 
+                        class="p-button-rounded p-button-text copy-button"
+                        (click)="copyToClipboard(selectedObject)">
+                </button>
+              </div>
             </div>
           }
           @case ('videos') {
@@ -65,11 +97,23 @@
                   Your browser does not support the video tag.
                 </video>
               </div>
-              <pre>{{ selectedObject | prettyJson }}</pre>
+              <div class="pre-container">
+                <pre>{{ selectedObject | prettyJson }}</pre>
+                <button pButton 
+                        type="button" 
+                        icon="pi pi-copy" 
+                        class="p-button-rounded p-button-text copy-button"
+                        (click)="copyToClipboard(selectedObject)">
+                </button>
+              </div>
             </div>
           }
         }
       </p-panel>
+    } @else {
+      <div class="empty-state">
+        <h3>Click on an object to view details</h3>
+      </div>
     }
   </div>
 </aside>

@@ -44,7 +44,7 @@
       > .p-button {
         position: absolute !important;
         right: 0;
-        top: -4px;
+        top: -5.5px;
         width: 2rem;
         height: 2rem;
         margin: 0;
@@ -82,6 +82,23 @@ aside {
     height: 50%;
     overflow-y: auto;
     padding: 1rem;
+
+    .empty-state {
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: var(--surface-ground);
+      border-radius: 6px;
+      border: 1px solid var(--surface-border);
+
+      h3 {
+        opacity: 0.7;
+        margin: 0;
+        font-size: 1.2rem;
+        font-weight: normal;
+      }
+    }
 
     .timestamp {
       font-size: 0.875rem;
@@ -164,13 +181,40 @@ pre {
 }
 
 :host ::ng-deep {
+
+  p-panel{
+    pre {
+      font-size: .8em;
+    }
+
+    .pre-container {
+      position: relative;
+
+      pre {
+        padding-right: 1.8rem;
+      }
+
+      .copy-button {
+        position: absolute;
+        top: 0.5rem;
+        right: 0.5rem;
+        width: 2rem;
+        height: 2rem;
+        opacity: 0.7;
+
+        &:hover {
+          opacity: 1;
+        }
+      }
+    }
+  }
   .object-tree {
     border: none;
     background: transparent;
     padding: 0;
 
     .p-treenode-content {
-      padding: 0.5rem;
+      padding: 0.2rem;
       border-radius: 4px;
 
       &:hover {

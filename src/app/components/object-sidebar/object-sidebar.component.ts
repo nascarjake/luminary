@@ -5,7 +5,7 @@ import { TreeNode } from 'primeng/api';
 import { PanelModule } from 'primeng/panel';
 import { ButtonModule } from 'primeng/button';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
-import { ConfirmationService } from 'primeng/api';
+import { ConfirmationService, MessageService } from 'primeng/api';
 import { PrettyJsonPipe } from '../../pipes/pretty-json.pipe';
 import { TimeAgoPipe } from '../../pipes/time-ago.pipe';
 import { GeneratedObjectsService, ScriptOutline, Script, PictoryRequest, PictoryRender, Video } from '../../services/generated-objects.service';
@@ -33,7 +33,8 @@ export class ObjectSidebarComponent implements OnInit {
 
   constructor(
     private generatedObjects: GeneratedObjectsService,
-    private confirmationService: ConfirmationService
+    private confirmationService: ConfirmationService,
+    private messageService: MessageService
   ) {}
 
   ngOnInit() {
@@ -153,31 +154,80 @@ export class ObjectSidebarComponent implements OnInit {
     return null;
   }
 
-  async confirmClearType(type: string, label: string) {
+  async confirmClearType(type: string, label: string, id?: string) {
+    const isParentNode = !id;
+    const message = isParentNode 
+      ? `Are you sure you want to clear all ${label}?`
+      : `Are you sure you want to remove this ${type.slice(0, -1)}?`;
+
     this.confirmationService.confirm({
-      message: `Are you sure you want to clear all ${label}?`,
-      header: 'Confirm Clear',
+      message,
+      header: isParentNode ? 'Confirm Clear All' : 'Confirm Remove',
       icon: 'pi pi-exclamation-triangle',
       accept: () => {
-        switch (type) {
-          case 'outlines':
-            this.generatedObjects.clearOutlines();
-            break;
-          case 'scripts':
-            this.generatedObjects.clearScripts();
-            break;
-          case 'pictoryRequests':
-            this.generatedObjects.clearPictoryRequests();
-            break;
-          case 'pictoryRenders':
-            this.generatedObjects.clearPictoryRenders();
-            break;
-          case 'videos':
-            this.generatedObjects.clearVideos();
-            
-            break;
+        if (isParentNode) {
+          // Clear all items of type
+          switch (type) {
+            case 'outlines':
+              this.generatedObjects.clearOutlines();
+              break;
+            case 'scripts':
+              this.generatedObjects.clearScripts();
+              break;
+            case 'pictoryRequests':
+              this.generatedObjects.clearPictoryRequests();
+              break;
+            case 'pictoryRenders':
+              this.generatedObjects.clearPictoryRenders();
+              break;
+            case 'videos':
+              this.generatedObjects.clearVideos();
+              break;
+          }
+        } else {
+          // Remove single item
+          switch (type) {
+            case 'outlines':
+              this.generatedObjects.removeOutline(id!);
+              break;
+            case 'scripts':
+              this.generatedObjects.removeScript(id!);
+              break;
+            case 'pictoryRequests':
+              this.generatedObjects.removePictoryRequest(id!);
+              break;
+            case 'pictoryRenders':
+              this.generatedObjects.removePictoryRender(id!);
+              break;
+            case 'videos':
+              this.generatedObjects.removeVideo(id!);
+              break;
+          }
         }
       }
     });
+  }
+
+  async copyToClipboard(content: any) {
+    try {
+      const textToCopy = typeof content === 'string' 
+        ? content 
+        : JSON.stringify(content, null, 2);
+      
+      await navigator.clipboard.writeText(textToCopy);
+      this.messageService.add({
+        severity: 'success',
+        summary: 'Copied',
+        detail: 'Content copied to clipboard',
+        life: 3000
+      });
+    } catch (err) {
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'Failed to copy content',
+        life: 3000
+      });
+    }
   }
 }
