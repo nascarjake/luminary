@@ -1,5 +1,22 @@
 <p-toast></p-toast>
-<app-header></app-header>
+<app-header>
+  <div class="right-buttons">
+    <button pButton 
+            type="button" 
+            icon="pi pi-trash" 
+            label="Clear All Objects" 
+            class="p-button-danger" 
+            >
+    </button>
+    <button pButton 
+            type="button" 
+            icon="pi pi-sign-out" 
+            label="Logout" 
+            class="p-button-secondary" 
+            >
+    </button>
+  </div>
+</app-header>
 <app-main>
   @if (!loading) {
     <router-outlet />
