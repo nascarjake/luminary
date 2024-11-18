@@ -95,18 +95,52 @@ function createWindow() {
     }
   });
 
-  // Load the app
-  win.loadFile('dist/gpt-assistant-ui/browser/index.html');
+  // Open DevTools
+  win.webContents.openDevTools();
+
+  const appPath = path.join(__dirname, '../dist/browser');
+  console.log('App directory:', appPath);
+  console.log('App directory exists:', fs.existsSync(appPath));
+  
+  // Load the built Angular app
+  win.loadFile(path.join(appPath, 'index.html'), {
+    search: `?baseUrl=${encodeURIComponent(url.pathToFileURL(appPath).href)}`
+  });
+
+  // Log when window is ready
+  win.webContents.on('did-finish-load', () => {
+    console.log('Window finished loading');
+  });
 }
 
 app.whenReady().then(() => {
   console.log('Electron app is ready');
 
-  // Register local-resource protocol handler
+  // Register protocol handler for serving local files
+  protocol.registerFileProtocol('file', (request, callback) => {
+    const pathname = decodeURI(request.url.replace('file:///', ''));
+    callback(pathname);
+  });
+
+  // Register local-resource protocol handler for downloads
   protocol.registerFileProtocol('local-resource', (request, callback) => {
-    const filePath = request.url.replace('local-resource://', '');
     try {
-      return callback(decodeURIComponent(filePath));
+      const filePath = request.url.replace('local-resource://', '');
+      const decodedPath = decodeURIComponent(filePath);
+      
+      // Handle Windows paths that start with drive letter
+      const finalPath = process.platform === 'win32' && decodedPath.match(/^[a-zA-Z]/)
+        ? decodedPath.replace(/^([a-zA-Z])/, '$1:') // Add colon after drive letter
+        : decodedPath;
+
+      console.log('Local resource request:', {
+        original: request.url,
+        decoded: decodedPath,
+        final: finalPath,
+        exists: fs.existsSync(finalPath)
+      });
+
+      return callback(finalPath);
     } catch (error) {
       console.error('Error handling local-resource protocol:', error);
     }
