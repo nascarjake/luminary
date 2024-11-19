@@ -8,4 +8,8 @@ export class AuthService {
 
   public authSubject: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(false);
 
+  logout() {
+    this.authSubject.next(false);
+  }
+
 }
