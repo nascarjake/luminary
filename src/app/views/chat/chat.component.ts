@@ -229,6 +229,7 @@ export class ChatComponent implements OnDestroy {
         threadId: this.threadId
       });
     } catch (err) {
+      this.addSystemMessage(`❌ OpenAI API Error: ${err.message}`);
       console.error('Error generating AI response:', err);
       throw err;
     }
