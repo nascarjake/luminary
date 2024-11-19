@@ -16,6 +16,7 @@ import { AiMessageService } from '../../services/ai-message.service';
 import { tick } from '../../../lib/classes/Helper';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
+import { SystemMessageOverlayService } from '../../services/system-message-overlay.service';
 
 @Component({
   selector: 'app-chat',
@@ -48,7 +49,7 @@ export class ChatComponent implements OnDestroy {
   private thread?: OAThread;
   private runSubscription?: Subscription;
 
-  private addUserMessage(content: string) {
+  private async addUserMessage(content: string) {
     if (!this.threadMessages) this.threadMessages = [];
     this.threadMessages.push({
       id: `temp-${Date.now()}`,
@@ -70,12 +71,28 @@ export class ChatComponent implements OnDestroy {
     });
   }
 
-  private addSystemMessage(content: string) {
-    if (!this.threadMessages) this.threadMessages = [];
+  private async addSystemMessage(content: string) {
+    if (!this.threadMessages || !this.threadId) return;
+
+    // Find the last non-system message (from OpenAI)
+    const lastMessage = [...this.threadMessages]
+      .reverse()
+      .find(msg => !msg.id.startsWith('system-') && !msg.id.startsWith('temp-'));
+
+    if (!lastMessage) return;
+
+    // Save to overlay using the permanent OpenAI message ID
+    await this.systemMessageOverlay.addSystemMessage(
+      this.threadId,
+      content,
+      lastMessage.id
+    );
+
+    // Add to current messages
     this.threadMessages.push({
       id: `system-${Date.now()}`,
       created_at: Date.now(),
-      thread_id: this.threadId || '',
+      thread_id: this.threadId,
       role: 'system',
       object: 'thread.message',
       content: [{
@@ -97,9 +114,10 @@ export class ChatComponent implements OnDestroy {
     private readonly configService: ConfigService,
     private readonly aiFunctionService: AiFunctionService,
     private readonly messageService: MessageService,
-    private readonly aiMessageService: AiMessageService
+    private readonly aiMessageService: AiMessageService,
+    private readonly systemMessageOverlay: SystemMessageOverlayService
   ) {
-    // Subscribe to system messages
+    // Subscribe to system messages from AiMessageService
     this.aiMessageService.systemMessage$.subscribe(message => {
       this.addSystemMessage(message);
     });
@@ -131,7 +149,7 @@ export class ChatComponent implements OnDestroy {
       if (!this.threadId && !this.assistantId) return;
 
       // Add user message immediately
-      this.addUserMessage(message);
+      await this.addUserMessage(message);
 
       // Create thread if not exists
       if (!this.threadId) await this.createThread();
@@ -203,7 +221,9 @@ export class ChatComponent implements OnDestroy {
 
   private async fetchThreadMessages(): Promise<void> {
     const { data } = await this.openAiApiService.listThreadMessages(this.thread!);
-    this.threadMessages = data.sort((a, b) => a.created_at > b.created_at ? 1 : -1);
+    const messages = data.sort((a, b) => a.created_at > b.created_at ? 1 : -1);
+    // Merge with system messages from overlay
+    this.threadMessages = await this.systemMessageOverlay.mergeSystemMessages(this.thread!.id, messages);
   }
 
   private async createThread(): Promise<void> {
@@ -232,6 +252,47 @@ export class ChatComponent implements OnDestroy {
       this.addSystemMessage(`❌ OpenAI API Error: ${err.message}`);
       console.error('Error generating AI response:', err);
       throw err;
+    }
+  }
+
+  public async loadThread(threadId: string) {
+    this.loadingThread = true;
+    try {
+      this.threadId = threadId;
+      this.thread = await this.openAiApiService.getThread(threadId);
+      
+      // Get messages from the thread
+      const messages = (await this.openAiApiService.listThreadMessages({ id: threadId })).data;
+      
+      // Merge with system messages from overlay
+      this.threadMessages = await this.systemMessageOverlay.mergeSystemMessages(threadId, messages);
+      
+    } catch (error) {
+      console.error('Failed to load thread:', error);
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'Failed to load thread'
+      });
+    } finally {
+      this.loadingThread = false;
+    }
+  }
+
+  public async deleteThread(threadId: string) {
+    try {
+      const thread = await this.openAiApiService.getThread(threadId);
+      await this.openAiApiService.deleteThread(thread);
+      // Clean up system messages when thread is deleted
+      await this.systemMessageOverlay.deleteThreadOverlay(threadId);
+      await this.chatSidebarComponent.loadAssistants();
+    } catch (error) {
+      console.error('Failed to delete thread:', error);
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'Failed to delete thread'
+      });
     }
   }
 }
