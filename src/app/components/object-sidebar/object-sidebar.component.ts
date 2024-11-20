@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TreeModule } from 'primeng/tree';
 import { TreeNode } from 'primeng/api';
@@ -8,7 +8,9 @@ import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { PrettyJsonPipe } from '../../pipes/pretty-json.pipe';
 import { TimeAgoPipe } from '../../pipes/time-ago.pipe';
-import { GeneratedObjectsService, ScriptOutline, Script, PictoryRequest, PictoryRender, Video } from '../../services/generated-objects.service';
+import { ObjectSchemaService, ObjectInstanceService } from '../../services/object-system.service';
+import { ObjectSchema, ObjectInstance, ObjectField, MediaType } from '../../interfaces/object-system';
+import { Subscription, combineLatest, startWith } from 'rxjs';
 
 @Component({
   selector: 'app-object-sidebar',
@@ -22,190 +24,188 @@ import { GeneratedObjectsService, ScriptOutline, Script, PictoryRequest, Pictory
     PrettyJsonPipe,
     TimeAgoPipe
   ],
-  providers: [ConfirmationService],
+  providers: [ConfirmationService, MessageService],
   templateUrl: './object-sidebar.component.html',
   styleUrls: ['./object-sidebar.component.scss']
 })
-export class ObjectSidebarComponent implements OnInit {
+export class ObjectSidebarComponent implements OnInit, OnDestroy {
   treeData: TreeNode[] = [];
   selectedNode: TreeNode | null = null;
-  selectedObject: any = null;
+  selectedObject: ObjectInstance | null = null;
+  selectedSchema: ObjectSchema | null = null;
+  loading = true;
+  private subscriptions: Subscription[] = [];
 
   constructor(
-    private generatedObjects: GeneratedObjectsService,
+    private schemaService: ObjectSchemaService,
+    private instanceService: ObjectInstanceService,
     private confirmationService: ConfirmationService,
     private messageService: MessageService
   ) {}
 
   ngOnInit() {
-    this.updateTreeData();
     this.subscribeToObjects();
   }
 
+  ngOnDestroy() {
+    this.subscriptions.forEach(sub => sub.unsubscribe());
+  }
+
   private subscribeToObjects() {
-    this.generatedObjects.outlines.subscribe(() => this.updateTreeData());
-    this.generatedObjects.scripts.subscribe(() => this.updateTreeData());
-    this.generatedObjects.pictoryRequests.subscribe(() => this.updateTreeData());
-    this.generatedObjects.pictoryRenders.subscribe(() => this.updateTreeData());
-    this.generatedObjects.videos.subscribe(() => this.updateTreeData());
-  }
-
-  private updateTreeData() {
-    const outlines = this.generatedObjects.getCurrentOutlines();
-    const scripts = this.generatedObjects.getCurrentScripts();
-    const pictoryRequests = this.generatedObjects.getCurrentPictoryRequests();
-    const pictoryRenders = this.generatedObjects.getCurrentPictoryRenders();
-    const videos = this.generatedObjects.getCurrentVideos();
-
-    this.treeData = [
-      {
-        label: 'Outlines',
-        data: { type: 'outlines' },
-        expandedIcon: 'pi pi-folder-open',
-        collapsedIcon: 'pi pi-folder',
-        children: outlines.map(item => this.createLeafNode(item, 'outlines')),
-        expanded: true
+    // Subscribe to both schemas and instances with initial values
+    const sub = combineLatest({
+      schemas: this.schemaService.schemas.pipe(startWith([])),
+      instances: this.instanceService.instances.pipe(startWith([]))
+    }).subscribe({
+      next: ({schemas, instances}) => {
+        console.log('Object tree update - Schemas:', schemas.length, 'Instances:', instances.length);
+        this.updateTreeData(schemas, instances);
+        this.loading = false;
       },
-      {
-        label: 'Scripts',
-        data: { type: 'scripts' },
-        expandedIcon: 'pi pi-folder-open',
-        collapsedIcon: 'pi pi-folder',
-        children: scripts.map(item => this.createLeafNode(item, 'scripts')),
-        expanded: true
-      },
-      {
-        label: 'Pictory Requests',
-        data: { type: 'pictoryRequests' },
-        expandedIcon: 'pi pi-folder-open',
-        collapsedIcon: 'pi pi-folder',
-        children: pictoryRequests.map(item => this.createLeafNode(item, 'pictoryRequests')),
-        expanded: true
-      },
-      {
-        label: 'Pictory Renders',
-        data: { type: 'pictoryRenders' },
-        expandedIcon: 'pi pi-folder-open',
-        collapsedIcon: 'pi pi-folder',
-        children: pictoryRenders.map(item => this.createLeafNode(item, 'pictoryRenders')),
-        expanded: true
-      },
-      {
-        label: 'Videos',
-        data: { type: 'videos' },
-        expandedIcon: 'pi pi-folder-open',
-        collapsedIcon: 'pi pi-folder',
-        children: videos.map(item => this.createLeafNode(item, 'videos')),
-        expanded: true
+      error: (error) => {
+        console.error('Failed to load objects:', error);
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'Failed to load objects.'
+        });
+        this.loading = false;
       }
-    ];
+    });
+    this.subscriptions.push(sub);
+
+    // Also subscribe to individual streams for debugging
+    this.subscriptions.push(
+      this.schemaService.schemas.subscribe(schemas => {
+        console.log('Schemas updated:', schemas.length);
+      })
+    );
+
+    this.subscriptions.push(
+      this.instanceService.instances.subscribe(instances => {
+        console.log('Instances updated:', instances.length);
+      })
+    );
   }
 
-  private createLeafNode(item: any, type: string): TreeNode {
+  private updateTreeData(schemas: ObjectSchema[], instances: ObjectInstance[]) {
+    console.log('Updating tree data with:', schemas.length, 'schemas and', instances.length, 'instances');
+    
+    // Group instances by schema ID
+    const instancesBySchema = instances.reduce((acc, instance) => {
+      const schemaId = instance.schemaId;
+      if (!acc[schemaId]) acc[schemaId] = [];
+      acc[schemaId].push(instance);
+      return acc;
+    }, {} as Record<string, ObjectInstance[]>);
+
+    // Create tree nodes for each schema
+    this.treeData = schemas.map(schema => ({
+      label: schema.name,
+      data: { type: 'schema', schemaId: schema.id },
+      expandedIcon: 'pi pi-folder-open',
+      collapsedIcon: 'pi pi-folder',
+      children: (instancesBySchema[schema.id] || []).map(instance => 
+        this.createLeafNode(instance, schema)
+      ),
+      expanded: true
+    }));
+  }
+
+  private createLeafNode(instance: ObjectInstance, schema: ObjectSchema): TreeNode {
+    const title = instance.data.title || instance.data.name || instance.id;
     return {
-      label: item.title || item.name || `${item.id}`,
-      data: { type: type, id: item.id },
+      label: title,
+      data: {
+        type: 'instance',
+        schemaId: schema.id,
+        instanceId: instance.id,
+        instance
+      },
       icon: 'pi pi-file'
     };
   }
 
-  getLocalResourceUrl(filePath: string): string {
-    return `local-resource://${filePath}`;
+  // Media helper methods
+  hasMediaField(schema: ObjectSchema, instance: ObjectInstance): boolean {
+    return schema.fields.some(field => field.isMedia && instance.data[field.name]);
+  }
+
+  getMediaFields(schema: ObjectSchema): ObjectField[] {
+    return schema.fields.filter(field => field.isMedia);
+  }
+
+  getMediaType(field: ObjectField): MediaType | null {
+    // First check if mediaType is explicitly set in validation
+    if (field.validation?.mediaType) {
+      return field.validation.mediaType;
+    }
+
+    // If no explicit mediaType, try to infer from field name or pattern
+    if (field.isMedia) {
+      const fieldNameLower = field.name.toLowerCase();
+      const pattern = field.validation?.pattern?.toLowerCase() || '';
+
+      if (fieldNameLower.includes('video') || pattern.includes('mp4') || pattern.includes('webm') || pattern.includes('mov')) {
+        return 'video';
+      }
+      if (fieldNameLower.includes('image') || pattern.includes('jpg') || pattern.includes('jpeg') || pattern.includes('png') || pattern.includes('gif')) {
+        return 'image';
+      }
+      if (fieldNameLower.includes('audio') || pattern.includes('mp3') || pattern.includes('wav')) {
+        return 'audio';
+      }
+
+      // Default to 'image' if no specific type can be inferred
+      return 'image';
+    }
+
+    return null;
   }
 
   onNodeSelect(event: any) {
     const node = event.node;
-    if (node.data?.id) {
-      const parentNode = this.findParentNode(this.treeData, node);
-      if (parentNode) {
-        this.selectedObject = this.generatedObjects.getObjectById(parentNode.data.type, node.data.id);
-        switch(parentNode.data.type){
-          case 'videos':
-          const video = this.generatedObjects.getObjectById('videos', node.data?.id);
-          this.selectedObject = {
-            ...video,
-            file: this.getLocalResourceUrl(video.file)
-          };
-          break;
-          case 'pictoryRenders':
-            const render = this.generatedObjects.getObjectById('pictoryRenders', node.data?.id);
-            this.selectedObject = {
-              ...render,
-              video: render.video ? this.getLocalResourceUrl(render.video) : undefined
-            };
-            break
-        }
-      }
+    if (node.data.type === 'instance') {
+      this.selectedObject = node.data.instance;
+      // Get the schema for the selected instance
+      this.schemaService.getSchema(this.selectedObject.schemaId).then(schema => {
+        this.selectedSchema = schema;
+      });
     } else {
       this.selectedObject = null;
+      this.selectedSchema = null;
     }
   }
 
-  private findParentNode(nodes: TreeNode[], targetNode: TreeNode): TreeNode | null {
-    for (const node of nodes) {
-      if (node.children?.includes(targetNode)) {
-        return node;
-      }
-      if (node.children) {
-        const found = this.findParentNode(node.children, targetNode);
-        if (found) return found;
-      }
-    }
-    return null;
-  }
-
-  async confirmClearType(type: string, label: string, id?: string) {
-    const isParentNode = !id;
-    const message = isParentNode 
-      ? `Are you sure you want to clear all ${label}?`
-      : `Are you sure you want to remove this ${type.slice(0, -1)}?`;
+  async deleteSelectedObject() {
+    if (!this.selectedNode?.data.instanceId) return;
 
     this.confirmationService.confirm({
-      message,
-      header: isParentNode ? 'Confirm Clear All' : 'Confirm Remove',
-      icon: 'pi pi-exclamation-triangle',
-      accept: () => {
-        if (isParentNode) {
-          // Clear all items of type
-          switch (type) {
-            case 'outlines':
-              this.generatedObjects.clearOutlines();
-              break;
-            case 'scripts':
-              this.generatedObjects.clearScripts();
-              break;
-            case 'pictoryRequests':
-              this.generatedObjects.clearPictoryRequests();
-              break;
-            case 'pictoryRenders':
-              this.generatedObjects.clearPictoryRenders();
-              break;
-            case 'videos':
-              this.generatedObjects.clearVideos();
-              break;
-          }
-        } else {
-          // Remove single item
-          switch (type) {
-            case 'outlines':
-              this.generatedObjects.removeOutline(id!);
-              break;
-            case 'scripts':
-              this.generatedObjects.removeScript(id!);
-              break;
-            case 'pictoryRequests':
-              this.generatedObjects.removePictoryRequest(id!);
-              break;
-            case 'pictoryRenders':
-              this.generatedObjects.removePictoryRender(id!);
-              break;
-            case 'videos':
-              this.generatedObjects.removeVideo(id!);
-              break;
-          }
+      message: 'Are you sure you want to delete this object?',
+      accept: async () => {
+        try {
+          await this.instanceService.deleteInstance(this.selectedNode!.data.instanceId);
+          this.messageService.add({
+            severity: 'success',
+            summary: 'Success',
+            detail: 'Object deleted successfully'
+          });
+          this.selectedNode = null;
+          this.selectedObject = null;
+        } catch (error) {
+          console.error('Failed to delete object:', error);
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'Failed to delete object'
+          });
         }
       }
     });
+  }
+
+  getLocalResourceUrl(filePath: string): string {
+    return `local-resource://${filePath}`;
   }
 
   async copyToClipboard(content: any) {

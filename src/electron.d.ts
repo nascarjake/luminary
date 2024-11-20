@@ -3,6 +3,7 @@ declare module 'electron-api' {
     exists(path: string): Promise<boolean>;
     readTextFile(path: string): Promise<string>;
     writeTextFile(path: string, contents: string): Promise<void>;
+    removeTextFile(path: string): Promise<void>;
     createDir(path: string, options?: { recursive?: boolean }): Promise<void>;
   }
 

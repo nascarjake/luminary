@@ -20,15 +20,26 @@ interface StoredSchemas {
 export class ObjectSchemaService implements IObjectSchemaService {
   private schemas$ = new BehaviorSubject<ObjectSchema[]>([]);
   readonly schemas = this.schemas$.asObservable();
+  private initialized = false;
 
   constructor(private configService: ConfigService) {
-    this.initialize().catch(error => {
-      console.error('Failed to initialize ObjectSchemaService:', error);
-    });
+    // Don't auto-initialize in constructor
   }
 
-  private async initialize(): Promise<void> {
-    await this.loadSchemas();
+  /**
+   * Initialize the service. This must be called after ConfigService is ready.
+   */
+  async initialize(): Promise<void> {
+    if (this.initialized) return;
+    
+    try {
+      await this.loadSchemas();
+      await this.initializeDefaultSchemas();
+      this.initialized = true;
+    } catch (error) {
+      console.error('Failed to initialize ObjectSchemaService:', error);
+      throw error;
+    }
   }
 
   private async getSchemasFilePath(): Promise<string> {
@@ -42,15 +53,18 @@ export class ObjectSchemaService implements IObjectSchemaService {
   private async loadSchemas(): Promise<void> {
     try {
       const filePath = await this.getSchemasFilePath();
-      const exists = await window.electron.fs.exists(filePath);
+      console.log('Loading schemas from:', filePath);
       
+      const exists = await window.electron.fs.exists(filePath);
       if (!exists) {
+        console.log('No schemas file found, starting with empty array');
         this.schemas$.next([]);
         return;
       }
 
       const content = await window.electron.fs.readTextFile(filePath);
       const stored: StoredSchemas = JSON.parse(content);
+      console.log('Loaded schemas:', stored.schemas.length);
       this.schemas$.next(stored.schemas);
     } catch (error) {
       console.error('Failed to load schemas:', error);
@@ -144,6 +158,67 @@ export class ObjectSchemaService implements IObjectSchemaService {
         valid: false,
         errors: error.errors?.map((e: any) => e.message) || ['Invalid data']
       };
+    }
+  }
+
+  private async initializeDefaultSchemas(): Promise<void> {
+    const currentSchemas = this.schemas$.value;
+    if (currentSchemas.length > 0) return;
+
+    const defaultSchemas = [
+      {
+        name: 'ScriptOutline',
+        description: 'Outline for a script',
+        fields: [
+          { name: 'title', type: 'string' as const, description: 'Title of the outline', required: true },
+          { name: 'content', type: 'object' as const, description: 'Content of the outline' }
+        ]
+      },
+      {
+        name: 'Script',
+        description: 'A script generated from an outline',
+        fields: [
+          { name: 'title', type: 'string' as const, description: 'Title of the script', required: true },
+          { name: 'content', type: 'string' as const, description: 'Content of the script', required: true },
+          { name: 'threadId', type: 'string' as const, description: 'Associated thread ID', required: true }
+        ]
+      },
+      {
+        name: 'PictoryRequest',
+        description: 'A request to generate video using Pictory',
+        fields: [
+          { name: 'title', type: 'string' as const, description: 'Title of the request' },
+          { name: 'content', type: 'object' as const, description: 'Content of the request' },
+          { name: 'threadId', type: 'string' as const, description: 'Associated thread ID' },
+          { name: 'jobId', type: 'string' as const, description: 'Pictory job ID', required: true },
+          { name: 'preview', type: 'string' as const, description: 'Preview URL' }
+        ]
+      },
+      {
+        name: 'PictoryRender',
+        description: 'A rendered video from Pictory',
+        fields: [
+          { name: 'jobId', type: 'string' as const, description: 'Pictory job ID', required: true },
+          { name: 'preview', type: 'string' as const, description: 'Preview URL' },
+          { name: 'video', type: 'string' as const, description: 'Video URL' },
+          { name: 'thumbnail', type: 'string' as const, description: 'Thumbnail URL' },
+          { name: 'duration', type: 'number' as const, description: 'Video duration in seconds' }
+        ]
+      },
+      {
+        name: 'Video',
+        description: 'A video file',
+        fields: [
+          { name: 'file', type: 'string' as const, description: 'Local file path', required: true },
+          { name: 'url', type: 'string' as const, description: 'Original URL', required: true },
+          { name: 'name', type: 'string' as const, description: 'Video name', required: true },
+          { name: 'thumbnail', type: 'string' as const, description: 'Thumbnail path', required: true }
+        ]
+      }
+    ];
+
+    for (const schema of defaultSchemas) {
+      await this.createSchema(schema);
     }
   }
 }

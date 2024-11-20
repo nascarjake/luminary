@@ -1,187 +1,185 @@
 @import 'manifest';
 
-:host {
+.object-sidebar {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background-color: var(--surface-ground);
-  border-left: 1px solid var(--surface-border);
+  overflow: hidden;
 
-  ::ng-deep {
-    .p-tree {
-      border: none;
-      padding: 0;
-      background: transparent;
-    }
+  .tree-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+    background-color: var(--surface-ground);
 
-    .p-treenode-label{
-      width:100%;
-    }
-
-    // Target our custom tree node
-    div[class*="tree-node"] {
-      position: relative;
+    .loading-state {
       display: flex;
-      align-items: flex-start;
-      width: 100%;
-      min-height: 1rem;
-      padding-right: 2rem;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      gap: 1rem;
+      color: var(--text-color-secondary);
 
-      > span {
-        flex: 1;
-        min-width: 0;
-        max-width: calc(100% - .2rem);
-        line-height: 1;
-        padding: 0.1rem 0;
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        word-break: break-word;
+      i {
+        color: var(--primary-color);
+      }
+    }
+  }
+
+  .object-tree {
+    :host ::ng-deep {
+      .p-tree {
+        padding: 0;
+        border: none;
+        background: transparent;
       }
 
-      > .p-button {
-        position: absolute !important;
-        right: 0;
-        top: -5.5px;
-        width: 2rem;
-        height: 2rem;
-        margin: 0;
-        padding: 0;
-        opacity: 0.7;
-        transition: opacity 0.2s, background-color 0.2s;
+      .p-treenode-content {
+        padding: 0.5rem;
+        border-radius: 4px;
 
         &:hover {
-          opacity: 1;
-          background-color: var(--surface-hover) !important;
+          background-color: var(--surface-hover);
+        }
+
+        &.p-highlight {
+          background-color: var(--primary-color);
+          color: var(--primary-color-text);
         }
       }
     }
   }
-}
 
-aside {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  background-color: var(--surface-ground);
-  border-right: 1px solid var(--surface-border);
-
-  .top-pane {
+  .object-details {
     flex: 1;
     overflow-y: auto;
     padding: 1rem;
+    background-color: var(--surface-section);
 
-    .object-tree {
-      width: 100%;
-    }
-  }
-
-  .bottom-pane {
-    height: 50%;
-    overflow-y: auto;
-    padding: 1rem;
-
-    .empty-state {
-      height: 100%;
+    .panel-header {
       display: flex;
+      justify-content: space-between;
       align-items: center;
-      justify-content: center;
-      background-color: var(--surface-ground);
-      border-radius: 6px;
-      border: 1px solid var(--surface-border);
 
-      h3 {
-        opacity: 0.7;
-        margin: 0;
-        font-size: 1.2rem;
-        font-weight: normal;
+      .panel-actions {
+        display: flex;
+        gap: 0.5rem;
       }
     }
 
-    .timestamp {
-      font-size: 0.875rem;
-      color: var(--text-color-secondary);
-      margin-bottom: 1rem;
-    }
+    .object-info {
+      .info-row {
+        display: flex;
+        margin-bottom: 0.5rem;
 
-    .scrollable-content {
-      overflow-y: auto;
-      max-height: calc(100vh - 400px);
-      
-      pre {
-        margin: 0;
-        white-space: pre-wrap;
-        word-wrap: break-word;
+        .label {
+          font-weight: bold;
+          min-width: 100px;
+        }
+
+        .value {
+          flex: 1;
+          word-break: break-all;
+
+          a {
+            color: var(--primary-color);
+            text-decoration: none;
+
+            &:hover {
+              text-decoration: underline;
+            }
+          }
+        }
       }
-    }
 
-    .preview-image {
-      margin-bottom: 1rem;
-      text-align: center;
-
-      img {
-        max-width: 100%;
-        height: auto;
+      .object-data {
+        margin-top: 1rem;
+        padding: 1rem;
+        background-color: var(--surface-card);
         border-radius: 4px;
-      }
-    }
 
-    .video-preview {
-      margin-bottom: 1rem;
-      text-align: center;
-
-      video {
-        max-width: 100%;
-        border-radius: 4px;
+        pre {
+          margin: 0;
+          white-space: pre-wrap;
+          word-wrap: break-word;
+        }
       }
     }
   }
-}
 
-.video-preview {
-  margin-bottom: 1rem;
-  
+  // Video preview
   video {
     width: 100%;
-    max-width: 100%;
-    border-radius: 4px;
-    background-color: var(--surface-card);
+    max-height: 300px;
+    margin-bottom: 1rem;
   }
-}
 
-.preview-image {
-  margin-bottom: 1rem;
-  
+  // Image preview
   img {
-    width: 100%;
     max-width: 100%;
-    border-radius: 4px;
-    background-color: var(--surface-card);
+    height: auto;
+    margin-bottom: 1rem;
   }
 }
 
-pre {
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  margin: 0;
-  padding: 1rem;
-  background-color: var(--surface-card);
-  border-radius: 4px;
-  color: var(--text-color);
+// Target our custom tree node
+div[class*="tree-node"] {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+  min-height: 1rem;
+  padding-right: 2rem;
+
+  > span {
+    flex: 1;
+    min-width: 0;
+    max-width: calc(100% - .2rem);
+    line-height: 1;
+    padding: 0.1rem 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    word-break: break-word;
+  }
+
+  > .p-button {
+    position: absolute !important;
+    right: 0;
+    top: -5.5px;
+    width: 2rem;
+    height: 2rem;
+    margin: 0;
+    padding: 0;
+    opacity: 0.7;
+    transition: opacity 0.2s, background-color 0.2s;
+
+    &:hover {
+      opacity: 1;
+      background-color: var(--surface-hover) !important;
+    }
+  }
 }
 
-.timestamp {
-  padding: 0.5rem;
-  color: var(--text-color-secondary);
-  font-size: 0.9rem;
-  border-bottom: 1px solid var(--surface-border);
-  margin-bottom: 0.5rem;
+// Maintain the same visual appearance with the new structure
+.object-sidebar {
+  border-left: 1px solid var(--surface-border);
+  border-right: 1px solid var(--surface-border);
 }
 
+.object-sidebar .tree-container {
+  border-right: 1px solid var(--surface-border);
+}
+
+.object-sidebar .object-details {
+  border-left: 1px solid var(--surface-border);
+}
+
+// Copy button styles
 :host ::ng-deep {
-
   p-panel{
     pre {
       font-size: .8em;
@@ -208,23 +206,13 @@ pre {
       }
     }
   }
-  .object-tree {
-    border: none;
-    background: transparent;
-    padding: 0;
+}
 
-    .p-treenode-content {
-      padding: 0.2rem;
-      border-radius: 4px;
-
-      &:hover {
-        background-color: var(--surface-hover);
-      }
-
-      &.p-highlight {
-        background-color: var(--primary-color);
-        color: var(--primary-color-text);
-      }
-    }
-  }
+// Timestamp styles
+.timestamp {
+  padding: 0.5rem;
+  color: var(--text-color-secondary);
+  font-size: 0.9rem;
+  border-bottom: 1px solid var(--surface-border);
+  margin-bottom: 0.5rem;
 }

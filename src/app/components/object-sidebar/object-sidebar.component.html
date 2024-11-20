@@ -1,119 +1,104 @@
-<aside>
-  <p-confirmDialog [style]="{width: '450px'}"></p-confirmDialog>
-  <div class="top-pane">
-    <p-tree
+<div class="object-sidebar">
+  <p-confirmDialog></p-confirmDialog>
+
+  <div class="tree-container">
+    <div *ngIf="loading" class="loading-state">
+      <i class="pi pi-spin pi-spinner" style="font-size: 2rem"></i>
+      <span>Loading objects...</span>
+    </div>
+    <p-tree 
+      *ngIf="!loading"
       [value]="treeData"
-      selectionMode="single"
       [(selection)]="selectedNode"
+      selectionMode="single"
       (onNodeSelect)="onNodeSelect($event)"
-      styleClass="object-tree"
-    >
-      <ng-template pTemplate="default" let-node>
-        <div class="tree-node">
-          <span>{{ node.label }}</span>
-          @if (node.data?.type && node.data?.type !== 'item') {
-            <button pButton 
-                    type="button" 
-                    icon="pi pi-times" 
-                    class="p-button-rounded p-button-danger p-button-text" 
-                    (click)="confirmClearType(node.data.type, node.label, node.data?.id)">
-            </button>
-          }
-        </div>
-      </ng-template>
+      styleClass="object-tree">
     </p-tree>
   </div>
-  <div class="bottom-pane">
-    @if (selectedObject) {
-      <p-panel [header]="selectedNode?.label || 'Details'">
-        @if (selectedObject.createdAt) {
-          <div class="timestamp">
-            {{ selectedObject.createdAt | date:'medium' }} ({{ selectedObject.createdAt | timeAgo }})
+
+  <div class="object-details" *ngIf="selectedObject">
+    <p-panel>
+      <ng-template pTemplate="header">
+        <div class="panel-header">
+          <span>Object Details</span>
+          <div class="panel-actions">
+            <button 
+              pButton 
+              icon="pi pi-trash" 
+              class="p-button-danger p-button-sm"
+              (click)="deleteSelectedObject()"
+              [disabled]="!selectedNode?.data?.instanceId">
+            </button>
+            <button 
+              pButton 
+              icon="pi pi-copy" 
+              class="p-button-secondary p-button-sm"
+              (click)="copyToClipboard(selectedObject)">
+            </button>
           </div>
-        }
-        @switch (selectedNode?.data?.type) {
-          @case ('outlines') {
-            <div class="scrollable-content">
-              <div class="pre-container">
-                <pre>{{ selectedObject | prettyJson }}</pre>
-                <button pButton 
-                        type="button" 
-                        icon="pi pi-copy" 
-                        class="p-button-rounded p-button-text copy-button"
-                        (click)="copyToClipboard(selectedObject)">
-                </button>
+        </div>
+      </ng-template>
+
+      <div class="object-info">
+        <div *ngIf="selectedObject" class="p-4">
+          <h3>{{ selectedObject.data.title || selectedObject.data.name || selectedObject.id }}</h3>
+          
+          <div class="info-row">
+            <span class="label">ID:</span>
+            <span class="value">{{ selectedObject.id }}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Created:</span>
+            <span class="value">{{ selectedObject.createdAt | timeAgo }}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Updated:</span>
+            <span class="value">{{ selectedObject.updatedAt | timeAgo }}</span>
+          </div>
+
+          <!-- Media Preview -->
+          <ng-container *ngIf="selectedSchema && hasMediaField(selectedSchema, selectedObject)">
+            <ng-container *ngFor="let field of getMediaFields(selectedSchema)">
+              <div class="info-row" *ngIf="selectedObject.data[field.name]">
+                <span class="label">{{ field.name }}:</span>
+                <span class="value">
+                  <!-- Image Preview -->
+                  <img *ngIf="getMediaType(field) === 'image'"
+                       [src]="selectedObject.data[field.name]"
+                       [alt]="field.name"
+                       class="max-w-full h-auto rounded shadow-sm mb-2">
+                  
+                  <!-- Video Preview -->
+                  <video *ngIf="getMediaType(field) === 'video'"
+                         [src]="selectedObject.data[field.name]"
+                         controls
+                         class="max-w-full rounded shadow-sm mb-2">
+                    Your browser does not support the video tag.
+                  </video>
+                  
+                  <!-- Audio Preview -->
+                  <audio *ngIf="getMediaType(field) === 'audio'"
+                         [src]="selectedObject.data[field.name]"
+                         controls
+                         class="w-full mb-2">
+                    Your browser does not support the audio tag.
+                  </audio>
+
+                  <!-- Link to media file -->
+                  <a [href]="selectedObject.data[field.name]" target="_blank" class="text-sm text-blue-500 hover:underline">
+                    {{ selectedObject.data[field.name] }}
+                  </a>
+                </span>
               </div>
-            </div>
-          }
-          @case ('scripts') {
-            <div class="scrollable-content">
-              <div class="pre-container">
-                <pre>{{ selectedObject.content }}</pre>
-                <button pButton 
-                        type="button" 
-                        icon="pi pi-copy" 
-                        class="p-button-rounded p-button-text copy-button"
-                        (click)="copyToClipboard(selectedObject.content)">
-                </button>
-              </div>
-            </div>
-          }
-          @case ('pictoryRequests') {
-            <div class="scrollable-content">
-              <div class="pre-container">
-                <pre>{{ selectedObject | prettyJson }}</pre>
-                <button pButton 
-                        type="button" 
-                        icon="pi pi-copy" 
-                        class="p-button-rounded p-button-text copy-button"
-                        (click)="copyToClipboard(selectedObject)">
-                </button>
-              </div>
-            </div>
-          }
-          @case ('pictoryRenders') {
-            <div class="scrollable-content">
-              @if (selectedObject.thumbnail) {
-                <div class="preview-image">
-                  <img [src]="selectedObject.thumbnail" alt="Thumbnail">
-                </div>
-              }
-              <div class="pre-container">
-                <pre>{{ selectedObject | prettyJson }}</pre>
-                <button pButton 
-                        type="button" 
-                        icon="pi pi-copy" 
-                        class="p-button-rounded p-button-text copy-button"
-                        (click)="copyToClipboard(selectedObject)">
-                </button>
-              </div>
-            </div>
-          }
-          @case ('videos') {
-            <div class="scrollable-content">
-              <div class="video-preview">
-                <video controls>
-                  <source [src]="selectedObject.file" type="video/mp4">
-                  Your browser does not support the video tag.
-                </video>
-              </div>
-              <div class="pre-container">
-                <pre>{{ selectedObject | prettyJson }}</pre>
-                <button pButton 
-                        type="button" 
-                        icon="pi pi-copy" 
-                        class="p-button-rounded p-button-text copy-button"
-                        (click)="copyToClipboard(selectedObject)">
-                </button>
-              </div>
-            </div>
-          }
-        }
-      </p-panel>
-    } @else {
-      <div class="empty-state">
-        <h3>Click on an object to view details</h3>
+            </ng-container>
+          </ng-container>
+
+          <!-- Object Data -->
+          <div class="object-data">
+            <pre>{{ selectedObject.data | prettyJson }}</pre>
+          </div>
+        </div>
       </div>
-    }
+    </p-panel>
   </div>
-</aside>
+</div>

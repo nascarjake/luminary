@@ -3,23 +3,30 @@ import { z } from 'zod';
 // Base field types supported by the system
 export type FieldType = 'string' | 'number' | 'boolean' | 'date' | 'array' | 'object';
 
+// Media types supported by the system
+export type MediaType = 'image' | 'video' | 'audio';
+
 // Field validation rules
 export interface ObjectFieldValidation {
   required?: boolean;
+  minLength?: number;
+  maxLength?: number;
   pattern?: string;
   min?: number;
   max?: number;
   enum?: any[];
   items?: ObjectField;
   properties?: ObjectField[];
+  mediaType?: MediaType;  // For fields that represent media files
 }
 
 // Field definition within a schema
 export interface ObjectField {
   name: string;
-  type: FieldType;
+  type: string;
   description?: string;
   required?: boolean;
+  isMedia?: boolean;  // Flag to indicate if this field represents a media file
   validation?: ObjectFieldValidation;
 }
 
@@ -29,9 +36,10 @@ export interface ObjectSchema {
   name: string;
   description?: string;
   fields: ObjectField[];
-  version: number;
-  createdAt: string;
-  updatedAt: string;
+  version?: number;  // Optional for nested schemas
+  createdAt?: string;
+  updatedAt?: string;
+  isFinalOutput?: boolean;  // Flag to indicate if instances of this schema are final outputs
 }
 
 // An instance of an object conforming to a schema
@@ -41,6 +49,7 @@ export interface ObjectInstance {
   data: Record<string, any>;
   createdAt: string;
   updatedAt: string;
+  isFinalOutput?: boolean;  // Flag to mark instances as final outputs
 }
 
 // Collection of objects by schema
@@ -78,7 +87,7 @@ export interface IObjectInstanceService {
 
 // Helper to create a Zod schema from our ObjectSchema
 export function createZodSchema(schema: ObjectSchema): z.ZodObject<any> {
-  const shape: Record<string, z.ZodTypeAny> = {};
+  const shape: { [key: string]: z.ZodTypeAny } = {};
 
   for (const field of schema.fields) {
     let zodField: z.ZodTypeAny;
@@ -86,65 +95,71 @@ export function createZodSchema(schema: ObjectSchema): z.ZodObject<any> {
     switch (field.type) {
       case 'string':
         zodField = z.string();
-        if (field.validation?.pattern) {
-          zodField = z.string().regex(new RegExp(field.validation.pattern));
-        }
         if (field.validation?.enum) {
           zodField = z.enum(field.validation.enum.map(String) as [string, ...string[]]);
+        }
+        if (field.isMedia) {
+          zodField = z.string().url();
+        }
+        if (field.validation?.minLength !== undefined) {
+          zodField = (zodField as z.ZodString).min(field.validation.minLength);
+        }
+        if (field.validation?.maxLength !== undefined) {
+          zodField = (zodField as z.ZodString).max(field.validation.maxLength);
+        }
+        if (field.validation?.pattern) {
+          zodField = (zodField as z.ZodString).regex(new RegExp(field.validation.pattern));
         }
         break;
       case 'number':
         zodField = z.number();
         if (field.validation?.min !== undefined) {
-          zodField = z.number().min(field.validation.min);
+          zodField = (zodField as z.ZodNumber).min(field.validation.min);
         }
         if (field.validation?.max !== undefined) {
-          zodField = z.number().max(field.validation.max);
-        }
-        if (field.validation?.enum && field.validation.enum.length > 0) {
-          const literals = field.validation.enum.map(value => z.literal(value));
-          if (literals.length === 1) {
-            zodField = literals[0];
-          } else if (literals.length > 1) {
-            const [first, second, ...rest] = literals;
-            zodField = z.union([first, second, ...rest]);
-          }
+          zodField = (zodField as z.ZodNumber).max(field.validation.max);
         }
         break;
       case 'boolean':
         zodField = z.boolean();
-        if (field.validation?.enum && field.validation.enum.length > 0) {
-          const literals = field.validation.enum.map(value => z.literal(value));
-          if (literals.length === 1) {
-            zodField = literals[0];
-          } else if (literals.length > 1) {
-            const [first, second, ...rest] = literals;
-            zodField = z.union([first, second, ...rest]);
-          }
+        break;
+      case 'object':
+        if (field.validation?.properties) {
+          zodField = createZodSchema({
+            id: 'nested',
+            name: field.name,
+            fields: field.validation.properties,
+            version: 1  // Default version for nested schemas
+          });
+        } else {
+          zodField = z.record(z.any());
+        }
+        break;
+      case 'array':
+        if (field.validation?.items) {
+          const itemSchema = createZodSchema({
+            id: 'nested',
+            name: field.name,
+            fields: [field.validation.items],
+            version: 1  // Default version for nested schemas
+          });
+          zodField = z.array(itemSchema);
+        } else {
+          zodField = z.array(z.any());
         }
         break;
       case 'date':
         zodField = z.string().datetime();
         break;
-      case 'array':
-        zodField = z.array(z.any());
-        if (field.validation?.items) {
-          const itemSchema = createZodSchema({ fields: [field.validation.items], id: '', name: '', version: 0, createdAt: '', updatedAt: '' });
-          zodField = z.array(itemSchema);
-        }
-        break;
-      case 'object':
-        zodField = z.record(z.any());
-        if (field.validation?.properties) {
-          const propertiesSchema = createZodSchema({ fields: field.validation.properties, id: '', name: '', version: 0, createdAt: '', updatedAt: '' });
-          zodField = z.record(propertiesSchema);
-        }
-        break;
       default:
         zodField = z.any();
     }
 
-    shape[field.name] = field.required ? zodField : zodField.optional();
+    if (field.required) {
+      shape[field.name] = zodField;
+    } else {
+      shape[field.name] = zodField.optional();
+    }
   }
 
   return z.object(shape);

@@ -1,0 +1,250 @@
+<div class="schema-editor">
+  <form [formGroup]="schemaForm">
+    <!-- Editor Header -->
+    <div class="editor-header">
+      <div class="header-content">
+        <div class="schema-name">
+          <label for="name" class="block font-medium mb-2">Schema Name</label>
+          <span class="p-input-icon-left w-full">
+            <i class="pi pi-tag"></i>
+            <input
+              id="name"
+              type="text"
+              pInputText
+              formControlName="name"
+              placeholder="Enter schema name"
+              class="w-full"
+            />
+          </span>
+        </div>
+        <div class="schema-properties">
+          <p-checkbox
+            formControlName="isFinalOutput"
+            [binary]="true"
+            label="Is Final Output">
+          </p-checkbox>
+        </div>
+        <div class="action-buttons">
+          <p-button 
+            icon="pi pi-times" 
+            severity="secondary" 
+            (onClick)="close()"
+            [text]="true"
+            [rounded]="true">
+          </p-button>
+        </div>
+      </div>
+      <div class="description">
+        <label for="description" class="block font-medium mb-2">Description</label>
+        <textarea
+          id="description"
+          pInputTextarea
+          formControlName="description"
+          placeholder="Enter schema description"
+          [rows]="3"
+          class="w-full"
+        ></textarea>
+      </div>
+    </div>
+
+    <!-- Fields Section -->
+    <div formArrayName="fields">
+      <p-accordion [multiple]="true" styleClass="mb-3">
+        <p-accordionTab *ngFor="let field of fields.controls; let i = index" [formGroupName]="i">
+          <ng-template pTemplate="header">
+            <div class="field-header">
+              <i class="pi pi-database"></i>
+              <span>{{ field.get('name')?.value || 'New Field' }}</span>
+              <p-badge [value]="field.get('type')?.value || ''" severity="info"></p-badge>
+            </div>
+          </ng-template>
+
+          <div class="field-editor">
+            <!-- Field Basic Info -->
+            <div class="field-row">
+              <div class="field">
+                <label class="block font-medium mb-2">Field Name</label>
+                <input type="text" pInputText formControlName="name" placeholder="Enter field name" class="w-full" />
+              </div>
+              <div class="field">
+                <label class="block font-medium mb-2">Field Type</label>
+                <p-dropdown
+                  formControlName="type"
+                  [options]="fieldTypes"
+                  placeholder="Select field type"
+                  class="w-full">
+                </p-dropdown>
+              </div>
+            </div>
+            
+
+            <div class="field-row">
+              <div class="field">
+                <label class="block font-medium mb-2">Description</label>
+                <textarea
+                  pInputTextarea
+                  formControlName="description"
+                  placeholder="Enter field description"
+                  [rows]="2"
+                  class="w-full">
+                </textarea>
+              </div>
+            </div>
+
+            <!-- Field Properties -->
+            <div class="field-row">
+              <div class="field">
+                <label class="block font-medium mb-2">Field Properties</label>
+                <div class="flex gap-4">
+                  <p-checkbox
+                    formControlName="isMedia"
+                    [binary]="true"
+                    label="Is Media Field">
+                  </p-checkbox>
+                </div>
+              </div>
+            </div>
+
+            <!-- Media Type Selection (only shown when isMedia is true) -->
+            <div class="field-row" *ngIf="field.get('isMedia')?.value">
+              <div class="field">
+                <label class="block font-medium mb-2">Media Type</label>
+                <p-dropdown
+                  formControlName="mediaType"
+                  [options]="mediaTypes"
+                  placeholder="Select media type"
+                  class="w-full">
+                </p-dropdown>
+              </div>
+            </div>
+
+            <!-- Validation Rules -->
+            <p-fieldset legend="Validation Rules" [toggleable]="true" styleClass="validation-rules">
+              <div class="validation-grid">
+                <!-- Required Field -->
+                <div class="validation-field">
+                  <label class="block font-medium mb-2">Required</label>
+                  <p-checkbox
+                    formControlName="required"
+                    [binary]="true"
+                    label="Field is required">
+                  </p-checkbox>
+                </div>
+
+                <!-- Type-specific validation -->
+                <ng-container [ngSwitch]="field.get('type')?.value">
+                  <!-- String validation -->
+                  <ng-container *ngSwitchCase="'string'">
+                    <div class="validation-field" formGroupName="validation">
+                      <label class="block font-medium mb-2">Min Length</label>
+                      <p-inputNumber
+                        formControlName="minLength"
+                        [min]="0"
+                        placeholder="Min length"
+                        class="w-full">
+                      </p-inputNumber>
+                    </div>
+                    <div class="validation-field" formGroupName="validation">
+                      <label class="block font-medium mb-2">Max Length</label>
+                      <p-inputNumber
+                        formControlName="maxLength"
+                        [min]="0"
+                        placeholder="Max length"
+                        class="w-full">
+                      </p-inputNumber>
+                    </div>
+                    <div class="validation-field" formGroupName="validation">
+                      <label class="block font-medium mb-2">Pattern</label>
+                      <input
+                        type="text"
+                        pInputText
+                        formControlName="pattern"
+                        placeholder="Regular expression"
+                        class="w-full" />
+                    </div>
+                  </ng-container>
+
+                  <!-- Number validation -->
+                  <ng-container *ngSwitchCase="'number'">
+                    <div class="validation-field" formGroupName="validation">
+                      <label class="block font-medium mb-2">Minimum</label>
+                      <p-inputNumber
+                        formControlName="min"
+                        [useGrouping]="false"
+                        mode="decimal"
+                        [minFractionDigits]="0"
+                        [maxFractionDigits]="0"
+                        placeholder="Min value"
+                        class="w-full">
+                      </p-inputNumber>
+                    </div>
+                    <div class="validation-field" formGroupName="validation">
+                      <label class="block font-medium mb-2">Maximum</label>
+                      <p-inputNumber
+                        formControlName="max"
+                        [useGrouping]="false"
+                        mode="decimal"
+                        [minFractionDigits]="0"
+                        [maxFractionDigits]="0"
+                        placeholder="Max value"
+                        class="w-full">
+                      </p-inputNumber>
+                    </div>
+                  </ng-container>
+
+                  <!-- Enum validation -->
+                  <ng-container *ngSwitchCase="'enum'">
+                    <div class="validation-field" formGroupName="validation">
+                      <label class="block font-medium mb-2">Enum Values</label>
+                      <p-chips
+                        formControlName="enum"
+                        placeholder="Add value"
+                        [allowDuplicate]="false"
+                        class="w-full">
+                      </p-chips>
+                    </div>
+                  </ng-container>
+                </ng-container>
+              </div>
+            </p-fieldset>
+
+            <!-- Delete Field Button -->
+            <div class="flex justify-content-end mt-3">
+              <p-button
+                icon="pi pi-trash"
+                severity="danger"
+                (onClick)="removeField(i)"
+                [text]="true">
+              </p-button>
+            </div>
+          </div>
+        </p-accordionTab>
+      </p-accordion>
+
+      <!-- Add Field Button -->
+      <p-button
+        icon="pi pi-plus"
+        label="Add Field"
+        (onClick)="addField()"
+        [outlined]="true"
+        class="mb-3">
+      </p-button>
+    </div>
+
+    <!-- Form Actions -->
+    <div class="action-buttons">
+      <p-button
+        severity="secondary"
+        label="Cancel"
+        (onClick)="close()"
+        [outlined]="true">
+      </p-button>
+      <p-button
+        severity="primary"
+        [label]="isEdit ? 'Save Changes' : 'Create Schema'"
+        (onClick)="save()"
+        [loading]="saving">
+      </p-button>
+    </div>
+  </form>
+</div>

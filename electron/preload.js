@@ -13,6 +13,9 @@ contextBridge.exposeInMainWorld('electron', {
     async writeTextFile(path, contents) {
       return ipcRenderer.invoke('fs:writeTextFile', path, contents);
     },
+    async removeTextFile(path) {
+      return ipcRenderer.invoke('fs:removeTextFile', path);
+    },
     async createDir(path, options) {
       return ipcRenderer.invoke('fs:createDir', path, options);
     }
