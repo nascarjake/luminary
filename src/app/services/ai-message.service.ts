@@ -14,7 +14,7 @@ import { Subject } from 'rxjs';
   providedIn: 'root'
 })
 export class AiMessageService {
-  private openai: OpenAI;
+  private openai: OpenAI | null = null;
   private outputCache: { [key: string]: string } = {};
 
   constructor(
@@ -23,10 +23,15 @@ export class AiMessageService {
     private readonly messageService: MessageService,
     private readonly aiCommunicationService: AiCommunicationService
   ) {
-    this.initializeOpenAI();
     // Subscribe to system messages
     this.aiCommunicationService.systemMessage$.subscribe(message => {
       this.emitSystemMessage(message);
+    });
+    // Subscribe to API key changes
+    this.openAiApiService.apiKey$.subscribe(apiKey => {
+      if (apiKey) {
+        this.updateApiKey(apiKey);
+      }
     });
   }
 
@@ -47,21 +52,29 @@ export class AiMessageService {
     this.emitSystemMessage(detail);
   }
 
-  private initializeOpenAI() {
-    this.openai = new OpenAI({
-      apiKey: this.openAiApiService.getApiKey(),
-      baseURL: environment.openai.apiUrl,
-      defaultHeaders: {
-        'OpenAI-Beta': 'assistants=v2'
-      },
-      dangerouslyAllowBrowser: true
-    });
+  private getOpenAI(): OpenAI {
+    if (!this.openai) {
+      const apiKey = this.openAiApiService.getApiKey();
+      console.log('Creating OpenAI client with API key:', apiKey);
+      if (!apiKey || apiKey === '<unknown>') {
+        throw new Error('OpenAI API key not initialized');
+      }
+      this.openai = new OpenAI({
+        apiKey: apiKey,
+        baseURL: environment.openai.apiUrl,
+        defaultHeaders: {
+          'OpenAI-Beta': 'assistants=v2'
+        },
+        dangerouslyAllowBrowser: true
+      });
+    }
+    return this.openai;
   }
 
   // Re-initialize OpenAI client when API key changes
   public updateApiKey(apiKey: string) {
     this.openAiApiService.setApiKey(apiKey);
-    this.initializeOpenAI();
+    this.openai = null; // Force re-initialization
   }
 
   private async sendOutput(output: { output: string }, threadId: string): Promise<{ returnMessage: string }> {
@@ -111,7 +124,7 @@ export class AiMessageService {
         ],
       }
 
-      const stream = await this.openai.beta.threads.runs.create(
+      const stream = await this.getOpenAI().beta.threads.runs.create(
         threadId,
         request
       );
@@ -152,7 +165,7 @@ export class AiMessageService {
       stream: true
     };
     console.log('ai request', JSON.stringify(request));
-    const stream = await this.openai.beta.threads.createAndRun(request);
+    const stream = await this.getOpenAI().beta.threads.createAndRun(request);
 
     return this.handleResponse(stream);
   }
@@ -216,7 +229,7 @@ export class AiMessageService {
                 }
 
                 console.log('sending output', tool_outputs);
-                stream = this.openai.beta.threads.runs.submitToolOutputsStream(
+                stream = this.getOpenAI().beta.threads.runs.submitToolOutputsStream(
                   event.data.thread_id,
                   run_id,
                   {
@@ -276,7 +289,7 @@ export class AiMessageService {
    * Gets all the messages from a given thread.
    */
   async getThreadMessages(threadId: string): Promise<any> {
-    const response = await this.openai.beta.threads.messages.list(threadId);
+    const response = await this.getOpenAI().beta.threads.messages.list(threadId);
     return response.data;
   }
 
@@ -285,7 +298,7 @@ export class AiMessageService {
    */
   public async getCurrentRun(threadId: string): Promise<any | null> {
     try {
-      const runs = await this.openai.beta.threads.runs.list(threadId);
+      const runs = await this.getOpenAI().beta.threads.runs.list(threadId);
       const currentRun = runs.data.find(run => 
         run.status === 'in_progress' || 
         run.status === 'queued' || 

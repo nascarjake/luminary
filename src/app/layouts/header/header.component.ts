@@ -12,36 +12,52 @@ import { Subscription } from 'rxjs';
   standalone: true,
   imports: [CommonModule, RouterModule, MenubarModule, OutputListComponent],
   template: `
-    <header>
-      <p-menubar [model]="items"></p-menubar>
-    </header>
+    <div class="header">
+      <p-menubar [model]="items">
+        <ng-template pTemplate="start">
+          <div class="logo">
+            <img src="assets/logo.png" alt="Logo" height="40" />
+          </div>
+        </ng-template>
+      </p-menubar>
+    </div>
     <app-output-list></app-output-list>
   `,
   styles: [`
+    .header {
+      background-color: var(--surface-card);
+      border-bottom: 1px solid var(--surface-border);
+      padding: 0;
+    }
+
     :host ::ng-deep {
       .p-menubar {
-        padding: 0;
-      }
-
-      .p-menubar-start {
-        margin-right: 0.5rem;
-      }
-
-      .home-button.p-button {
         background: transparent;
         border: none;
-        color: var(--text-color);
-        
-        &:hover {
-          background: var(--surface-hover);
+        border-radius: 0;
+        padding: 0.5rem 1rem;
+
+        .p-menubar-root-list {
+          gap: 0.5rem;
         }
 
-        &:focus {
-          box-shadow: none;
+        .p-menuitem-link {
+          padding: 0.75rem 1.25rem;
         }
 
-        .p-button-icon {
-          font-size: 1.2rem;
+        .p-menuitem-icon {
+          margin-right: 0.5rem;
+        }
+      }
+
+      .logo {
+        display: flex;
+        align-items: center;
+        margin-right: 2rem;
+
+        img {
+          height: 40px;
+          width: auto;
         }
       }
     }
@@ -56,51 +72,57 @@ export class HeaderComponent implements OnInit, OnDestroy {
     this.subscription = this.authService.authSubject.subscribe(this.authObserver.bind(this));
   }
 
-  ngOnInit() {}
+  ngOnInit() {
+    this.updateMenuItems();
+  }
 
   ngOnDestroy() {
     this.subscription.unsubscribe();
   }
 
-  private authObserver(authenticated: boolean): void {
-    this.items = [];
-    
-    if (authenticated) {
-      this.items.push(
-        {
-          icon: 'pi pi-home',
-          routerLink: '/',
-          tooltipOptions: {
-            tooltipLabel: 'Home',
-            tooltipPosition: 'bottom'
-          }
-        },
-        {
-          label: 'Objects',
-          icon: 'pi pi-database',
-          routerLink: '/objects'
-        },
-        {
-          label: 'Videos',
-          icon: 'pi pi-video',
-          command: () => {
-            this.outputList.show();
-          }
-        },
-        {
-          label: 'Settings',
-          icon: 'pi pi-cog',
-          items: [
-            {
-              label: 'Logout',
-              icon: 'pi pi-sign-out',
-              command: () => {
-                this.authService.logout();
-              }
-            }
-          ]
+  private updateMenuItems(): void {
+    this.items = [
+      {
+        icon: 'pi pi-comments',
+        label: 'Chat',
+        routerLink: '/chat'
+      },
+      {
+        icon: 'pi pi-user',
+        label: 'Assistants',
+        routerLink: '/assistants'
+      },
+      {
+        icon: 'pi pi-database',
+        label: 'Objects',
+        routerLink: '/objects'
+      },
+      {
+        icon: 'pi pi-video',
+        label: 'Videos',
+        command: () => {
+          this.outputList.show();
         }
-      );
+      },
+      {
+        icon: 'pi pi-cog',
+        label: 'Settings',
+        items: [
+          {
+            label: 'Change Profile',
+            icon: 'pi pi-user-edit',
+            routerLink: '/'
+          }
+        ]
+      }
+    ];
+  }
+
+  private authObserver(authenticated: boolean): void {
+    if (authenticated) {
+      this.updateMenuItems();
+    } else {
+      this.items = [];
     }
   }
 }

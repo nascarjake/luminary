@@ -2,13 +2,13 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpErrorResponse } from '@angular/common/http';
 import { environment } from '../../environments/environment';
 import { catchError, throwError } from 'rxjs';
-import { OAAsistant } from '../../lib/entities/OAAssistant';
+import { OAAssistant } from '../../lib/entities/OAAssistant';
 import { OAThread } from '../../lib/entities/OAThread';
 import { OAThreadMessage } from '../../lib/entities/OAThreadMessage';
 import { OAThreadRun } from '../../lib/entities/OAThreadRun';
 import { OAResponseList } from '../../lib/objects/OAResponseList';
 import { AvailableFunctions, OARequiredAction } from '../../lib/entities/OAFunctionCall';
-import { Observable } from 'rxjs';
+import { Observable, Subject } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
@@ -16,15 +16,27 @@ import { Observable } from 'rxjs';
 export class OpenAiApiService {
   private apiUrl: string = environment.openai.apiUrl;
   private apiKey: string = '<unknown>';
+  private apiKeySubject = new Subject<string>();
+  public apiKey$ = this.apiKeySubject.asObservable();
 
   constructor(private http: HttpClient) {}
 
   public getApiKey(): string {
+    if (!this.apiKey || this.apiKey === '<unknown>') {
+      console.warn('OpenAI API key not initialized');
+      throw new Error('OpenAI API key not initialized');
+    }
     return this.apiKey;
   }
 
   public setApiKey(apiKey: string): void {
+    if (!apiKey) {
+      console.warn('Cannot set empty API key');
+      throw new Error('Cannot set empty API key');
+    }
+    console.log('Setting OpenAI API key:', apiKey);
     this.apiKey = apiKey;
+    this.apiKeySubject.next(apiKey);
   }
 
   public validateApiKey(): Promise<boolean> {
@@ -46,8 +58,8 @@ export class OpenAiApiService {
     });
   }
 
-  public getAssistant(id: string): Promise<OAAsistant> {
-    return this.http.get<OAAsistant>(`${this.apiUrl}/assistants/${id}`, { headers: this.getHeaders() })
+  public getAssistant(id: string): Promise<OAAssistant> {
+    return this.http.get<OAAssistant>(`${this.apiUrl}/assistants/${id}`, { headers: this.getHeaders() })
       .pipe(catchError(this.handleError))
       .toPromise();
   }
@@ -64,8 +76,8 @@ export class OpenAiApiService {
       .toPromise();
   }
 
-  public listAssistants(): Promise<OAResponseList<OAAsistant>> {
-    return this.http.get<OAResponseList<OAAsistant>>(`${this.apiUrl}/assistants`, { headers: this.getHeaders() })
+  public listAssistants(): Promise<OAResponseList<OAAssistant>> {
+    return this.http.get<OAResponseList<OAAssistant>>(`${this.apiUrl}/assistants`, { headers: this.getHeaders() })
       .pipe(catchError(this.handleError))
       .toPromise();
   }
@@ -82,8 +94,8 @@ export class OpenAiApiService {
       .toPromise();
   }
 
-  public createAssistant(assistant: Partial<OAAsistant>): Promise<OAAsistant> {
-    return this.http.post<OAAsistant>(`${this.apiUrl}/assistants`, assistant, { headers: this.getHeaders() })
+  public createAssistant(assistant: Partial<OAAssistant>): Promise<OAAssistant> {
+    return this.http.post<OAAssistant>(`${this.apiUrl}/assistants`, assistant, { headers: this.getHeaders() })
       .pipe(catchError(this.handleError))
       .toPromise();
   }
@@ -100,8 +112,14 @@ export class OpenAiApiService {
       .toPromise();
   }
 
-  public updateAssistant(assistant: OAAsistant): Promise<OAAsistant> {
-    return this.http.post<OAAsistant>(`${this.apiUrl}/assistants/${assistant.id}`, assistant, { headers: this.getHeaders() })
+  public updateAssistant(id: string, assistant: Partial<OAAssistant>): Promise<OAAssistant> {
+    return this.http.post<OAAssistant>(`${this.apiUrl}/assistants/${id}`, assistant, { headers: this.getHeaders() })
+      .pipe(catchError(this.handleError))
+      .toPromise();
+  }
+
+  public deleteAssistant(id: string): Promise<void> {
+    return this.http.delete<void>(`${this.apiUrl}/assistants/${id}`, { headers: this.getHeaders() })
       .pipe(catchError(this.handleError))
       .toPromise();
   }
@@ -118,12 +136,6 @@ export class OpenAiApiService {
       .toPromise();
   }
 
-  public deleteAssistant(assistant: OAAsistant): Promise<void> {
-    return this.http.delete<void>(`${this.apiUrl}/assistants/${assistant.id}`, { headers: this.getHeaders() })
-      .pipe(catchError(this.handleError))
-      .toPromise();
-  }
-
   public deleteThread(thread: OAThread): Promise<void> {
     return this.http.delete<void>(`${this.apiUrl}/threads/${thread.id}`, { headers: this.getHeaders() })
       .pipe(catchError(this.handleError))
@@ -136,7 +148,7 @@ export class OpenAiApiService {
       .toPromise();
   }
 
-  public runThread(thread: Partial<OAThread>, assistant: Partial<OAAsistant>): Promise<OAThreadRun> {
+  public runThread(thread: Partial<OAThread>, assistant: Partial<OAAssistant>): Promise<OAThreadRun> {
     return this.http.post<OAThreadRun>(`${this.apiUrl}/threads/${thread.id}/runs`, { assistant_id: assistant.id }, { headers: this.getHeaders() })
       .pipe(catchError(this.handleError))
       .toPromise();

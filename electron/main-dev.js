@@ -113,9 +113,23 @@ app.whenReady().then(() => {
 
   // Register local-resource protocol handler
   protocol.registerFileProtocol('local-resource', (request, callback) => {
-    const filePath = request.url.replace('local-resource://', '');
     try {
-      return callback(decodeURIComponent(filePath));
+      const filePath = request.url.replace('local-resource://', '');
+      const decodedPath = decodeURIComponent(filePath);
+      
+      // Handle Windows paths that start with drive letter
+      const finalPath = process.platform === 'win32' && decodedPath.match(/^[a-zA-Z]/)
+        ? decodedPath.replace(/^([a-zA-Z])/, '$1:') // Add colon after drive letter
+        : decodedPath;
+
+      console.log('Local resource request:', {
+        original: request.url,
+        decoded: decodedPath,
+        final: finalPath,
+        exists: fs.existsSync(finalPath)
+      });
+
+      return callback(finalPath);
     } catch (error) {
       console.error('Error handling local-resource protocol:', error);
     }

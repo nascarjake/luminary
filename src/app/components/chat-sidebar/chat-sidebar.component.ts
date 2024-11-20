@@ -6,7 +6,7 @@ import { PanelMenu, PanelMenuModule } from 'primeng/panelmenu';
 import { ListboxModule } from 'primeng/listbox';
 import { DialogModule } from 'primeng/dialog';
 import { SkeletonModule } from 'primeng/skeleton';
-import { OAAsistant } from '../../../lib/entities/OAAssistant';
+import { OAAssistant } from '../../../lib/entities/OAAssistant';
 import { ConfigService } from '../../services/config.service';
 import { OpenAiApiService } from '../../services/open-ai-api.service';
 import { OAThread } from '../../../lib/entities/OAThread';
@@ -37,11 +37,11 @@ import { tick } from '../../../lib/classes/Helper';
 export class ChatSidebarComponent implements OnInit {
 
   @ViewChild(PanelMenu) public menu!: PanelMenu;
-  @Output() public onSelectAssitant = new EventEmitter<string|undefined>();
+  @Output() public onSelectAssistant = new EventEmitter<string|undefined>();
   @Output() public onSelectThread = new EventEmitter<string|undefined>();
 
-  private assistants: OAAsistant[] = [];
-  private activeAssistant?: OAAsistant;
+  private assistants: OAAssistant[] = [];
+  private activeAssistant?: OAAssistant;
   public loadingDelete: boolean = false
   public selectedThreads: AppConfig['profiles'][number]['threads'] = [];
   public activeThreads: AppConfig['profiles'][number]['threads'] = [];
@@ -109,7 +109,7 @@ export class ChatSidebarComponent implements OnInit {
             label: thread.name,
             icon: 'pi pi-fw pi-comment',
             command: () => {
-              this.onSelectAssitant.emit(assistant.id);
+              this.onSelectAssistant.emit(assistant.id);
               this.onSelectThread.emit(thread.id);
             }
           })),
@@ -118,7 +118,7 @@ export class ChatSidebarComponent implements OnInit {
           icon: 'pi pi-fw pi-plus',
           styleClass: 'newThread',
           command: () => {
-            this.onSelectAssitant.emit(assistant.id);
+            this.onSelectAssistant.emit(assistant.id);
             this.onSelectThread.emit();
           }
         },

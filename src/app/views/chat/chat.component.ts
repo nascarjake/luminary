@@ -127,19 +127,15 @@ export class ChatComponent implements OnDestroy {
     this.runSubscription?.unsubscribe();
   }
 
-  public onSelectAssitant(assistantId?: string): void {
-    if (this.assistantId === assistantId) return;
-    this.submitSequence.abort();
+  public async onSelectAssistant(assistantId: string | undefined): Promise<void> {
     this.assistantId = assistantId;
   }
 
-  public onSelectThread(threadId?: string): void {
-    if (this.threadId === threadId) return;
-    this.submitSequence.abort();
-    // Reset thread messages
-    this.threadMessages = undefined;
+  public async onSelectThread(threadId: string | undefined): Promise<void> {
     this.threadId = threadId;
-    if (threadId) this.handleChangeThread();
+    if (threadId) {
+      await this.loadThread(threadId);
+    }
   }
 
   public async onSubmitMessage(message: string): Promise<void> {

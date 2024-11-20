@@ -64,13 +64,13 @@
                 <span class="value">
                   <!-- Image Preview -->
                   <img *ngIf="getMediaType(field) === 'image'"
-                       [src]="selectedObject.data[field.name]"
+                       [src]="getLocalResourceUrl(selectedObject.data[field.name])"
                        [alt]="field.name"
                        class="max-w-full h-auto rounded shadow-sm mb-2">
                   
                   <!-- Video Preview -->
                   <video *ngIf="getMediaType(field) === 'video'"
-                         [src]="selectedObject.data[field.name]"
+                         [src]="getLocalResourceUrl(selectedObject.data[field.name])"
                          controls
                          class="max-w-full rounded shadow-sm mb-2">
                     Your browser does not support the video tag.
@@ -78,14 +78,14 @@
                   
                   <!-- Audio Preview -->
                   <audio *ngIf="getMediaType(field) === 'audio'"
-                         [src]="selectedObject.data[field.name]"
+                         [src]="getLocalResourceUrl(selectedObject.data[field.name])"
                          controls
                          class="w-full mb-2">
                     Your browser does not support the audio tag.
                   </audio>
 
                   <!-- Link to media file -->
-                  <a [href]="selectedObject.data[field.name]" target="_blank" class="text-sm text-blue-500 hover:underline">
+                  <a [href]="getLocalResourceUrl(selectedObject.data[field.name])" target="_blank" class="text-sm text-blue-500 hover:underline">
                     {{ selectedObject.data[field.name] }}
                   </a>
                 </span>

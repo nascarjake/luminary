@@ -13,12 +13,6 @@ import { InstanceListComponent } from './components/instance-list/instance-list.
 import { InstanceEditorComponent } from './components/instance-editor/instance-editor.component';
 import { ObjectManagerComponent } from './components/object-manager/object-manager.component';
 
-// PrimeNG Components
-import { TableModule } from 'primeng/table';
-import { CalendarModule } from 'primeng/calendar';
-import { ConfirmDialogModule } from 'primeng/confirmdialog';
-import { ConfirmationService } from 'primeng/api';
-
 const routes: Routes = [
   {
     path: '',
@@ -44,13 +38,7 @@ const routes: Routes = [
     FormsModule,
     ReactiveFormsModule,
     RouterModule.forChild(routes),
-    PrimeNGModule,
-    TableModule,
-    CalendarModule,
-    ConfirmDialogModule
-  ],
-  providers: [
-    ConfirmationService
+    PrimeNGModule
   ]
 })
 export class ObjectManagerModule { }

@@ -22,7 +22,10 @@ export class SystemMessageOverlayService {
 
   private async getOverlayFilePath(): Promise<string> {
     const profile = this.configService.getActiveProfile();
-    if (!profile) throw new Error('No active profile');
+    if (!profile) {
+      console.warn('No active profile when getting overlay file path');
+      return '';
+    }
     
     const configDir = await window.electron.path.appConfigDir();
     return window.electron.path.join(configDir, `overlay-${profile.id}.json`);
@@ -31,6 +34,8 @@ export class SystemMessageOverlayService {
   private async getOverlays(): Promise<SystemMessageOverlays> {
     try {
       const filePath = await this.getOverlayFilePath();
+      if (!filePath) return {};
+
       const exists = await window.electron.fs.exists(filePath);
       if (!exists) return {};
 
@@ -45,6 +50,8 @@ export class SystemMessageOverlayService {
   private async saveOverlays(overlays: SystemMessageOverlays): Promise<void> {
     try {
       const filePath = await this.getOverlayFilePath();
+      if (!filePath) return;
+
       await window.electron.fs.writeTextFile(filePath, JSON.stringify(overlays, null, 2));
     } catch (error) {
       console.error('Failed to save overlays:', error);
