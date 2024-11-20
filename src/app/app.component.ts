@@ -29,7 +29,6 @@ import { firstValueFrom } from 'rxjs';
   providers: [
     MessageService,
     AuthService,
-    OpenAiApiService,
     ConfigService,
     ObjectSchemaService,
     ObjectInstanceService,
@@ -72,21 +71,21 @@ export class AppComponent implements OnInit, OnDestroy {
 
   private async initializeConfig(): Promise<void> {
     await this.configService.initialize();
-    const profile = this.configService.getDefaultProfile();
+    const profile = this.configService.getActiveProfile();
     if (profile) {
+      console.log('Setting API key from active profile:', profile.openai.apiKey);
       this.openAiApiService.setApiKey(profile.openai.apiKey);
       this.configService.setActiveProfile(profile);
       this.authService.authSubject.next(true);
     } else {
+      console.log('No active profile found - redirecting to login');
       this.authService.authSubject.next(false);
     }
   }
 
   private async initializeObjects() {
     try {
-      // First wait for config service
-      await this.configService.initialize();
-
+      // Config service is already initialized by initializeConfig()
       await this.generatedObjectsService.initialize();
       
       // Then initialize schema and instance services

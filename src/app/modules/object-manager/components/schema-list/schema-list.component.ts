@@ -31,9 +31,7 @@ import { SchemaEditorComponent } from '../schema-editor/schema-editor.component'
           <tr>
             <th>Name</th>
             <th>Description</th>
-            <th>Fields</th>
-            <th>Version</th>
-            <th>Updated</th>
+            <th>Last Modified</th>
             <th>Actions</th>
           </tr>
         </ng-template>
@@ -42,38 +40,33 @@ import { SchemaEditorComponent } from '../schema-editor/schema-editor.component'
           <tr>
             <td>{{ schema.name }}</td>
             <td>{{ schema.description }}</td>
-            <td>{{ schema.fields.length }} fields</td>
-            <td>v{{ schema.version }}</td>
-            <td>{{ schema.updatedAt | date:'short' }}</td>
+            <td>{{ schema.updatedAt | date:'medium' }}</td>
             <td>
               <div class="flex gap-2">
-                <p-button 
-                  icon="pi pi-pencil" 
+                <p-button
+                  icon="pi pi-list"
+                  (onClick)="viewInstances(schema)"
+                  [rounded]="true"
+                  [text]="true"
                   severity="secondary"
-                  size="small"
-                  (onClick)="editSchema(schema)">
+                  pTooltip="View Instances">
                 </p-button>
-                <p-button 
-                  icon="pi pi-list" 
-                  severity="secondary"
-                  size="small"
-                  (onClick)="viewInstances(schema)">
+                <p-button
+                  icon="pi pi-pencil"
+                  (onClick)="editSchema(schema)"
+                  [rounded]="true"
+                  [text]="true"
+                  pTooltip="Edit">
                 </p-button>
-                <p-button 
-                  icon="pi pi-trash" 
+                <p-button
+                  icon="pi pi-trash"
+                  (onClick)="confirmDelete(schema)"
+                  [rounded]="true"
+                  [text]="true"
                   severity="danger"
-                  size="small"
-                  (onClick)="deleteSchema(schema)">
+                  pTooltip="Delete">
                 </p-button>
               </div>
-            </td>
-          </tr>
-        </ng-template>
-
-        <ng-template pTemplate="emptymessage">
-          <tr>
-            <td colspan="6" class="text-center p-4">
-              No schemas found. Click "New Schema" to create one.
             </td>
           </tr>
         </ng-template>
@@ -96,11 +89,8 @@ export class SchemaListComponent implements OnInit {
     private confirmationService: ConfirmationService
   ) {}
 
-  ngOnInit() {
-    this.loadSchemas();
-    this.schemaService.schemas.subscribe(() => {
-      this.loadSchemas();
-    });
+  async ngOnInit() {
+    await this.loadSchemas();
   }
 
   private async loadSchemas() {
@@ -112,7 +102,7 @@ export class SchemaListComponent implements OnInit {
       this.messageService.add({
         severity: 'error',
         summary: 'Error',
-        detail: 'Failed to load schemas.'
+        detail: 'Failed to load schemas'
       });
     } finally {
       this.loading = false;
@@ -122,55 +112,65 @@ export class SchemaListComponent implements OnInit {
   createSchema() {
     this.dialogRef = this.dialogService.open(SchemaEditorComponent, {
       header: 'Create Schema',
-      width: '80%',
-      height: '80%',
-      modal: true,
-      data: { mode: 'create' }
+      width: '70%',
+      contentStyle: { overflow: 'auto' },
+      baseZIndex: 10000,
+      maximizable: true
+    });
+
+    this.dialogRef.onClose.subscribe(async (result) => {
+      if (result) {
+        await this.loadSchemas();
+      }
     });
   }
 
   editSchema(schema: ObjectSchema) {
     this.dialogRef = this.dialogService.open(SchemaEditorComponent, {
       header: 'Edit Schema',
-      width: '80%',
-      height: '80%',
-      modal: true,
-      data: { mode: 'edit', schema }
+      width: '70%',
+      contentStyle: { overflow: 'auto' },
+      baseZIndex: 10000,
+      maximizable: true,
+      data: { schema }
     });
-  }
 
-  viewInstances(schema: ObjectSchema) {
-    this.router.navigate(['objects', 'instances', schema.id]);
-  }
-
-  deleteSchema(schema: ObjectSchema) {
-    this.confirmationService.confirm({
-      message: `Are you sure you want to delete the schema "${schema.name}"? This will also delete all instances of this schema.`,
-      header: 'Delete Schema',
-      icon: 'pi pi-exclamation-triangle',
-      accept: async () => {
-        try {
-          await this.schemaService.deleteSchema(schema.id);
-          this.messageService.add({
-            severity: 'success',
-            summary: 'Success',
-            detail: 'Schema deleted successfully.'
-          });
-        } catch (error) {
-          console.error('Failed to delete schema:', error);
-          this.messageService.add({
-            severity: 'error',
-            summary: 'Error',
-            detail: 'Failed to delete schema.'
-          });
-        }
+    this.dialogRef.onClose.subscribe(async (result) => {
+      if (result) {
+        await this.loadSchemas();
       }
     });
   }
 
-  ngOnDestroy() {
-    if (this.dialogRef) {
-      this.dialogRef.close();
+  confirmDelete(schema: ObjectSchema) {
+    this.confirmationService.confirm({
+      message: `Are you sure you want to delete the schema "${schema.name}"?`,
+      header: 'Confirm Delete',
+      icon: 'pi pi-exclamation-triangle',
+      accept: () => this.deleteSchema(schema)
+    });
+  }
+
+  private async deleteSchema(schema: ObjectSchema) {
+    try {
+      await this.schemaService.deleteSchema(schema.id);
+      await this.loadSchemas();
+      this.messageService.add({
+        severity: 'success',
+        summary: 'Success',
+        detail: 'Schema deleted successfully'
+      });
+    } catch (error) {
+      console.error('Failed to delete schema:', error);
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'Failed to delete schema'
+      });
     }
+  }
+
+  viewInstances(schema: ObjectSchema) {
+    this.router.navigate(['/objects/instances', schema.id]);
   }
 }

@@ -10,14 +10,16 @@ export class ConfigService {
     version: '0.0.1',
     profiles: []
   };
+  private initialized = false;
 
-  constructor() {
-    this.initialize().catch(error => {
-      console.error('Failed to initialize ConfigService:', error);
-    });
-  }
+  constructor() {}
 
   public async initialize(): Promise<any> {
+    if (this.initialized) {
+      console.log('ConfigService already initialized');
+      return;
+    }
+    
     console.log('Initializing ConfigService...');
     if (await this.configDirExists()) {
       console.log('Config directory exists, loading config...');
@@ -49,6 +51,7 @@ export class ConfigService {
     }
     
     console.log('ConfigService initialized with active profile:', this.activeProfile);
+    this.initialized = true;
   }
 
   public createProfile(profile: AppConfig['profiles'][number]): void {
@@ -75,16 +78,23 @@ export class ConfigService {
   }
 
   public getActiveProfile(): AppConfig['profiles'][number] | undefined {
+    if (!this.initialized) {
+      console.warn('ConfigService not initialized when getting active profile');
+    }
     return this.activeProfile;
+  }
+
+  public setActiveProfile(profile: AppConfig['profiles'][number]): void {
+    if (!this.initialized) {
+      console.warn('ConfigService not initialized when setting active profile');
+    }
+    console.log('Setting active profile:', profile);
+    this.activeProfile = profile;
   }
 
   public setDefaultProfile(profile: AppConfig['profiles'][number]): void {
     this.config.profiles = this.config.profiles.map(p => ({ ...p, default: p.id === profile.id }));
     this.save();
-  }
-
-  public setActiveProfile(profile: AppConfig['profiles'][number]): void {
-    this.activeProfile = profile;
   }
 
   private async configDirCreate(): Promise<void> {

@@ -128,39 +128,44 @@ export class ObjectSidebarComponent implements OnInit, OnDestroy {
 
   // Media helper methods
   hasMediaField(schema: ObjectSchema, instance: ObjectInstance): boolean {
-    return schema.fields.some(field => field.isMedia && instance.data[field.name]);
+    // Check if any media field in the schema has corresponding data in the instance
+    return schema.fields.some(field => 
+      field.isMedia && instance.data[field.name] != null
+    );
   }
 
   getMediaFields(schema: ObjectSchema): ObjectField[] {
+    // Get all media fields from the schema
     return schema.fields.filter(field => field.isMedia);
   }
 
   getMediaType(field: ObjectField): MediaType | null {
+    // Only check schema-level field definition
+    if (!field.isMedia) {
+      return null;
+    }
+
     // First check if mediaType is explicitly set in validation
     if (field.validation?.mediaType) {
       return field.validation.mediaType;
     }
 
-    // If no explicit mediaType, try to infer from field name or pattern
-    if (field.isMedia) {
-      const fieldNameLower = field.name.toLowerCase();
-      const pattern = field.validation?.pattern?.toLowerCase() || '';
+    // If no explicit mediaType, try to infer from field definition
+    const fieldNameLower = field.name.toLowerCase();
+    const pattern = field.validation?.pattern?.toLowerCase() || '';
 
-      if (fieldNameLower.includes('video') || pattern.includes('mp4') || pattern.includes('webm') || pattern.includes('mov')) {
-        return 'video';
-      }
-      if (fieldNameLower.includes('image') || pattern.includes('jpg') || pattern.includes('jpeg') || pattern.includes('png') || pattern.includes('gif')) {
-        return 'image';
-      }
-      if (fieldNameLower.includes('audio') || pattern.includes('mp3') || pattern.includes('wav')) {
-        return 'audio';
-      }
-
-      // Default to 'image' if no specific type can be inferred
+    if (fieldNameLower.includes('video') || pattern.includes('mp4') || pattern.includes('webm') || pattern.includes('mov')) {
+      return 'video';
+    }
+    if (fieldNameLower.includes('image') || pattern.includes('jpg') || pattern.includes('jpeg') || pattern.includes('png') || pattern.includes('gif')) {
       return 'image';
     }
+    if (fieldNameLower.includes('audio') || pattern.includes('mp3') || pattern.includes('wav')) {
+      return 'audio';
+    }
 
-    return null;
+    // Default to 'image' if no specific type can be inferred
+    return 'image';
   }
 
   onNodeSelect(event: any) {
@@ -205,6 +210,16 @@ export class ObjectSidebarComponent implements OnInit, OnDestroy {
   }
 
   getLocalResourceUrl(filePath: string): string {
+    if (!filePath) return '';
+    
+    // Remove any existing protocol
+    filePath = filePath.replace(/^(file|local-resource):\/\//, '');
+    
+    // On Windows, remove the colon after drive letter if present
+    if (navigator.platform.startsWith('Win')) {
+      filePath = filePath.replace(/^([a-zA-Z]):/, '$1');
+    }
+    
     return `local-resource://${filePath}`;
   }
 

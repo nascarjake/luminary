@@ -1,13 +1,21 @@
 import { Routes } from '@angular/router';
-import { LoginComponent } from './views/login/login.component';
-import { ChatComponent } from './views/chat/chat.component';
 import { ObjectManagerComponent } from './modules/object-manager/components/object-manager/object-manager.component';
 import { SchemaListComponent } from './modules/object-manager/components/schema-list/schema-list.component';
 import { InstanceListComponent } from './modules/object-manager/components/instance-list/instance-list.component';
 
 export const routes: Routes = [
-  { path: '', component: LoginComponent },
-  { path: 'chat', component: ChatComponent },
+  {
+    path: '',
+    loadComponent: () => import('./views/login/login.component').then(c => c.LoginComponent)
+  },
+  {
+    path: 'chat',
+    loadComponent: () => import('./views/chat/chat.component').then(c => c.ChatComponent)
+  },
+  {
+    path: 'assistants',
+    loadComponent: () => import('./views/assistants/assistants.component').then(c => c.AssistantsComponent)
+  },
   {
     path: 'objects',
     component: ObjectManagerComponent,

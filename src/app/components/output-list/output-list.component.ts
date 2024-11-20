@@ -13,6 +13,11 @@ interface OutputDisplay {
   schema?: ObjectSchema;
 }
 
+interface OutputGroup {
+  schemaName: string;
+  outputs: OutputDisplay[];
+}
+
 @Component({
   selector: 'app-output-list',
   standalone: true,
@@ -26,32 +31,33 @@ interface OutputDisplay {
       [resizable]="false"
       header="Generated Outputs"
     >
-      <p-table [value]="outputs$ | async" [tableStyle]="{ 'min-width': '50rem' }">
-        <ng-template pTemplate="header">
-          <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Created</th>
-            <th>Actions</th>
-          </tr>
-        </ng-template>
-        <ng-template pTemplate="body" let-output>
-          <tr>
-            <td>{{ getOutputTitle(output.instance) }}</td>
-            <td>{{ output.schema?.name || 'Unknown Type' }}</td>
-            <td>{{ output.instance.createdAt | date:'medium' }}</td>
-            <td>
-              <p-button
-                icon="pi pi-download"
-                (onClick)="downloadOutput(output.instance)"
-                [rounded]="true"
-                [text]="true"
-                [disabled]="!canDownload(output.instance)"
-              ></p-button>
-            </td>
-          </tr>
-        </ng-template>
-      </p-table>
+      <div *ngFor="let group of outputGroups$ | async">
+        <h3>{{ group.schemaName }}</h3>
+        <p-table [value]="group.outputs" [tableStyle]="{ 'min-width': '50rem' }">
+          <ng-template pTemplate="header">
+            <tr>
+              <th>Name</th>
+              <th>Created</th>
+              <th>Actions</th>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="body" let-output>
+            <tr>
+              <td>{{ getOutputTitle(output.instance) }}</td>
+              <td>{{ output.instance.createdAt | date:'medium' }}</td>
+              <td>
+                <p-button
+                  icon="pi pi-download"
+                  (onClick)="downloadOutput(output.instance)"
+                  [rounded]="true"
+                  [text]="true"
+                  [disabled]="!canDownload(output.instance)"
+                ></p-button>
+              </td>
+            </tr>
+          </ng-template>
+        </p-table>
+      </div>
     </p-dialog>
   `,
   styles: [`
@@ -62,11 +68,19 @@ interface OutputDisplay {
       overflow-y: auto;
       max-height: calc(90vh - 120px);
     }
+    h3 {
+      margin-top: 1.5rem;
+      margin-bottom: 1rem;
+      color: var(--surface-900);
+    }
+    h3:first-child {
+      margin-top: 0;
+    }
   `]
 })
 export class OutputListComponent implements OnInit, OnDestroy {
   visible = false;
-  outputs$ = new BehaviorSubject<OutputDisplay[]>([]);
+  outputGroups$ = new BehaviorSubject<OutputGroup[]>([]);
   private subscription?: Subscription;
 
   constructor(
@@ -75,27 +89,39 @@ export class OutputListComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit() {
-    // Subscribe to all instances and filter for final outputs
-    this.subscription = this.instanceService.instances.pipe(
-      map(instances => instances
-        .filter(instance => instance.isFinalOutput)
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      ),
-      // For each instance, load its schema
-      switchMap(instances => {
-        if (instances.length === 0) {
-          return from([[]]);
+    // Subscribe to both schemas and instances
+    this.subscription = combineLatest([
+      this.schemaService.schemas,
+      this.instanceService.instances
+    ]).pipe(
+      map(([schemas, instances]) => {
+        // Get final output schemas
+        const finalOutputSchemas = schemas.filter(schema => schema.isFinalOutput);
+        
+        // Create groups for each schema
+        const groups: OutputGroup[] = [];
+        
+        for (const schema of finalOutputSchemas) {
+          // Get instances for this schema
+          const schemaInstances = instances
+            .filter(instance => instance.schemaId === schema.id)
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          
+          if (schemaInstances.length > 0) {
+            groups.push({
+              schemaName: schema.name,
+              outputs: schemaInstances.map(instance => ({
+                instance,
+                schema
+              }))
+            });
+          }
         }
         
-        const outputPromises = instances.map(async instance => {
-          const schema = await this.schemaService.getSchema(instance.schemaId);
-          return { instance, schema };
-        });
-        
-        return from(Promise.all(outputPromises));
+        return groups;
       })
-    ).subscribe(outputs => {
-      this.outputs$.next(outputs);
+    ).subscribe(groups => {
+      this.outputGroups$.next(groups);
     });
   }
 

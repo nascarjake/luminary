@@ -1,14 +1,21 @@
-export type OAAsistant = {
+export type OAAssistant = {
   id: string;
-  object: 'assitant',
+  object: 'assistant';
   created_at: number;
   name: string;
   description?: string;
   model: string;
-  instructions: string;
-  tools: {
+  instructions?: string;
+  tools?: Array<{
     type: string;
-  }[];
-  file_ids: string[];
-  metadata: Record<string, unknown>;
+    function: {
+      name: string;
+      description?: string;
+      parameters?: Record<string, any>;
+    };
+  }>;
+  file_ids?: string[];
+  metadata?: Record<string, any>;
+  temperature?: number;
+  response_format?: { type: string };
 };

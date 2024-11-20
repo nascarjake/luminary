@@ -111,8 +111,32 @@ export class SchemaEditorComponent implements OnInit {
 
     try {
       this.saving = true;
-      const schemaData = this.schemaForm.value;
+      const formValue = this.schemaForm.value;
       
+      // Transform the form data to match the schema interface
+      const schemaData = {
+        ...formValue,
+        fields: formValue.fields.map((field: any) => {
+          // Move mediaType into validation object if field is marked as media
+          const validation = {
+            ...field.validation
+          };
+          
+          if (field.isMedia && field.mediaType) {
+            validation.mediaType = field.mediaType;
+          }
+
+          return {
+            name: field.name,
+            type: field.type,
+            description: field.description,
+            required: field.required,
+            isMedia: field.isMedia,
+            validation
+          };
+        })
+      };
+
       if (this.isEdit) {
         await this.ref.close(schemaData);
       } else {
