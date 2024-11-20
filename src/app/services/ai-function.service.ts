@@ -5,15 +5,31 @@ import { AvailableFunctions } from '../../lib/entities/OAFunctionCall';
 import { OpenAiApiService } from './open-ai-api.service';
 import { Subject } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { GeneratedObjectsService, ScriptOutline } from './generated-objects.service';
 import { AiCommunicationService } from './ai-communication.service';
 import { PictoryUtils, PictoryJobResponse, PictoryJobStatus } from '../utils/pictory.utils';
+import { ObjectSchemaService } from './object-schema.service';
+import { ObjectInstanceService } from './object-instance.service';
 import type { Electron } from 'electron-api';
 
 declare global {
   interface Window {
     electron: Electron;
   }
+}
+
+// Types moved from generated-objects.service.ts
+export interface ScriptOutline {
+  id?: string;
+  title?: string;
+  [key: string]: any;
+}
+
+export interface Script {
+  id: string;
+  title?: string;
+  content: string;
+  threadId: string;
+  createdAt: string;
 }
 
 interface ProjectCounters {
@@ -28,18 +44,21 @@ export class AiFunctionService {
   private readonly SCRIPT_ASSISTANT_ID = 'asst_c79BRUGFLalWEhogodtMf53y';
   private readonly PICTORY_ASSISTANT_ID = 'asst_s0Hhqom7vmDUbdFRdTMNZlt1';
   private readonly BATCH_SIZE = 3;
-  private readonly BATCH_DELAY = 60000;
+  private readonly BATCH_DELAY = 5000;
   private readonly projectCounters = new Map<string, ProjectCounters>();
   private systemMessageSource = new Subject<string>();
   systemMessage$ = this.systemMessageSource.asObservable();
   private pictoryUtils: PictoryUtils;
+  private outlineSchemaId?: string;
+  private scriptSchemaId?: string;
 
   constructor(
     private messageService: MessageService,
     private openAiApiService: OpenAiApiService,
     private http: HttpClient,
-    private generatedObjects: GeneratedObjectsService,
-    private aiCommunicationService: AiCommunicationService
+    private aiCommunicationService: AiCommunicationService,
+    private schemaService: ObjectSchemaService,
+    private instanceService: ObjectInstanceService
   ) {
     this.pictoryUtils = new PictoryUtils(http);
   }
@@ -87,6 +106,8 @@ export class AiFunctionService {
    * @returns A promise that resolves with {success: true}
    */
   async sendOutlines(outlineJson: string): Promise<{ success: true }> {
+    if (!this.outlineSchemaId) throw new Error('Schemas not initialized');
+    
     console.log('🚀 sendOutline started with:', { outlineJson });
     try {
       // Parse and validate JSON
@@ -115,8 +136,6 @@ export class AiFunctionService {
         this.emitSystemMessage(`Processing ${outlineTitle} (${index + 1}/${outlines.length})`);
         
         try {
-          // Create a new thread for the outline
-          console.log('📨 Creating new thread');
           const thread = await this.openAiApiService.createThread();
           console.log('✅ Thread created:', thread.id);
           
@@ -127,14 +146,17 @@ export class AiFunctionService {
             role: 'user'
           });
           console.log('✅ Message sent to thread:', thread.id);
-
+          
           // Start the assistant
           console.log(`🤖 Starting assistant for outline on thread:`, thread.id);
           const run = await this.openAiApiService.runThread(thread, { id: this.SCRIPT_ASSISTANT_ID });
           console.log('✅ Assistant started, run ID:', run.id, 'for thread:', thread.id);
           
-          // Add outline to generated objects
-          this.generatedObjects.addOutline(outline);
+          // Store outline in object system
+          await this.instanceService.createInstance(this.outlineSchemaId, {
+            title: outlineTitle,
+            content: outline
+          });
           
           this.messageService.add({
             severity: 'success',
@@ -172,13 +194,15 @@ export class AiFunctionService {
    * @returns A promise that resolves with {success: true}
    */
   async sendScript(script: string, threadId: string, title?: string): Promise<{ success: true }> {
+    if (!this.scriptSchemaId) throw new Error('Schemas not initialized');
+
     console.log('🚀 sendScript started:', { threadId, title });
     try {
       // Increment script counter for this project
       const counters = this.getProjectCounters(threadId);
       counters.scripts++;
       console.log('📊 Script counter incremented:', counters.scripts);
-
+      
       // Create a new thread
       console.log('📨 Creating new thread');
       const thread = await this.openAiApiService.createThread();
@@ -191,16 +215,16 @@ export class AiFunctionService {
         role: 'user'
       });
       console.log('✅ Message sent');
-
+      
       // Start the assistant with rate limiting
       console.log('🤖 Starting assistant');
       const run = await this.openAiApiService.runThread(thread, { id: this.PICTORY_ASSISTANT_ID });
       console.log('✅ Assistant started, run ID:', run.id);
 
-      // Add script to generated objects
-      this.generatedObjects.addScript({
+      // Store script in object system
+      await this.instanceService.createInstance(this.scriptSchemaId, {
+        title: title || `Script ${counters.scripts}`,
         content: script,
-        title,
         threadId: thread.id
       });
 
@@ -233,6 +257,8 @@ export class AiFunctionService {
    * @returns A promise that resolves with {success: true}
    */
   async sendToPictory(scriptJson: string, threadId: string, title: string): Promise<{ success: true }> {
+    if (!this.scriptSchemaId) throw new Error('Schemas not initialized');
+
     console.log('🚀 sendToPictory started with:', { scriptJson, threadId, title });
     try {
        // Increment video counter for this project
@@ -257,12 +283,11 @@ export class AiFunctionService {
       this.emitSystemMessage(`🎥 Video generation started. Job ID: ${response.jobId}`);
 
       // Save initial Pictory request
-      this.generatedObjects.addPictoryRequest({
-        jobId: response.jobId,
-        content: content,
+      await this.instanceService.createInstance(this.scriptSchemaId, {
         title: title,
+        content: JSON.stringify({title, threadId,content, jobId: response.jobId, preview: ''}),
         threadId: threadId,
-        preview: ''
+        jobId: response.jobId
       });
 
       // Poll for job completion
@@ -283,12 +308,16 @@ export class AiFunctionService {
       }
 
       // Save the render status
-      this.generatedObjects.addPictoryRender({
-        jobId: renderStatus.job_id,
-        preview: renderStatus.data.preview || '',
-        video: renderStatus.data.videoURL,
-        thumbnail: renderStatus.data.thumbnail || '',
-        duration: renderStatus.data.videoDuration || 0
+      await this.instanceService.createInstance(this.scriptSchemaId, {
+        title: title,
+        content: JSON.stringify({
+          jobId: renderStatus.job_id,
+          preview: renderStatus.data.preview || '',
+          video: renderStatus.data.videoURL,
+          thumbnail: renderStatus.data.thumbnail || '',
+          duration: renderStatus.data.videoDuration || 0
+        }),
+        threadId: threadId
       });
 
       // Download and save the video
@@ -296,11 +325,16 @@ export class AiFunctionService {
       const videoPath = await this.pictoryUtils.downloadVideo(renderStatus.data.videoURL, videoName);
 
       // Save video object
-      this.generatedObjects.addVideo({
-        name: videoName,
-        file: videoPath,
-        url: renderStatus.data.videoURL,
-        thumbnail: renderStatus.data.thumbnail || ''
+      await this.instanceService.createInstance(this.scriptSchemaId, {
+        title: videoName,
+        content: JSON.stringify({
+          name: videoName,
+          file: videoPath,
+          url: renderStatus.data.videoURL,
+          thumbnail: renderStatus.data.thumbnail || ''
+        }),
+        threadId: threadId,
+        isFinalOutput: true  // Mark as final output
       });
 
       this.emitSystemMessage(`✨ Video generated and saved to: ${videoPath}`);

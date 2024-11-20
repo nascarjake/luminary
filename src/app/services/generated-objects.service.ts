@@ -75,16 +75,9 @@ export class GeneratedObjectsService {
     // Check if we're running in Electron
     console.log('Window electron object:', window.electron);
     console.log('Is electron available?', !!window.electron);
-    
-    // Wait a bit for ConfigService to initialize
-    setTimeout(() => {
-      this.initialize().catch(error => {
-        console.error('Failed to initialize GeneratedObjectsService:', error);
-      });
-    }, 1000);
   }
 
-  private async initialize() {
+  public async initialize() {
     console.log('Initializing GeneratedObjectsService...');
     await this.loadObjects();
     console.log('GeneratedObjectsService initialized');

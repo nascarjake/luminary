@@ -21,18 +21,28 @@ interface StoredInstances {
 export class ObjectInstanceService implements IObjectInstanceService {
   private instances$ = new BehaviorSubject<ObjectInstance[]>([]);
   readonly instances = this.instances$.asObservable();
+  private initialized = false;
 
   constructor(
     private configService: ConfigService,
     private schemaService: ObjectSchemaService
   ) {
-    this.initialize().catch(error => {
-      console.error('Failed to initialize ObjectInstanceService:', error);
-    });
+    // Don't auto-initialize in constructor
   }
 
-  private async initialize(): Promise<void> {
-    await this.loadInstances();
+  /**
+   * Initialize the service. This must be called after ConfigService is ready.
+   */
+  async initialize(): Promise<void> {
+    if (this.initialized) return;
+    
+    try {
+      await this.loadInstances();
+      this.initialized = true;
+    } catch (error) {
+      console.error('Failed to initialize ObjectInstanceService:', error);
+      throw error;
+    }
   }
 
   private async getInstancesFilePath(): Promise<string> {
@@ -46,15 +56,18 @@ export class ObjectInstanceService implements IObjectInstanceService {
   private async loadInstances(): Promise<void> {
     try {
       const filePath = await this.getInstancesFilePath();
-      const exists = await window.electron.fs.exists(filePath);
+      console.log('Loading instances from:', filePath);
       
+      const exists = await window.electron.fs.exists(filePath);
       if (!exists) {
+        console.log('No instances file found, starting with empty array');
         this.instances$.next([]);
         return;
       }
 
       const content = await window.electron.fs.readTextFile(filePath);
       const stored: StoredInstances = JSON.parse(content);
+      console.log('Loaded instances:', stored.instances.length);
       this.instances$.next(stored.instances);
     } catch (error) {
       console.error('Failed to load instances:', error);

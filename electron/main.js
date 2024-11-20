@@ -30,6 +30,11 @@ ipcMain.handle('fs:writeTextFile', async (_, path, contents) => {
   fs.writeFileSync(path, contents);
 });
 
+ipcMain.handle('fs:removeTextFile', async (_, path) => {
+  console.log('Removing file:', path);
+  fs.unlinkSync(path);
+});
+
 ipcMain.handle('fs:createDir', async (_, path, options) => {
   console.log('Creating directory:', path);
   fs.mkdirSync(path, { recursive: options?.recursive });

@@ -17,20 +17,5 @@ export class ObjectManagerComponent implements OnInit {
   ) {}
 
   async ngOnInit() {
-    try {
-      await this.objectMigrationService.migrateObjects();
-      this.messageService.add({
-        severity: 'success',
-        summary: 'Success',
-        detail: 'Objects migrated successfully.'
-      });
-    } catch (error) {
-      console.error('Failed to migrate objects:', error);
-      this.messageService.add({
-        severity: 'error',
-        summary: 'Error',
-        detail: 'Failed to migrate objects.'
-      });
-    }
   }
 }

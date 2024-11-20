@@ -3,8 +3,15 @@ import { CommonModule } from '@angular/common';
 import { TableModule } from 'primeng/table';
 import { DialogModule } from 'primeng/dialog';
 import { ButtonModule } from 'primeng/button';
-import { GeneratedObjectsService, Video } from '../../services/generated-objects.service';
-import { Subscription } from 'rxjs';
+import { Subscription, map, BehaviorSubject, switchMap, from, combineLatest } from 'rxjs';
+import { ObjectSchemaService } from '../../services/object-schema.service';
+import { ObjectInstanceService } from '../../services/object-instance.service';
+import { ObjectInstance, ObjectSchema } from '../../interfaces/object-system';
+
+interface OutputDisplay {
+  instance: ObjectInstance;
+  schema?: ObjectSchema;
+}
 
 @Component({
   selector: 'app-output-list',
@@ -17,28 +24,29 @@ import { Subscription } from 'rxjs';
       [style]="{ width: '90vw' }"
       [draggable]="false"
       [resizable]="false"
-      header="Generated Videos"
+      header="Generated Outputs"
     >
-      <p-table [value]="videos" [tableStyle]="{ 'min-width': '50rem' }">
+      <p-table [value]="outputs$ | async" [tableStyle]="{ 'min-width': '50rem' }">
         <ng-template pTemplate="header">
           <tr>
             <th>Name</th>
-            <th>Status</th>
+            <th>Type</th>
             <th>Created</th>
             <th>Actions</th>
           </tr>
         </ng-template>
-        <ng-template pTemplate="body" let-video>
+        <ng-template pTemplate="body" let-output>
           <tr>
-            <td>{{ video.name }}</td>
-            <td>Completed</td>
-            <td>{{ video.createdAt | date:'medium' }}</td>
+            <td>{{ getOutputTitle(output.instance) }}</td>
+            <td>{{ output.schema?.name || 'Unknown Type' }}</td>
+            <td>{{ output.instance.createdAt | date:'medium' }}</td>
             <td>
               <p-button
                 icon="pi pi-download"
-                (onClick)="downloadVideo(video)"
+                (onClick)="downloadOutput(output.instance)"
                 [rounded]="true"
                 [text]="true"
+                [disabled]="!canDownload(output.instance)"
               ></p-button>
             </td>
           </tr>
@@ -58,17 +66,36 @@ import { Subscription } from 'rxjs';
 })
 export class OutputListComponent implements OnInit, OnDestroy {
   visible = false;
-  videos: Video[] = [];
+  outputs$ = new BehaviorSubject<OutputDisplay[]>([]);
   private subscription?: Subscription;
 
-  constructor(private generatedObjects: GeneratedObjectsService) {}
+  constructor(
+    private schemaService: ObjectSchemaService,
+    private instanceService: ObjectInstanceService
+  ) {}
 
   ngOnInit() {
-    this.subscription = this.generatedObjects.videos.subscribe(videos => {
-      // Sort videos by createdAt in descending order (latest first)
-      this.videos = [...videos].sort((a, b) => 
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
+    // Subscribe to all instances and filter for final outputs
+    this.subscription = this.instanceService.instances.pipe(
+      map(instances => instances
+        .filter(instance => instance.isFinalOutput)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      ),
+      // For each instance, load its schema
+      switchMap(instances => {
+        if (instances.length === 0) {
+          return from([[]]);
+        }
+        
+        const outputPromises = instances.map(async instance => {
+          const schema = await this.schemaService.getSchema(instance.schemaId);
+          return { instance, schema };
+        });
+        
+        return from(Promise.all(outputPromises));
+      })
+    ).subscribe(outputs => {
+      this.outputs$.next(outputs);
     });
   }
 
@@ -84,13 +111,29 @@ export class OutputListComponent implements OnInit, OnDestroy {
     this.visible = false;
   }
 
-  async downloadVideo(video: Video) {
-    if (video.url) {
-      try {
-        await window.electron.download.downloadFile(video.url, video.name);
-      } catch (error) {
-        console.error('Error downloading video:', error);
-      }
+  getOutputTitle(output: ObjectInstance): string {
+    if (typeof output.data === 'object') {
+      return output.data.title || output.data.name || 'Untitled Output';
+    }
+    return 'Untitled Output';
+  }
+
+  canDownload(output: ObjectInstance): boolean {
+    if (typeof output.data !== 'object') return false;
+    return !!(output.data.content || output.data.file || output.data.url);
+  }
+
+  async downloadOutput(output: ObjectInstance) {
+    if (!this.canDownload(output)) return;
+
+    try {
+      const data = output.data;
+      const source = data.url || data.file || data.content;
+      const title = this.getOutputTitle(output);
+      
+      await window.electron.download.downloadFile(source, title);
+    } catch (error) {
+      console.error('Error downloading output:', error);
     }
   }
 }
