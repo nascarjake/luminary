@@ -4,6 +4,7 @@ const fs = require('fs');
 const os = require('os');
 const https = require('https');
 const url = require('url');
+const { spawn } = require('child_process');
 
 console.log('Starting Electron app');
 console.log('Current directory:', __dirname);
@@ -124,6 +125,44 @@ ipcMain.handle('download:file', async (_, fileUrl, filePath) => {
   });
 });
 console.log('Registered download:file handler');
+
+// Terminal execution
+ipcMain.handle('terminal:executeCommand', async (event, options) => {
+  const { command, args, cwd } = options;
+  
+  return new Promise((resolve, reject) => {
+    let output = '';
+    const child = spawn(command, args, { cwd });
+
+    child.stdout.on('data', (data) => {
+      const str = data.toString();
+      output += str;
+      if (options.onOutput) {
+        event.sender.send('terminal:output', str);
+      }
+    });
+
+    child.stderr.on('data', (data) => {
+      const str = data.toString();
+      output += str;
+      if (options.onOutput) {
+        event.sender.send('terminal:output', str);
+      }
+    });
+
+    child.on('error', (error) => {
+      reject(error);
+    });
+
+    child.on('close', (code) => {
+      if (code === 0) {
+        resolve(output);
+      } else {
+        reject(new Error(`Command failed with code ${code}`));
+      }
+    });
+  });
+});
 
 function createWindow() {
   console.log('Creating window');

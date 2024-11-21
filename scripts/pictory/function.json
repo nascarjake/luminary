@@ -1,0 +1,28 @@
+{
+  "name": "sendToPictory",
+  "description": "Sends content to Pictory API for video generation",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "output": {
+        "type": "string",
+        "description": "JSON string containing the video content"
+      },
+      "threadId": {
+        "type": "string",
+        "description": "Thread ID for tracking"
+      },
+      "title": {
+        "type": "string",
+        "description": "Optional title for the video"
+      }
+    },
+    "required": ["output", "threadId"]
+  },
+  "implementation": {
+    "command": "node",
+    "script": "scripts/pictory/pictory.js",
+    "workingDir": "${appConfigDir}",
+    "timeout": 300000
+  }
+}
