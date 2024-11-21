@@ -15,7 +15,7 @@
     display: flex;
     overflow: hidden;
     position: relative;
-    padding-top: 56px; // Match header height
+    padding-top: 0px; // Match header height
   }
 
   ::ng-deep router-outlet + * {

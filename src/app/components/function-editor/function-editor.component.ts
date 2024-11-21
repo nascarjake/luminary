@@ -5,6 +5,8 @@ import { EditorState } from '@codemirror/state';
 import { EditorView, keymap } from '@codemirror/view';
 import { json } from '@codemirror/lang-json';
 import { defaultKeymap } from '@codemirror/commands';
+import { basicSetup } from 'codemirror';
+import { oneDark } from '@codemirror/theme-one-dark';
 import { DialogModule } from 'primeng/dialog';
 import { ButtonModule } from 'primeng/button';
 
@@ -43,8 +45,10 @@ const DEFAULT_FUNCTION: FunctionDefinition = {
       [(visible)]="visible"
       [modal]="true"
       [header]="isEditing ? 'Edit Function' : 'Add Function'"
-      [style]="{width: '600px'}"
+      [style]="{width: '800px'}"
       (onHide)="onCancel()"
+      [contentStyle]="{'padding': '0'}"
+      [draggable]="false"
     >
       <div class="function-editor">
         <div class="editor-container" #editorContainer></div>
@@ -66,15 +70,43 @@ const DEFAULT_FUNCTION: FunctionDefinition = {
   `,
   styles: [`
     .function-editor {
+      background-color: var(--surface-ground);
+      border-radius: 6px;
+      overflow: hidden;
+      height: 500px;
+
       .editor-container {
-        border: 1px solid var(--surface-border);
-        border-radius: 6px;
-        overflow: hidden;
+        height: 100%;
+        background-color: var(--surface-section);
+
+        :host ::ng-deep .cm-editor {
+          height: 100%;
+
+          .cm-scroller {
+            font-family: 'JetBrains Mono', monospace;
+            padding: 1rem;
+          }
+
+          .cm-gutters {
+            background-color: var(--surface-section);
+            border: none;
+          }
+
+          .cm-activeLineGutter,
+          .cm-activeLine {
+            background-color: var(--surface-hover);
+          }
+
+          .cm-line {
+            padding: 0 0.5rem;
+          }
+        }
       }
 
       .error-message {
         color: var(--red-500);
         margin-top: 0.5rem;
+        padding: 0.5rem 1rem;
         font-size: 0.875rem;
       }
     }
@@ -83,26 +115,14 @@ const DEFAULT_FUNCTION: FunctionDefinition = {
       display: flex;
       justify-content: flex-end;
       gap: 0.5rem;
-      margin-top: 1rem;
-      padding-top: 1rem;
+      padding: 1rem;
       border-top: 1px solid var(--surface-border);
-    }
-
-    :host ::ng-deep {
-      .cm-editor {
-        height: 400px;
-        
-        .cm-scroller {
-          font-family: monospace;
-          font-size: 14px;
-        }
-      }
+      background-color: var(--surface-section);
     }
   `]
 })
 export class FunctionEditorComponent implements AfterViewInit, OnDestroy {
   @ViewChild('editorContainer') private editorContainer!: ElementRef;
-  @Input() visible = false;
   @Input() function: FunctionDefinition | null = null;
   @Output() visibleChange = new EventEmitter<boolean>();
   @Output() save = new EventEmitter<FunctionDefinition>();
@@ -112,7 +132,24 @@ export class FunctionEditorComponent implements AfterViewInit, OnDestroy {
   error: string | null = null;
   isEditing = false;
 
+  @Input()
+  set visible(value: boolean) {
+    if (value && this.editorContainer) {
+      // When dialog becomes visible, reinitialize the editor
+      setTimeout(() => {
+        this.editor?.destroy();
+        this.initializeEditor();
+      });
+    }
+    this._visible = value;
+  }
+  get visible(): boolean {
+    return this._visible;
+  }
+  private _visible = false;
+
   ngAfterViewInit() {
+    // Initial setup of the editor container
     this.initializeEditor();
   }
 
@@ -124,8 +161,10 @@ export class FunctionEditorComponent implements AfterViewInit, OnDestroy {
     const startState = EditorState.create({
       doc: this.getInitialDoc(),
       extensions: [
+        basicSetup,
         json(),
         keymap.of(defaultKeymap),
+        oneDark,
         EditorView.updateListener.of(update => {
           if (update.docChanged) {
             this.validateJson(update.state.doc.toString());

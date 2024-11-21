@@ -15,7 +15,7 @@
     <p-skeleton height="3.5rem" class="skeleton"></p-skeleton>
   }
 </aside>
-<p-dialog header="Delete threads" [(visible)]="showDeleteDialog" [style]="{width: '50vw'}">
+<p-dialog header="Delete threads" [(visible)]="showDeleteDialog" [style]="{width: '50vw'}" [draggable]="false">
   @if (activeThreads.length) {
     <p>
       Select the threads you want to delete...

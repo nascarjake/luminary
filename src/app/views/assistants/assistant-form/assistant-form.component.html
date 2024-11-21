@@ -4,6 +4,7 @@
   [style]="{width: '600px'}" 
   [header]="assistant ? 'Edit Assistant' : 'Create Assistant'"
   (onHide)="hideDialog()"
+  [draggable]="false"
 >
   <form [formGroup]="assistantForm" (ngSubmit)="onSubmit()">
     <div class="form-field">

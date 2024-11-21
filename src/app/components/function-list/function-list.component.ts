@@ -143,7 +143,8 @@ export class FunctionListComponent {
   }
 
   showEditFunction(index: number) {
-    this.selectedFunction = { ...this.functions[index] };
+    // Deep copy the function to avoid modifying the original object
+    this.selectedFunction = JSON.parse(JSON.stringify(this.functions[index]));
     this.selectedIndex = index;
     this.showEditor = true;
   }
