@@ -1,0 +1,24 @@
+.form-field {
+  margin-bottom: 1.5rem;
+
+  label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: var(--text-color);
+  }
+
+  input, textarea {
+    width: 100%;
+  }
+}
+
+:host ::ng-deep {
+  .p-dialog-content {
+    padding-bottom: 0;
+  }
+
+  .p-inputtext {
+    width: 100%;
+  }
+}

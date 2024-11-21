@@ -1,0 +1,77 @@
+<p-dialog 
+  [(visible)]="visible" 
+  [modal]="true" 
+  [style]="{width: '450px'}" 
+  [header]="assistant ? 'Edit Assistant' : 'Create Assistant'"
+  (onHide)="hideDialog()"
+>
+  <form [formGroup]="assistantForm" (ngSubmit)="onSubmit()">
+    <div class="form-field">
+      <label for="name">Name</label>
+      <input id="name" type="text" pInputText formControlName="name" />
+    </div>
+
+    <div class="form-field">
+      <label for="instructions">Instructions</label>
+      <textarea
+        id="instructions"
+        pInputTextarea
+        formControlName="instructions"
+        [rows]="5"
+        [autoResize]="true"
+        placeholder="You are a helpful assistant..."
+      ></textarea>
+    </div>
+
+    <div class="form-field">
+      <label for="model">Model</label>
+      <p-dropdown
+        id="model"
+        formControlName="model"
+        [options]="availableModels"
+        placeholder="Select a model"
+        [style]="{ width: '100%' }"
+      ></p-dropdown>
+    </div>
+
+    <div class="form-field">
+      <label for="temperature">Temperature</label>
+      <p-inputNumber
+        id="temperature"
+        formControlName="temperature"
+        [min]="0"
+        [max]="2"
+        [step]="0.1"
+        [showButtons]="true"
+        [style]="{ width: '100%' }"
+      ></p-inputNumber>
+    </div>
+
+    <div class="form-field">
+      <label for="functions">Functions</label>
+      <p-multiSelect
+        id="functions"
+        formControlName="tools"
+        [options]="availableFunctions"
+        optionLabel="name"
+        placeholder="Select functions"
+        [style]="{ width: '100%' }"
+      ></p-multiSelect>
+    </div>
+  </form>
+  <ng-template pTemplate="footer">
+    <p-button 
+      label="Cancel" 
+      icon="pi pi-times" 
+      (onClick)="hideDialog()" 
+      [outlined]="true"
+      [style]="{ marginRight: '.5rem' }"
+    ></p-button>
+    <p-button 
+      label="Save" 
+      icon="pi pi-check" 
+      (onClick)="onSubmit()"
+      [loading]="loading"
+    ></p-button>
+  </ng-template>
+</p-dialog>

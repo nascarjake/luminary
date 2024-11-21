@@ -1,0 +1,53 @@
+<div class="assistants-page">
+  <p-card header="Assistants">
+    <div class="card-header">
+      <p-button
+        label="New Assistant"
+        icon="pi pi-plus"
+        (onClick)="createAssistant()"
+        [style]="{ marginBottom: '1rem' }"
+      ></p-button>
+    </div>
+    
+    <p-table [value]="assistants" [tableStyle]="{ 'min-width': '50rem' }" [loading]="loading">
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Name</th>
+          <th>Model</th>
+          <th>Created</th>
+          <th>Actions</th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-assistant>
+        <tr>
+          <td>{{ assistant.name }}</td>
+          <td>{{ assistant.model }}</td>
+          <td>{{ assistant.created_at | date:'medium' }}</td>
+          <td>
+            <p-button
+              icon="pi pi-pencil"
+              (onClick)="editAssistant(assistant)"
+              [rounded]="true"
+              [text]="true"
+              pTooltip="Edit"
+            ></p-button>
+            <p-button
+              icon="pi pi-trash"
+              (onClick)="deleteAssistant(assistant)"
+              [rounded]="true"
+              [text]="true"
+              severity="danger"
+              pTooltip="Delete"
+            ></p-button>
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </p-card>
+</div>
+
+<app-assistant-form
+  [(visible)]="showDialog"
+  [assistant]="selectedAssistant"
+  (save)="onSave($event)"
+></app-assistant-form>
