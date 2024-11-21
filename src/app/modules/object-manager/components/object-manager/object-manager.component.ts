@@ -4,11 +4,11 @@ import { ObjectMigrationService } from '../../../../services/object-migration.se
 
 @Component({
   selector: 'app-object-manager',
-  template: `
-    <div class="flex flex-col gap-4 p-4">
-      <router-outlet></router-outlet>
-    </div>
-  `
+  template: `<router-outlet></router-outlet>`,
+  styleUrls: ['./object-manager.component.scss'],
+  host: {
+    style: 'flex: 1; height: 100%; min-width: 0; display: flex;'
+  }
 })
 export class ObjectManagerComponent implements OnInit {
   constructor(

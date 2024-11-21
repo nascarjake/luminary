@@ -1,11 +1,14 @@
 :host ::ng-deep {
   .instance-editor {
-    max-width: 1200px;
+    display: flex;
+    flex-direction: column;
+    height: calc(90vh - 113px); // Account for dialog header and padding
+    max-width: 1400px;
     margin: 0 auto;
-    padding: 1.5rem;
 
     .editor-header {
-      margin-bottom: 2rem;
+      flex: 0 0 auto;
+      padding: 1.5rem 1.5rem 0;
       
       h2 {
         margin: 0;
@@ -16,11 +19,22 @@
     }
 
     .editor-content {
+      flex: 1 1 auto;
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
+      grid-template-columns: minmax(300px, 1fr) 1fr;
       gap: 2rem;
+      padding: 1.5rem;
+      min-height: 0; // Important for Firefox
+
+      @media screen and (max-width: 768px) {
+        grid-template-columns: 1fr;
+      }
 
       .editor-form {
+        min-width: 300px;
+        overflow-y: auto;
+        padding-right: 1rem;
+
         .field-group {
           margin-bottom: 1.5rem;
 
@@ -51,94 +65,71 @@
       }
 
       .json-preview {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        background-color: var(--surface-ground);
+        border-radius: 6px;
+        overflow: hidden; // Prevent content from spilling
+
         .preview-header {
+          flex: 0 0 auto;
           display: flex;
-          align-items: center;
           justify-content: space-between;
-          margin-bottom: 1rem;
+          align-items: center;
+          padding: 1rem;
+          border-bottom: 1px solid var(--surface-border);
+          background-color: var(--surface-ground);
 
           h3 {
             margin: 0;
-            font-size: 1.1rem;
-            font-weight: 500;
+            font-size: 1.2rem;
+            font-weight: 600;
             color: var(--text-color);
           }
         }
 
-        .cm-editor {
-          height: 100%;
-          min-height: 400px;
-          border: 1px solid var(--surface-border);
-          border-radius: var(--border-radius);
-          background: var(--surface-ground);
+        > div:last-child {
+          flex: 1 1 auto;
+          overflow: auto;
+          min-height: 0; // Important for Firefox
+          background-color: var(--surface-section);
+          border-radius: 0 0 6px 6px;
 
-          &.cm-focused {
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 1px var(--primary-color);
-          }
-
-          .cm-scroller {
-            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
-            line-height: 1.5;
-          }
-
-          .cm-content {
-            padding: 1rem;
-          }
-
-          // Dark theme specific styles
-          &.cm-dark {
-            .cm-line {
-              color: var(--text-color);
-            }
-
-            .cm-activeLineGutter,
-            .cm-activeLine {
-              background-color: rgba(255, 255, 255, 0.05);
-            }
-
-            .cm-gutters {
-              background-color: var(--surface-ground);
-              border-right: 1px solid var(--surface-border);
-            }
-
-            .cm-gutterElement {
-              color: var(--text-color-secondary);
-            }
-
-            // Syntax highlighting
-            .cm-keyword { color: #c792ea; }
-            .cm-string { color: #c3e88d; }
-            .cm-number { color: #f78c6c; }
-            .cm-property { color: #82aaff; }
-            .cm-comment { color: #546e7a; }
-            .cm-punctuation { color: #89ddff; }
+          .cm-editor {
+            height: 100%;
           }
         }
       }
     }
-  }
 
-  // Action buttons
-  .action-buttons {
-    display: flex;
-    justify-content: flex-end;
-    gap: 1rem;
-    margin-top: 2rem;
-
-    .p-button {
-      min-width: 120px;
+    .action-buttons {
+      flex: 0 0 auto;
+      display: flex;
+      justify-content: flex-end;
+      gap: 1rem;
+      padding: 1rem 1.5rem;
+      border-top: 1px solid var(--surface-border);
+      background-color: var(--surface-ground);
     }
   }
 
-  // Responsive adjustments
-  @media screen and (max-width: 768px) {
-    .instance-editor {
-      padding: 1rem;
+  // Override PrimeNG dialog styles
+  .p-dialog {
+    display: flex;
+    flex-direction: column;
+    height: 90vh;
+    max-height: 90vh;
 
-      .editor-content {
-        grid-template-columns: 1fr;
-      }
+    .p-dialog-header {
+      flex: 0 0 auto;
+    }
+
+    .p-dialog-content {
+      flex: 1 1 auto;
+      padding: 0 !important;
+      margin: 0 !important;
+      overflow: hidden !important;
     }
   }
 }

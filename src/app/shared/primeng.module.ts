@@ -18,6 +18,8 @@ import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { MessageService, ConfirmationService } from 'primeng/api';
 import { DialogService } from 'primeng/dynamicdialog';
 import { CommonModule } from '@angular/common';
+import { CardModule } from 'primeng/card';
+import { TooltipModule } from 'primeng/tooltip';
 
 const MODULES = [
   CommonModule,
@@ -36,7 +38,9 @@ const MODULES = [
   ToastModule,
   TableModule,
   CalendarModule,
-  ConfirmDialogModule
+  ConfirmDialogModule,
+  CardModule,
+  TooltipModule
 ];
 
 @NgModule({

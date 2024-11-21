@@ -8,73 +8,11 @@ import { SchemaEditorComponent } from '../schema-editor/schema-editor.component'
 
 @Component({
   selector: 'app-schema-list',
-  template: `
-    <div class="flex flex-col gap-4">
-      <div class="flex justify-between items-center">
-        <h2 class="text-xl font-bold">Schemas</h2>
-        <p-button 
-          label="New Schema" 
-          icon="pi pi-plus"
-          (onClick)="createSchema()">
-        </p-button>
-      </div>
-
-      <p-table 
-        [value]="schemas" 
-        [loading]="loading"
-        [paginator]="true" 
-        [rows]="10"
-        [rowHover]="true"
-        styleClass="p-datatable-sm">
-        
-        <ng-template pTemplate="header">
-          <tr>
-            <th>Name</th>
-            <th>Description</th>
-            <th>Last Modified</th>
-            <th>Actions</th>
-          </tr>
-        </ng-template>
-
-        <ng-template pTemplate="body" let-schema>
-          <tr>
-            <td>{{ schema.name }}</td>
-            <td>{{ schema.description }}</td>
-            <td>{{ schema.updatedAt | date:'medium' }}</td>
-            <td>
-              <div class="flex gap-2">
-                <p-button
-                  icon="pi pi-list"
-                  (onClick)="viewInstances(schema)"
-                  [rounded]="true"
-                  [text]="true"
-                  severity="secondary"
-                  pTooltip="View Instances">
-                </p-button>
-                <p-button
-                  icon="pi pi-pencil"
-                  (onClick)="editSchema(schema)"
-                  [rounded]="true"
-                  [text]="true"
-                  pTooltip="Edit">
-                </p-button>
-                <p-button
-                  icon="pi pi-trash"
-                  (onClick)="confirmDelete(schema)"
-                  [rounded]="true"
-                  [text]="true"
-                  severity="danger"
-                  pTooltip="Delete">
-                </p-button>
-              </div>
-            </td>
-          </tr>
-        </ng-template>
-      </p-table>
-
-      <p-confirmDialog></p-confirmDialog>
-    </div>
-  `
+  templateUrl: './schema-list.component.html',
+  styleUrls: ['./schema-list.component.scss'],
+  host: {
+    style: 'flex: 1; height: 100%; min-width: 0; display: flex; padding-right: 300px;'
+  }
 })
 export class SchemaListComponent implements OnInit {
   schemas: ObjectSchema[] = [];

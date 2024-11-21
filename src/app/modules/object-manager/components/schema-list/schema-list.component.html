@@ -1,0 +1,82 @@
+<div class="schema-page">
+  <p-card header="Schemas">
+    <div class="card-header">
+      <p-button 
+        label="New Schema" 
+        icon="pi pi-plus"
+        (onClick)="createSchema()"
+      ></p-button>
+    </div>
+    
+    <p-table 
+      [value]="schemas" 
+      [loading]="loading"
+      [paginator]="true" 
+      [rows]="10"
+      [rowHover]="true"
+      [tableStyle]="{ 'min-width': '50rem' }">
+      
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Name</th>
+          <th>Description</th>
+          <th>Last Modified</th>
+          <th>Actions</th>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="body" let-schema>
+        <tr>
+          <td>
+            <div class="schema-name">
+              {{ schema.name }}
+            </div>
+          </td>
+          <td>
+            <div class="schema-description">
+              {{ schema.description }}
+            </div>
+          </td>
+          <td>{{ schema.updatedAt | date:'medium' }}</td>
+          <td>
+            <div class="action-buttons">
+              <p-button
+                icon="pi pi-list"
+                (onClick)="viewInstances(schema)"
+                [rounded]="true"
+                [text]="true"
+                severity="secondary"
+                pTooltip="View Instances"
+              ></p-button>
+              <p-button
+                icon="pi pi-pencil"
+                (onClick)="editSchema(schema)"
+                [rounded]="true"
+                [text]="true"
+                pTooltip="Edit"
+              ></p-button>
+              <p-button
+                icon="pi pi-trash"
+                (onClick)="confirmDelete(schema)"
+                [rounded]="true"
+                [text]="true"
+                severity="danger"
+                pTooltip="Delete"
+              ></p-button>
+            </div>
+          </td>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="4" class="text-center p-4">
+            No schemas found. Click "New Schema" to create one.
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </p-card>
+</div>
+
+<p-confirmDialog></p-confirmDialog>

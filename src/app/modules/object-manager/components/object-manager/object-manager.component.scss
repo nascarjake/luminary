@@ -1,0 +1,7 @@
+:host {
+  ::ng-deep {
+    router-outlet + * {
+      padding-right: 0 !important;
+    }
+  }
+}
