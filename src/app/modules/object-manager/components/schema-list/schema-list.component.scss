@@ -1,0 +1,71 @@
+.schema-page {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.card-header {
+  margin-bottom: 1rem;
+}
+
+.schema-name {
+  font-weight: 500;
+}
+
+.schema-description {
+  color: var(--text-color-secondary);
+  max-width: 300px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+:host ::ng-deep {
+  .p-card {
+    background: var(--surface-card);
+  }
+
+  .p-button {
+    margin-left: 0.5rem;
+
+    &:first-child {
+      margin-left: 0;
+    }
+
+    &.p-button-text {
+      padding: 0.5rem;
+      
+      &:hover {
+        background: var(--surface-hover);
+      }
+    }
+  }
+
+  .p-datatable {
+    .p-datatable-header {
+      background: transparent;
+      border: none;
+      padding: 0 0 1rem 0;
+    }
+
+    .p-datatable-thead > tr > th {
+      background: var(--surface-section);
+      padding: 1rem;
+    }
+
+    .p-datatable-tbody > tr {
+      &:hover {
+        background: var(--surface-hover);
+      }
+
+      > td {
+        padding: 1rem;
+      }
+    }
+  }
+}

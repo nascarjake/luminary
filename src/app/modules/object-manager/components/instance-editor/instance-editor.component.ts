@@ -260,7 +260,7 @@ export class InstanceEditorComponent implements OnInit, OnDestroy {
         validators.push(Validators.required);
       }
       
-      let value = this.instance?.[field.name] ?? null;
+      let value = this.instance?.data?.[field.name] ?? null;
       if (field.type === 'date' && value) {
         value = new Date(value);
       }

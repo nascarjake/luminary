@@ -1,4 +1,4 @@
-import { Component, OnInit, EventEmitter, Output, Input } from '@angular/core';
+import { Component, OnInit, EventEmitter, Output, Input, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { InputTextModule } from 'primeng/inputtext';
@@ -30,7 +30,7 @@ import { OAAssistant } from '../../../../lib/entities/OAAssistant';
   templateUrl: './assistant-form.component.html',
   styleUrls: ['./assistant-form.component.scss']
 })
-export class AssistantFormComponent implements OnInit {
+export class AssistantFormComponent implements OnInit, OnChanges {
   @Input() visible = false;
   @Input() assistant: OAAssistant | null = null;
   @Output() visibleChange = new EventEmitter<boolean>();
@@ -56,15 +56,28 @@ export class AssistantFormComponent implements OnInit {
   }
 
   ngOnInit() {
-    if (this.assistant) {
+    this.resetForm();
+  }
+
+  ngOnChanges(changes: SimpleChanges) {
+    if (changes['assistant'] && this.assistant) {
+      console.log('Assistant changed:', this.assistant);
       this.assistantForm.patchValue({
-        name: this.assistant.name,
-        instructions: this.assistant.instructions,
-        model: this.assistant.model,
-        tools: this.assistant.tools,
+        name: this.assistant.name || '',
+        instructions: this.assistant.instructions || '',
+        model: this.assistant.model || 'gpt-4',
+        tools: Array.isArray(this.assistant.tools) ? this.assistant.tools : [],
         temperature: this.assistant.temperature || 1
       });
     }
+  }
+
+  private resetForm() {
+    this.assistantForm.reset({
+      model: 'gpt-4',
+      temperature: 1,
+      tools: []
+    });
   }
 
   onSubmit() {
@@ -82,10 +95,6 @@ export class AssistantFormComponent implements OnInit {
     this.visible = false;
     this.visibleChange.emit(false);
     this.cancel.emit();
-    this.assistantForm.reset({
-      model: 'gpt-4',
-      temperature: 1,
-      tools: []
-    });
+    this.resetForm();
   }
 }

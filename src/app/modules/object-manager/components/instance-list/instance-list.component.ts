@@ -5,80 +5,24 @@ import { MessageService, ConfirmationService } from 'primeng/api';
 import { Subscription } from 'rxjs';
 import { ObjectSchemaService } from '../../../../services/object-schema.service';
 import { ObjectInstanceService } from '../../../../services/object-instance.service';
-import { ObjectSchema, ObjectInstance } from '../../../../interfaces/object-system';
+import { ObjectSchema, ObjectInstance, ObjectField } from '../../../../interfaces/object-system';
 import { InstanceEditorComponent } from '../instance-editor/instance-editor.component';
 
 @Component({
   selector: 'app-instance-list',
-  template: `
-    <div class="flex flex-col gap-4 p-4">
-      <div class="flex justify-between items-center">
-        <h2 class="text-2xl">{{ schema?.name || 'Loading...' }} Instances</h2>
-        <p-button 
-          icon="pi pi-plus" 
-          label="Create Instance"
-          (onClick)="openInstanceEditor('create')">
-        </p-button>
-      </div>
-
-      <p-table 
-        [value]="instances" 
-        [loading]="loading"
-        [paginator]="true" 
-        [rows]="10"
-        [rowHover]="true"
-        styleClass="p-datatable-sm">
-        
-        <ng-template pTemplate="header">
-          <tr>
-            <th *ngFor="let field of schema?.fields || []">{{ field.name }}</th>
-            <th style="width: 100px">Actions</th>
-          </tr>
-        </ng-template>
-
-        <ng-template pTemplate="body" let-instance>
-          <tr>
-            <td *ngFor="let field of schema?.fields || []">
-              {{ formatFieldValue(instance.data[field.name], field.type) }}
-            </td>
-            <td>
-              <div class="flex gap-2">
-                <button 
-                  pButton 
-                  icon="pi pi-pencil" 
-                  class="p-button-text p-button-sm"
-                  (click)="openInstanceEditor('edit', instance)">
-                </button>
-                <button 
-                  pButton 
-                  icon="pi pi-trash" 
-                  class="p-button-text p-button-danger p-button-sm"
-                  (click)="deleteInstance(instance)">
-                </button>
-              </div>
-            </td>
-          </tr>
-        </ng-template>
-
-        <ng-template pTemplate="emptymessage">
-          <tr>
-            <td [attr.colspan]="(schema?.fields?.length || 0) + 1" class="text-center p-4">
-              No instances found. Click "Create Instance" to add one.
-            </td>
-          </tr>
-        </ng-template>
-      </p-table>
-    </div>
-
-    <p-confirmDialog></p-confirmDialog>
-  `,
+  templateUrl: './instance-list.component.html',
+  styleUrls: ['./instance-list.component.scss'],
+  host: {
+    style: 'flex: 1; height: 100%; min-width: 0; display: flex; padding-right: 300px;'
+  },
   providers: [DialogService, ConfirmationService]
 })
 export class InstanceListComponent implements OnInit, OnDestroy {
   schema?: ObjectSchema;
   instances: ObjectInstance[] = [];
   loading = true;
-  private subscriptions: Subscription[] = [];
+  private schemaId?: string;
+  private subscription?: Subscription;
 
   constructor(
     private route: ActivatedRoute,
@@ -90,30 +34,28 @@ export class InstanceListComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit() {
-    this.subscriptions.push(
-      this.route.params.subscribe(params => {
-        const schemaId = params['schemaId'];
-        if (schemaId) {
-          this.loadSchema(schemaId);
-          this.loadInstances(schemaId);
-        }
-      })
-    );
+    this.subscription = this.route.params.subscribe(params => {
+      const schemaId = params['schemaId'];
+      if (schemaId) {
+        this.schemaId = schemaId;
+        this.loadSchema(schemaId);
+        this.loadInstances(schemaId);
+      }
+    });
   }
 
   ngOnDestroy() {
-    this.subscriptions.forEach(sub => sub.unsubscribe());
+    this.subscription?.unsubscribe();
   }
 
   private async loadSchema(schemaId: string) {
     try {
       this.schema = await this.schemaService.getSchema(schemaId);
     } catch (error) {
-      console.error('Failed to load schema:', error);
       this.messageService.add({
         severity: 'error',
         summary: 'Error',
-        detail: 'Failed to load schema.'
+        detail: 'Failed to load schema'
       });
     }
   }
@@ -123,30 +65,13 @@ export class InstanceListComponent implements OnInit, OnDestroy {
     try {
       this.instances = await this.instanceService.getInstances(schemaId);
     } catch (error) {
-      console.error('Failed to load instances:', error);
       this.messageService.add({
         severity: 'error',
         summary: 'Error',
-        detail: 'Failed to load instances.'
+        detail: 'Failed to load instances'
       });
     } finally {
       this.loading = false;
-    }
-  }
-
-  formatFieldValue(value: any, type: string): string {
-    if (value === undefined || value === null) return '';
-
-    switch (type) {
-      case 'date':
-        return new Date(value).toLocaleString();
-      case 'boolean':
-        return value ? 'Yes' : 'No';
-      case 'array':
-      case 'object':
-        return JSON.stringify(value);
-      default:
-        return String(value);
     }
   }
 
@@ -155,7 +80,10 @@ export class InstanceListComponent implements OnInit, OnDestroy {
 
     const ref = this.dialogService.open(InstanceEditorComponent, {
       header: `${mode === 'create' ? 'Create' : 'Edit'} Instance`,
-      width: '80%',
+      width: '90vw',
+      style: { maxWidth: '1400px' },
+      contentStyle: { overflow: 'auto' },
+      maximizable: true,
       data: {
         mode,
         schema: this.schema,
@@ -163,36 +91,101 @@ export class InstanceListComponent implements OnInit, OnDestroy {
       }
     });
 
-    ref.onClose.subscribe(result => {
-      if (result) {
-        this.loadInstances(this.schema!.id);
+    ref.onClose.subscribe(async (result) => {
+      if (result && this.schemaId) {
+        await this.loadInstances(this.schemaId);
+        this.messageService.add({
+          severity: 'success',
+          summary: 'Success',
+          detail: `Instance ${mode === 'create' ? 'created' : 'updated'} successfully`
+        });
       }
     });
   }
 
-  deleteInstance(instance: ObjectInstance) {
+  confirmDelete(instance: ObjectInstance) {
     this.confirmationService.confirm({
       message: 'Are you sure you want to delete this instance?',
       header: 'Confirm Delete',
       icon: 'pi pi-exclamation-triangle',
-      accept: async () => {
-        try {
-          await this.instanceService.deleteInstance(instance.id);
-          this.messageService.add({
-            severity: 'success',
-            summary: 'Success',
-            detail: 'Instance deleted successfully.'
-          });
-          this.loadInstances(this.schema!.id);
-        } catch (error) {
-          console.error('Failed to delete instance:', error);
-          this.messageService.add({
-            severity: 'error',
-            summary: 'Error',
-            detail: 'Failed to delete instance.'
-          });
-        }
-      }
+      accept: () => this.deleteInstance(instance)
     });
+  }
+
+  private async deleteInstance(instance: ObjectInstance) {
+    if (!this.schemaId) return;
+
+    try {
+      await this.instanceService.deleteInstance(instance.id);
+      await this.loadInstances(this.schemaId);
+      this.messageService.add({
+        severity: 'success',
+        summary: 'Success',
+        detail: 'Instance deleted successfully'
+      });
+    } catch (error) {
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'Failed to delete instance'
+      });
+    }
+  }
+
+  formatFieldValue(value: any): string {
+    if (value === null || value === undefined) {
+      return '';
+    }
+
+    if (typeof value === 'object') {
+      if (Array.isArray(value)) {
+        return `[${value.length} items]`;
+      }
+      const keys = Object.keys(value);
+      if (keys.length === 0) return '{}';
+      
+      // If it's a content field, show a preview
+      if ('content' in value) {
+        const content = value.content as string;
+        return content ? content.substring(0, 50) + (content.length > 50 ? '...' : '') : '';
+      }
+      
+      return `{${keys.length} keys}`;
+    }
+
+    if (typeof value === 'string') {
+      return value.length > 50 ? value.substring(0, 50) + '...' : value;
+    }
+
+    return String(value);
+  }
+
+  formatTooltip(value: any): string {
+    try {
+      return JSON.stringify(value, null, 2);
+    } catch {
+      return String(value);
+    }
+  }
+
+  getPreviewFields(): ObjectField[] {
+    if (!this.schema) return [];
+    
+    // Prioritize certain field names if they exist
+    const priorityFields = ['title', 'name', 'id', 'type', 'status'];
+    const fields = [...this.schema.fields];
+    
+    fields.sort((a, b) => {
+      const aIndex = priorityFields.indexOf(a.name.toLowerCase());
+      const bIndex = priorityFields.indexOf(b.name.toLowerCase());
+      
+      if (aIndex === -1 && bIndex === -1) return 0;
+      if (aIndex === -1) return 1;
+      if (bIndex === -1) return -1;
+      return aIndex - bIndex;
+    });
+
+    // Return at most 4 fields
+    return fields.slice(0, 4);
   }
 }
