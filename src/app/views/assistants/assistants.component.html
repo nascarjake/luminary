@@ -22,7 +22,7 @@
         <tr>
           <td>{{ assistant.name }}</td>
           <td>{{ assistant.model }}</td>
-          <td>{{ assistant.created_at | date:'medium' }}</td>
+          <td>{{ assistant.created_at * 1000 | date:'medium' }}</td>
           <td>
             <p-button
               icon="pi pi-pencil"

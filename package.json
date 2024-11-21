@@ -1,7 +1,7 @@
 {
-  "name": "gpt-assistant-ui",
+  "name": "luminary",
   "version": "0.0.3",
-  "description": "A desktop AI assistant powered by GPT",
+  "description": "AI Assistant Pipeline Builder - Create, connect, and orchestrate AI workflows",
   "author": {
     "name": "Jacob Clark"
   },
@@ -68,15 +68,12 @@
     "typescript": "~5.2.2"
   },
   "build": {
-    "appId": "com.gptassistant.app",
-    "productName": "GPT Assistant",
-    "asar": false,
+    "appId": "com.luminary.app",
+    "productName": "Luminary",
     "directories": {
-      "output": "release",
-      "buildResources": "build/assets"
+      "output": "release"
     },
     "files": [
-      "package.json",
       {
         "from": ".",
         "filter": [
@@ -85,7 +82,7 @@
         ]
       },
       {
-        "from": "dist/gpt-assistant-ui/browser",
+        "from": "dist/luminary/browser",
         "to": "dist/browser",
         "filter": [
           "**/*"

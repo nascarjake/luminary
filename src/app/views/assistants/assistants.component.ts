@@ -66,16 +66,61 @@ export class AssistantsComponent implements OnInit {
   }
 
   async onSave(formData: any) {
+    console.log('Received form data in assistants component:', formData);
+    console.log('Tools array before transformation:', formData.tools);
+    
+    const transformedTools = formData.tools;
+    
+    console.log('Final transformed tools array:', transformedTools);
+    
+    this.loading = true;
     try {
       if (formData.id) {
-        await this.openAiService.updateAssistant(formData.id, formData);
+        const payload = {
+          name: formData.name,
+          instructions: formData.instructions,
+          model: formData.model,
+          tools: transformedTools,
+          temperature: formData.temperature
+        };
+        console.log('Update assistant payload:', payload);
+        
+        const updatedAssistant = await this.openAiService.updateAssistant(formData.id, payload);
+        // Update the assistant in the local array
+        const index = this.assistants.findIndex(a => a.id === formData.id);
+        if (index !== -1) {
+          this.assistants[index] = updatedAssistant;
+        }
       } else {
-        await this.openAiService.createAssistant(formData);
+        const payload = {
+          name: formData.name,
+          instructions: formData.instructions,
+          model: formData.model,
+          tools: transformedTools,
+          temperature: formData.temperature
+        };
+        console.log('Create assistant payload:', payload);
+        
+        const newAssistant = await this.openAiService.createAssistant(payload);
+        this.assistants.push(newAssistant);
       }
       this.showDialog = false;
-      this.loadAssistants();
-    } catch (error) {
+      this.selectedAssistant = null;
+    } catch (error: any) {
       console.error('Error saving assistant:', error);
+      // Handle specific error cases
+      if (error.status === 400) {
+        // Handle validation errors
+        console.error('Validation error:', error.error);
+      } else if (error.status === 401) {
+        // Handle authentication errors
+        console.error('Authentication error. Please check your API key.');
+      } else {
+        // Handle other errors
+        console.error('An unexpected error occurred:', error);
+      }
+    } finally {
+      this.loading = false;
     }
   }
 }
