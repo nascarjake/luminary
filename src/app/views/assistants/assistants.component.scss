@@ -1,0 +1,48 @@
+.assistants-page {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.card-header {
+  margin-bottom: 1rem;
+}
+
+.form-field {
+  margin-bottom: 1.5rem;
+
+  label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: var(--text-color);
+  }
+
+  input, textarea {
+    width: 100%;
+  }
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 2rem;
+}
+
+:host ::ng-deep {
+  .p-card {
+    background: var(--surface-card);
+  }
+
+  .p-inputtext {
+    width: 100%;
+  }
+
+  .p-button {
+    margin-left: 0.5rem;
+
+    &:first-child {
+      margin-left: 0;
+    }
+  }
+}
