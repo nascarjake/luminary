@@ -40,11 +40,54 @@ contextBridge.exposeInMainWorld('electron', {
     }
   },
   download: {
-    async downloadFile(url, filePath) {
-      console.log('Preload: Initiating download from', url, 'to', filePath);
-      return ipcRenderer.invoke('download:file', url, filePath);
+    downloadFile: (url, filePath) => ipcRenderer.invoke('download:file', { url, filePath })
+  },
+  terminal: {
+    executeCommand: async (options) => {
+      // Create a map to store output callbacks
+      if (!window._outputCallbacks) {
+        window._outputCallbacks = new Map();
+      }
+
+      // If there's an onOutput callback, set up the listener
+      if (options.onOutput) {
+        const listener = (event, data) => {
+          options.onOutput(data);
+        };
+        
+        // Store the callback
+        window._outputCallbacks.set(options, listener);
+        
+        // Add the listener
+        ipcRenderer.on('terminal:output', listener);
+      }
+
+      try {
+        const result = await ipcRenderer.invoke('terminal:executeCommand', options);
+        
+        // Clean up listener if it exists
+        if (options.onOutput) {
+          const listener = window._outputCallbacks.get(options);
+          if (listener) {
+            ipcRenderer.removeListener('terminal:output', listener);
+            window._outputCallbacks.delete(options);
+          }
+        }
+        
+        return result;
+      } catch (error) {
+        // Clean up listener on error too
+        if (options.onOutput) {
+          const listener = window._outputCallbacks.get(options);
+          if (listener) {
+            ipcRenderer.removeListener('terminal:output', listener);
+            window._outputCallbacks.delete(options);
+          }
+        }
+        throw error;
+      }
     }
-  }
+  },
 });
 
 console.log('=== PRELOAD SCRIPT FINISHED ===');

@@ -353,4 +353,88 @@ export class AiFunctionService {
       throw error;
     }
   }
+
+  /**
+   * Executes a function based on its implementation details and parameters
+   */
+  async executeFunction(
+    functionName: string,
+    args: any,
+    assistantId: string
+  ): Promise<{ output: string }> {
+    try {
+      // Get app config directory for function implementations
+      const baseDir = await window.electron.path.appConfigDir();
+      
+      // Load function implementation for this assistant
+      const implementations = await window.electron.functions.load(baseDir, assistantId);
+      const implementation = implementations[functionName];
+
+      if (!implementation) {
+        throw new Error(`No implementation found for function: ${functionName}`);
+      }
+
+      const { command, script, workingDir } = implementation;
+      if (!command || !script) {
+        throw new Error(`Invalid implementation for function: ${functionName}`);
+      }
+
+      // Convert function arguments to command line arguments
+      const cmdArgs = this.convertArgsToCommandLine(args);
+      
+      // Execute the command with output handling
+      const result = await new Promise<string>((resolve, reject) => {
+        window.electron.terminal.executeCommand({
+          command,
+          args: [script, ...cmdArgs],
+          cwd: workingDir || baseDir,
+          onOutput: (data: string) => {
+            try {
+              // Try to parse as JSON
+              const jsonData = JSON.parse(data);
+              // If it has a message field, use that
+              if (jsonData.message) {
+                this.emitSystemMessage(jsonData.message);
+              } else {
+                // Otherwise stringify the whole object
+                this.emitSystemMessage(JSON.stringify(jsonData));
+              }
+            } catch {
+              // Not JSON, just emit as is
+              this.emitSystemMessage(data);
+            }
+          }
+        }).then(resolve).catch(reject);
+      });
+
+      return { output: result };
+    } catch (error: any) {
+      console.error('Error executing function:', error);
+      throw new Error(`Failed to execute function ${functionName}: ${error.message}`);
+    }
+  }
+
+  /**
+   * Converts function arguments to command line arguments
+   */
+  private convertArgsToCommandLine(args: any): string[] {
+    const cmdArgs: string[] = [];
+    
+    for (const [key, value] of Object.entries(args)) {
+      // Handle different types of arguments
+      if (typeof value === 'boolean') {
+        if (value) {
+          cmdArgs.push(`--${key}`);
+        }
+      } else if (Array.isArray(value)) {
+        cmdArgs.push(`--${key}`, value.join(','));
+      } else if (typeof value === 'object' && value !== null) {
+        cmdArgs.push(`--${key}`, JSON.stringify(value));
+      } else {
+        cmdArgs.push(`--${key}`, String(value));
+      }
+    }
+    
+    return cmdArgs;
+  }
 }

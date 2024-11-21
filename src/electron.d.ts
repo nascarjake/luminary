@@ -22,11 +22,21 @@ declare module 'electron-api' {
     downloadFile(url: string, filePath: string): Promise<boolean>;
   }
 
+  interface ElectronTerminal {
+    executeCommand(options: {
+      command: string;
+      args: string[];
+      cwd: string;
+      onOutput?: (data: string) => void;
+    }): Promise<string>;
+  }
+
   interface Electron {
     fs: ElectronFS;
     path: ElectronPath;
     functions: ElectronFunctions;
     download: ElectronDownload;
+    terminal: ElectronTerminal;
   }
 
   global {

@@ -83,17 +83,45 @@ export class AiMessageService {
     return { returnMessage: output.output };
   }
 
-  private externalFunctions = {
-    sendOutlines: async (args: any, threadId: string) => {
-      return this.aiFunctionService.sendOutlines(args.output);
-    },
-    sendScript: async (args: any, threadId: string) => {
-      return this.aiFunctionService.sendScript(args.output, threadId, args.title);
-    },
-    sendToPictory: async (args: any, threadId: string) => {
-      return this.aiFunctionService.sendToPictory(args.output, threadId, args.title);
+  private async handleRequiredAction(run: OAThreadRun): Promise<void> {
+    if (run.required_action?.type !== 'submit_tool_outputs') {
+      return;
     }
-  };
+
+    const toolOutputs: { tool_call_id: string; output: string }[] = [];
+
+    for (const toolCall of run.required_action.submit_tool_outputs.tool_calls) {
+      if (toolCall.type !== 'function') continue;
+
+      try {
+        const args = JSON.parse(toolCall.function.arguments);
+        const { output } = await this.aiFunctionService.executeFunction(
+          toolCall.function.name,
+          args,
+          run.assistant_id
+        );
+        
+        toolOutputs.push({
+          tool_call_id: toolCall.id,
+          output: output
+        });
+      } catch (error: any) {
+        console.error('Error executing function:', error);
+        toolOutputs.push({
+          tool_call_id: toolCall.id,
+          output: `Error: ${error.message}`
+        });
+      }
+    }
+
+    if (toolOutputs.length > 0) {
+      await this.getOpenAI().beta.threads.runs.submitToolOutputs(
+        run.thread_id,
+        run.id,
+        { tool_outputs: toolOutputs }
+      );
+    }
+  }
 
   /**
    * Generates an AI response for a given message.
@@ -207,42 +235,7 @@ export class AiMessageService {
           }
         } else if (event.event === 'thread.run.requires_action') {
           if (event.data.status === 'requires_action') {
-            if (event.data.required_action?.type === 'submit_tool_outputs') {
-              run_id = event.data.id;
-              thread_id = event.data.thread_id;
-              const tools_called = event.data.required_action.submit_tool_outputs.tool_calls;
-
-              try {
-                for (let tool of tools_called) {
-                  console.log('tool called', tool);
-                  const tool_name = tool.function.name;
-                  const tool_args = JSON.parse(tool.function.arguments);
-
-                  const tool_output = await this.externalFunctions[tool_name](tool_args, event.data.thread_id);
-                  console.log('ran ' + tool_name, this.externalFunctions[tool_name]);
-                  console.log('output ', tool_output);
-                  
-                  tool_outputs.push({
-                    tool_call_id: tool.id,
-                    output: JSON.stringify(tool_output)
-                  });
-                }
-
-                console.log('sending output', tool_outputs);
-                stream = this.getOpenAI().beta.threads.runs.submitToolOutputsStream(
-                  event.data.thread_id,
-                  run_id,
-                  {
-                    tool_outputs
-                  }
-                );
-                return this.handleResponse(stream);
-              } catch (error) {
-                // Clean up the run if tool execution fails
-                await this.cleanupFailedRun(thread_id, run_id, 'Tool execution failed');
-                throw error;
-              }
-            }
+            await this.handleRequiredAction(event.data);
           }
         } else if (event.event === 'thread.run.failed') {
           const errorMessage = event.data.last_error?.message || 'Unknown error occurred';
