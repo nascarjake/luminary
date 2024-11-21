@@ -10,6 +10,13 @@ import { OAResponseList } from '../../lib/objects/OAResponseList';
 import { AvailableFunctions, OARequiredAction } from '../../lib/entities/OAFunctionCall';
 import { Observable, Subject } from 'rxjs';
 
+interface OAModel {
+  id: string;
+  created: number;
+  object: string;
+  owned_by: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -40,13 +47,7 @@ export class OpenAiApiService {
   }
 
   public validateApiKey(): Promise<boolean> {
-    return this.http.get(`${this.apiUrl}/models`, { headers: this.getHeaders() })
-      .pipe(
-        catchError(() => {
-          return throwError(() => new Error('Invalid API key'));
-        })
-      )
-      .toPromise()
+    return this.listModels()
       .then(() => true)
       .catch(() => false);
   }
@@ -95,8 +96,15 @@ export class OpenAiApiService {
   }
 
   public createAssistant(assistant: Partial<OAAssistant>): Promise<OAAssistant> {
+    console.log('Creating assistant with payload:', assistant);
     return this.http.post<OAAssistant>(`${this.apiUrl}/assistants`, assistant, { headers: this.getHeaders() })
-      .pipe(catchError(this.handleError))
+      .pipe(
+        catchError((error) => {
+          console.error('Error creating assistant:', error);
+          console.error('Error response:', error.error);
+          return this.handleError(error);
+        })
+      )
       .toPromise();
   }
 
@@ -113,8 +121,15 @@ export class OpenAiApiService {
   }
 
   public updateAssistant(id: string, assistant: Partial<OAAssistant>): Promise<OAAssistant> {
+    console.log('Updating assistant with payload:', assistant);
     return this.http.post<OAAssistant>(`${this.apiUrl}/assistants/${id}`, assistant, { headers: this.getHeaders() })
-      .pipe(catchError(this.handleError))
+      .pipe(
+        catchError((error) => {
+          console.error('Error updating assistant:', error);
+          console.error('Error response:', error.error);
+          return this.handleError(error);
+        })
+      )
       .toPromise();
   }
 
@@ -174,8 +189,50 @@ export class OpenAiApiService {
     .toPromise();
   }
 
+  public async listModels(): Promise<OAModel[]> {
+    const response = await this.http.get<OAResponseList<OAModel>>(`${this.apiUrl}/models`, { headers: this.getHeaders() })
+      .pipe(catchError(this.handleError))
+      .toPromise();
+    
+    // Filter for models that are compatible with the assistants API
+    const compatibleModels = response.data.filter(model => 
+      model.id.startsWith('gpt-4') || model.id.startsWith('gpt-3.5-turbo')
+    );
+    
+    return compatibleModels;
+  }
+
   private handleError(error: HttpErrorResponse): Promise<never> {
-    const errorMsg = error.error instanceof ErrorEvent ? error.error.message : `Server returned code ${error.status}`;
-    return Promise.reject(new Error(errorMsg));
+    let errorMessage = 'An error occurred';
+    
+    if (error.error instanceof ErrorEvent) {
+      // Client-side error
+      errorMessage = error.error.message;
+    } else {
+      // Server-side error from OpenAI
+      if (error.error?.error) {
+        errorMessage = error.error.error.message;
+      } else if (error.status === 401) {
+        errorMessage = 'Invalid API key';
+      } else if (error.status === 404) {
+        errorMessage = 'Assistant not found';
+      } else if (error.status === 429) {
+        errorMessage = 'Rate limit exceeded';
+      } else if (error.status >= 500) {
+        errorMessage = 'OpenAI service error';
+      }
+    }
+
+    console.error('OpenAI API Error:', {
+      status: error.status,
+      message: errorMessage,
+      error: error.error
+    });
+
+    return Promise.reject({
+      status: error.status,
+      message: errorMessage,
+      error: error.error
+    });
   }
 }

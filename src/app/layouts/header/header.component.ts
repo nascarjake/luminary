@@ -16,7 +16,7 @@ import { Subscription } from 'rxjs';
       <p-menubar [model]="items">
         <ng-template pTemplate="start">
           <div class="logo">
-            <img src="assets/logo.png" alt="Logo" height="40" />
+            <span class="logo-text">Luminary</span>
           </div>
         </ng-template>
       </p-menubar>
@@ -54,11 +54,22 @@ import { Subscription } from 'rxjs';
         display: flex;
         align-items: center;
         margin-right: 2rem;
+        padding: 0 1rem;
+      }
 
-        img {
-          height: 40px;
-          width: auto;
-        }
+      .logo-text {
+        font-family: 'Space Grotesk', sans-serif;
+        font-weight: 500;
+        font-size: 1.75rem;
+        color: #34D399;
+        text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+        letter-spacing: -0.02em;
+        cursor: pointer;
+        transition: color 0.2s ease;
+      }
+
+      .logo-text:hover {
+        color: #10B981;
       }
     }
   `]

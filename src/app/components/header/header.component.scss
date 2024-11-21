@@ -1,0 +1,29 @@
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  background-color: var(--surface-card);
+  border-bottom: 1px solid var(--surface-border);
+}
+
+.logo {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 500;
+  font-size: 1.75rem;
+  color: #34D399; // A nice emerald green
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+  letter-spacing: -0.02em;
+  cursor: pointer;
+  transition: color 0.2s ease;
+
+  &:hover {
+    color: #10B981; // Slightly darker on hover
+  }
+}
+
+.right-content {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}

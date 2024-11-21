@@ -3,7 +3,7 @@
   "version": 1,
   "newProjectRoot": "projects",
   "projects": {
-    "gpt-assistant-ui": {
+    "luminary": {
       "projectType": "application",
       "schematics": {
         "@schematics/angular:component": {
@@ -17,7 +17,7 @@
         "build": {
           "builder": "@angular-devkit/build-angular:application",
           "options": {
-            "outputPath": "dist/gpt-assistant-ui",
+            "outputPath": "dist/luminary",
             "index": "src/index.html",
             "browser": "src/main.ts",
             "polyfills": [
@@ -76,10 +76,10 @@
           "builder": "@angular-devkit/build-angular:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "gpt-assistant-ui:build:production"
+              "buildTarget": "luminary:build:production"
             },
             "development": {
-              "buildTarget": "gpt-assistant-ui:build:development"
+              "buildTarget": "luminary:build:development"
             }
           },
           "defaultConfiguration": "development"
@@ -87,7 +87,7 @@
         "extract-i18n": {
           "builder": "@angular-devkit/build-angular:extract-i18n",
           "options": {
-            "buildTarget": "gpt-assistant-ui:build"
+            "buildTarget": "luminary:build"
           }
         },
         "test": {

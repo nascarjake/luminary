@@ -12,7 +12,17 @@
     </div>
 
     <div class="form-field">
-      <label for="instructions">Instructions</label>
+      <div class="instructions-header">
+        <label for="instructions">Instructions</label>
+        <p-button 
+          icon="pi pi-window-maximize" 
+          (onClick)="showInstructionsDialog()"
+          [text]="true"
+          [rounded]="true"
+          styleClass="p-button-sm p-button-secondary"
+          pTooltip="Edit in full screen"
+        ></p-button>
+      </div>
       <textarea
         id="instructions"
         pInputTextarea
@@ -20,6 +30,7 @@
         [rows]="5"
         [autoResize]="true"
         placeholder="You are a helpful assistant..."
+        class="instructions-textarea"
       ></textarea>
     </div>
 
@@ -29,6 +40,8 @@
         id="model"
         formControlName="model"
         [options]="availableModels"
+        optionLabel="label"
+        optionValue="value"
         placeholder="Select a model"
         [style]="{ width: '100%' }"
       ></p-dropdown>
@@ -72,6 +85,42 @@
       icon="pi pi-check" 
       (onClick)="onSubmit()"
       [loading]="loading"
+    ></p-button>
+  </ng-template>
+</p-dialog>
+
+<!-- Full screen instructions dialog -->
+<p-dialog 
+  [(visible)]="showFullScreenInstructions" 
+  [modal]="true" 
+  [style]="{width: '90vw', height: '90vh'}" 
+  header="Edit Instructions"
+  [maximizable]="true"
+  [closeOnEscape]="true"
+  [draggable]="false"
+  (onHide)="hideInstructionsDialog()"
+>
+  <div class="full-screen-editor">
+    <textarea
+      pInputTextarea
+      [(ngModel)]="fullScreenInstructions"
+      [autoResize]="true"
+      [rows]="20"
+      class="full-screen-textarea"
+    ></textarea>
+  </div>
+  <ng-template pTemplate="footer">
+    <p-button 
+      label="Cancel" 
+      icon="pi pi-times" 
+      (onClick)="hideInstructionsDialog()" 
+      [outlined]="true"
+      [style]="{ marginRight: '.5rem' }"
+    ></p-button>
+    <p-button 
+      label="Apply" 
+      icon="pi pi-check" 
+      (onClick)="applyInstructions()"
     ></p-button>
   </ng-template>
 </p-dialog>
