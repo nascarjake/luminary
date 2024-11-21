@@ -6,12 +6,13 @@ import { InputTextareaModule } from 'primeng/inputtextarea';
 import { DropdownModule } from 'primeng/dropdown';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
-import { MultiSelectModule } from 'primeng/multiselect';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { DialogModule } from 'primeng/dialog';
 import { TooltipModule } from 'primeng/tooltip';
 import { OAAssistant } from '../../../../lib/entities/OAAssistant';
 import { OpenAiApiService } from '../../../services/open-ai-api.service';
+import { FunctionListComponent } from '../../../components/function-list/function-list.component';
+import { FunctionDefinition } from '../../../components/function-editor/function-editor.component';
 
 @Component({
   selector: 'app-assistant-form',
@@ -25,10 +26,10 @@ import { OpenAiApiService } from '../../../services/open-ai-api.service';
     DropdownModule,
     ButtonModule,
     CardModule,
-    MultiSelectModule,
     InputNumberModule,
     DialogModule,
-    TooltipModule
+    TooltipModule,
+    FunctionListComponent
   ],
   templateUrl: './assistant-form.component.html',
   styleUrls: ['./assistant-form.component.scss']
@@ -42,66 +43,61 @@ export class AssistantFormComponent implements OnInit, OnChanges {
 
   assistantForm: FormGroup;
   loading = false;
-  availableModels: { label: string; value: string; }[] = [];
-  availableFunctions = [
-    { label: 'Code Interpreter', value: 'code_interpreter' },
-    { label: 'Retrieval', value: 'retrieval' },
-    { label: 'Function Calling', value: 'function' }
-  ];
-
-  // Full screen instructions editor
   showFullScreenInstructions = false;
   fullScreenInstructions = '';
+  availableModels: { label: string; value: string; }[] = [];
+  functions: FunctionDefinition[] = [];
 
   constructor(
     private fb: FormBuilder,
-    private openAiService: OpenAiApiService
+    private openAiApiService: OpenAiApiService
   ) {
     this.assistantForm = this.fb.group({
       name: ['', Validators.required],
       instructions: [''],
-      model: ['gpt-4', Validators.required],
-      temperature: [1],
-      tools: [[]]
+      model: ['', Validators.required],
+      temperature: [0.7],
     });
   }
 
-  async ngOnInit() {
-    this.resetForm();
-    await this.loadModels();
+  ngOnInit() {
+    this.loadAvailableModels();
   }
 
   ngOnChanges(changes: SimpleChanges) {
     if (changes['assistant'] && this.assistant) {
-      console.log('Assistant changed:', this.assistant);
       this.assistantForm.patchValue({
-        name: this.assistant.name || '',
+        name: this.assistant.name,
         instructions: this.assistant.instructions || '',
-        model: this.assistant.model || 'gpt-4',
-        tools: Array.isArray(this.assistant.tools) ? this.assistant.tools : [],
-        temperature: this.assistant.temperature || 1
+        model: this.assistant.model,
+        temperature: this.assistant.temperature || 0.7,
       });
+
+      // Convert OpenAI tools format to our FunctionDefinition format
+      this.functions = (this.assistant.tools || [])
+        .filter(tool => tool.type === 'function' && tool.function)
+        .map(tool => ({
+          name: tool.function.name,
+          description: tool.function.description || '',
+          parameters: {
+            type: 'object',
+            properties: tool.function.parameters?.properties || {},
+            required: tool.function.parameters?.required || []
+          }
+        }));
     }
   }
 
-  private async loadModels() {
+  async loadAvailableModels() {
     try {
-      const models = await this.openAiService.listModels();
-      this.availableModels = models.map(model => ({
+      const modelList = await this.openAiApiService.listModels();
+      this.availableModels = modelList.map(model => ({
         label: model.id,
         value: model.id
       }));
-      
-      // Set default model if no models are available
-      if (this.availableModels.length === 0) {
-        this.availableModels = [
-          { label: 'GPT-4', value: 'gpt-4' },
-          { label: 'GPT-3.5 Turbo', value: 'gpt-3.5-turbo' }
-        ];
-      }
     } catch (error) {
-      console.error('Error loading models:', error);
-      // Fallback to default models
+      console.error('Failed to load models:', error);
+      // Fallback models
       this.availableModels = [
         { label: 'GPT-4', value: 'gpt-4' },
         { label: 'GPT-3.5 Turbo', value: 'gpt-3.5-turbo' }
@@ -109,32 +105,8 @@ export class AssistantFormComponent implements OnInit, OnChanges {
     }
   }
 
-  private resetForm() {
-    this.assistantForm.reset({
-      model: 'gpt-4',
-      temperature: 1,
-      tools: []
-    });
-  }
-
-  onSubmit() {
-    if (this.assistantForm.valid) {
-      this.loading = true;
-      const formData = this.assistantForm.value;
-      console.log('Form submission - Raw form data:', formData);
-      console.log('Selected tools in form:', formData.tools);
-      this.save.emit({
-        ...formData,
-        id: this.assistant?.id
-      });
-    }
-  }
-
-  hideDialog() {
-    this.visible = false;
-    this.visibleChange.emit(false);
-    this.cancel.emit();
-    this.resetForm();
+  onFunctionsChange(functions: FunctionDefinition[]) {
+    this.functions = functions;
   }
 
   showInstructionsDialog() {
@@ -151,5 +123,42 @@ export class AssistantFormComponent implements OnInit, OnChanges {
       instructions: this.fullScreenInstructions
     });
     this.hideInstructionsDialog();
+  }
+
+  hideDialog() {
+    this.visible = false;
+    this.visibleChange.emit(false);
+    this.cancel.emit();
+  }
+
+  onSubmit() {
+    if (this.assistantForm.valid) {
+      this.loading = true;
+
+      const formValue = this.assistantForm.value;
+      const assistant: Partial<OAAssistant> = {
+        name: formValue.name,
+        instructions: formValue.instructions,
+        model: formValue.model,
+        temperature: formValue.temperature,
+        tools: this.functions.map(func => ({
+          type: 'function',
+          function: {
+            name: func.name,
+            description: func.description,
+            parameters: func.parameters
+          }
+        }))
+      };
+
+      if (this.assistant?.id) {
+        assistant.id = this.assistant.id;
+      }
+
+      this.save.emit(assistant);
+      this.visible = false;
+      this.visibleChange.emit(false);
+      this.loading = false;
+    }
   }
 }

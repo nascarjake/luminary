@@ -1,7 +1,7 @@
 <p-dialog 
   [(visible)]="visible" 
   [modal]="true" 
-  [style]="{width: '450px'}" 
+  [style]="{width: '600px'}" 
   [header]="assistant ? 'Edit Assistant' : 'Create Assistant'"
   (onHide)="hideDialog()"
 >
@@ -60,18 +60,11 @@
       ></p-inputNumber>
     </div>
 
-    <div class="form-field">
-      <label for="functions">Functions</label>
-      <p-multiSelect
-        id="functions"
-        formControlName="tools"
-        [options]="availableFunctions"
-        optionLabel="name"
-        placeholder="Select functions"
-        [style]="{ width: '100%' }"
-      ></p-multiSelect>
-    </div>
+    <app-function-list
+      [(functions)]="functions"
+    ></app-function-list>
   </form>
+
   <ng-template pTemplate="footer">
     <p-button 
       label="Cancel" 
@@ -100,15 +93,14 @@
   [draggable]="false"
   (onHide)="hideInstructionsDialog()"
 >
-  <div class="full-screen-editor">
-    <textarea
-      pInputTextarea
-      [(ngModel)]="fullScreenInstructions"
-      [autoResize]="true"
-      [rows]="20"
-      class="full-screen-textarea"
-    ></textarea>
-  </div>
+  <textarea
+    pInputTextarea
+    [(ngModel)]="fullScreenInstructions"
+    [autoResize]="true"
+    [style]="{ width: '100%', height: 'calc(100% - 80px)' }"
+    class="instructions-textarea"
+  ></textarea>
+
   <ng-template pTemplate="footer">
     <p-button 
       label="Cancel" 
