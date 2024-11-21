@@ -26,10 +26,11 @@ interface OutputGroup {
     <p-dialog
       [(visible)]="visible"
       [modal]="true"
-      [style]="{ width: '90vw' }"
+      [header]="'Generated Outputs'"
+      [style]="{ width: '90vw', height: '90vh' }"
+      [maximizable]="true"
       [draggable]="false"
       [resizable]="false"
-      header="Generated Outputs"
     >
       <div *ngFor="let group of outputGroups$ | async">
         <h3>{{ group.schemaName }}</h3>
