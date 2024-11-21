@@ -52,6 +52,48 @@ ipcMain.handle('path:join', async (_, ...paths) => {
   return result;
 });
 
+// Function implementations directory handling
+ipcMain.handle('functions:ensureDir', async (_, baseDir) => {
+  console.log('Ensuring functions directory exists');
+  const functionsDir = path.join(baseDir, 'functions');
+  if (!fs.existsSync(functionsDir)) {
+    fs.mkdirSync(functionsDir, { recursive: true });
+  }
+  return functionsDir;
+});
+
+ipcMain.handle('functions:save', async (_, baseDir, assistantId, implementations) => {
+  console.log('Saving function implementations for assistant:', assistantId);
+  const functionsDir = path.join(baseDir, 'functions');
+  const filePath = path.join(functionsDir, `functions-${assistantId}.json`);
+  
+  try {
+    fs.writeFileSync(filePath, JSON.stringify(implementations, null, 2));
+    return true;
+  } catch (error) {
+    console.error('Error saving function implementations:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('functions:load', async (_, baseDir, assistantId) => {
+  console.log('Loading function implementations for assistant:', assistantId);
+  const functionsDir = path.join(baseDir, 'functions');
+  const filePath = path.join(functionsDir, `functions-${assistantId}.json`);
+  
+  try {
+    if (!fs.existsSync(filePath)) {
+      console.log('No implementations file found for assistant:', assistantId);
+      return null;
+    }
+    const content = fs.readFileSync(filePath, 'utf8');
+    return JSON.parse(content);
+  } catch (error) {
+    console.error('Error loading function implementations:', error);
+    throw error;
+  }
+});
+
 console.log('Registering download:file handler');
 ipcMain.handle('download:file', async (_, fileUrl, filePath) => {
   console.log('Main Process: Downloading file:', fileUrl, 'to:', filePath);

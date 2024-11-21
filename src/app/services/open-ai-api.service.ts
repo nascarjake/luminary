@@ -122,7 +122,9 @@ export class OpenAiApiService {
 
   public updateAssistant(id: string, assistant: Partial<OAAssistant>): Promise<OAAssistant> {
     console.log('Updating assistant with payload:', assistant);
-    return this.http.post<OAAssistant>(`${this.apiUrl}/assistants/${id}`, assistant, { headers: this.getHeaders() })
+    // Remove id from the request body since it's in the URL
+    const { id: _, ...requestBody } = assistant;
+    return this.http.post<OAAssistant>(`${this.apiUrl}/assistants/${id}`, requestBody, { headers: this.getHeaders() })
       .pipe(
         catchError((error) => {
           console.error('Error updating assistant:', error);
@@ -200,6 +202,14 @@ export class OpenAiApiService {
     );
     
     return compatibleModels;
+  }
+
+  public async createOrUpdateAssistant(assistant: Partial<OAAssistant>): Promise<OAAssistant> {
+    if (assistant.id) {
+      return this.updateAssistant(assistant.id, assistant);
+    } else {
+      return this.createAssistant(assistant);
+    }
   }
 
   private handleError(error: HttpErrorResponse): Promise<never> {

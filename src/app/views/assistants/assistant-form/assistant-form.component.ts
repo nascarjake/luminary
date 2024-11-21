@@ -13,6 +13,7 @@ import { OAAssistant } from '../../../../lib/entities/OAAssistant';
 import { OpenAiApiService } from '../../../services/open-ai-api.service';
 import { FunctionListComponent } from '../../../components/function-list/function-list.component';
 import { FunctionDefinition } from '../../../components/function-editor/function-editor.component';
+import { FunctionImplementationsService } from '../../../services/function-implementations.service';
 
 @Component({
   selector: 'app-assistant-form',
@@ -50,7 +51,8 @@ export class AssistantFormComponent implements OnInit, OnChanges {
 
   constructor(
     private fb: FormBuilder,
-    private openAiApiService: OpenAiApiService
+    private openAiApiService: OpenAiApiService,
+    private functionImplementationsService: FunctionImplementationsService
   ) {
     this.assistantForm = this.fb.group({
       name: ['', Validators.required],
@@ -65,6 +67,18 @@ export class AssistantFormComponent implements OnInit, OnChanges {
   }
 
   ngOnChanges(changes: SimpleChanges) {
+    if (changes['visible'] && changes['visible'].currentValue && !this.assistant) {
+      // Reset form when opening for a new assistant
+      this.assistantForm.reset({
+        name: '',
+        instructions: '',
+        model: '',
+        temperature: 0.7,
+      });
+      this.functions = [];
+      return;
+    }
+
     if (changes['assistant'] && this.assistant) {
       this.assistantForm.patchValue({
         name: this.assistant.name,
@@ -74,7 +88,7 @@ export class AssistantFormComponent implements OnInit, OnChanges {
       });
 
       // Convert OpenAI tools format to our FunctionDefinition format
-      this.functions = (this.assistant.tools || [])
+      const functionDefs = (this.assistant.tools || [])
         .filter(tool => tool.type === 'function' && tool.function)
         .map(tool => ({
           name: tool.function.name,
@@ -85,6 +99,21 @@ export class AssistantFormComponent implements OnInit, OnChanges {
             required: tool.function.parameters?.required || []
           }
         }));
+
+      // Load any saved implementations and merge them with the function definitions
+      this.loadFunctionImplementations(functionDefs);
+    }
+  }
+
+  private async loadFunctionImplementations(functionDefs: FunctionDefinition[]) {
+    if (!this.assistant) return;
+
+    try {
+      const implementations = await this.functionImplementationsService.loadFunctionImplementations(this.assistant.id);
+      this.functions = await this.functionImplementationsService.mergeFunctionImplementations(functionDefs, implementations);
+    } catch (error) {
+      console.error('Failed to load function implementations:', error);
+      this.functions = functionDefs;
     }
   }
 
@@ -131,33 +160,46 @@ export class AssistantFormComponent implements OnInit, OnChanges {
     this.cancel.emit();
   }
 
-  onSubmit() {
-    if (this.assistantForm.valid) {
-      this.loading = true;
+  async onSubmit() {
+    if (this.assistantForm.invalid) return;
 
+    this.loading = true;
+    try {
       const formValue = this.assistantForm.value;
-      const assistant: Partial<OAAssistant> = {
+
+      // Convert our function definitions to OpenAI format
+      const tools = this.functions.map(func => ({
+        type: 'function',
+        function: {
+          name: func.name,
+          description: func.description,
+          parameters: func.parameters
+        }
+      }));
+
+      const assistant = await this.openAiApiService.createOrUpdateAssistant({
+        id: this.assistant?.id,
         name: formValue.name,
         instructions: formValue.instructions,
         model: formValue.model,
         temperature: formValue.temperature,
-        tools: this.functions.map(func => ({
-          type: 'function',
-          function: {
-            name: func.name,
-            description: func.description,
-            parameters: func.parameters
-          }
-        }))
-      };
+        tools
+      });
 
+      // Save function implementations
       if (this.assistant?.id) {
-        assistant.id = this.assistant.id;
+        await this.functionImplementationsService.saveFunctionImplementations(
+          this.assistant.id,
+          this.functions
+        );
       }
 
       this.save.emit(assistant);
       this.visible = false;
       this.visibleChange.emit(false);
+    } catch (error) {
+      console.error('Failed to save assistant:', error);
+    } finally {
       this.loading = false;
     }
   }

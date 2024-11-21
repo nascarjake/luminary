@@ -28,6 +28,17 @@ contextBridge.exposeInMainWorld('electron', {
       return ipcRenderer.invoke('path:join', ...paths);
     }
   },
+  functions: {
+    async ensureDir(baseDir) {
+      return ipcRenderer.invoke('functions:ensureDir', baseDir);
+    },
+    async save(baseDir, assistantId, implementations) {
+      return ipcRenderer.invoke('functions:save', baseDir, assistantId, implementations);
+    },
+    async load(baseDir, assistantId) {
+      return ipcRenderer.invoke('functions:load', baseDir, assistantId);
+    }
+  },
   download: {
     async downloadFile(url, filePath) {
       console.log('Preload: Initiating download from', url, 'to', filePath);
