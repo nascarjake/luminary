@@ -9,15 +9,22 @@ import { basicSetup } from 'codemirror';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { DialogModule } from 'primeng/dialog';
 import { ButtonModule } from 'primeng/button';
+import { InputTextModule } from 'primeng/inputtext';
+import { InputNumberModule } from 'primeng/inputnumber';
 
 export interface FunctionDefinition {
   name: string;
   description: string;
-  strict?: boolean;
   parameters: {
     type: string;
     properties: Record<string, any>;
     required: string[];
+  };
+  implementation?: {
+    command: string;
+    script: string;
+    workingDir?: string;
+    timeout?: number;
   };
 }
 
@@ -28,6 +35,12 @@ const DEFAULT_FUNCTION: FunctionDefinition = {
     type: 'object',
     properties: {},
     required: []
+  },
+  implementation: {
+    command: '',
+    script: '',
+    workingDir: '',
+    timeout: 30000 // Default 30 second timeout
   }
 };
 
@@ -38,7 +51,9 @@ const DEFAULT_FUNCTION: FunctionDefinition = {
     CommonModule,
     FormsModule,
     DialogModule,
-    ButtonModule
+    ButtonModule,
+    InputTextModule,
+    InputNumberModule
   ],
   template: `
     <p-dialog 
@@ -51,8 +66,50 @@ const DEFAULT_FUNCTION: FunctionDefinition = {
       [draggable]="false"
     >
       <div class="function-editor">
-        <div class="editor-container" #editorContainer></div>
-        <div *ngIf="error" class="error-message">{{ error }}</div>
+        <div class="editor-sections">
+          <div class="definition-section">
+            <h3>Function Definition</h3>
+            <p class="section-description">Define how the AI should call this function</p>
+            <div class="editor-container" #editorContainer></div>
+            <div *ngIf="error" class="error-message">{{ error }}</div>
+          </div>
+          
+          <div class="implementation-section">
+            <h3>Implementation</h3>
+            <p class="section-description">Define how to execute this function</p>
+            <div class="implementation-form" *ngIf="functionImpl">
+              <div class="form-field">
+                <label>Command</label>
+                <input type="text" pInputText [(ngModel)]="functionImpl.command" 
+                       placeholder="e.g., python, node, bash">
+                <small>The command to execute (e.g., python, node)</small>
+              </div>
+              
+              <div class="form-field">
+                <label>Script Path</label>
+                <input type="text" pInputText [(ngModel)]="functionImpl.script" 
+                       placeholder="e.g., scripts/my_function.py">
+                <small>Path to the script file relative to working directory</small>
+              </div>
+              
+              <div class="form-field">
+                <label>Working Directory</label>
+                <input type="text" pInputText [(ngModel)]="functionImpl.workingDir" 
+                       placeholder="Optional: /path/to/working/dir">
+                <small>Optional: Working directory for the script</small>
+              </div>
+              
+              <div class="form-field">
+                <label>Timeout (ms)</label>
+                <p-inputNumber [(ngModel)]="functionImpl.timeout" 
+                             [min]="1000" [max]="300000" [step]="1000"
+                             placeholder="30000">
+                </p-inputNumber>
+                <small>Maximum execution time in milliseconds (1000-300000)</small>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="dialog-footer">
         <p-button 
@@ -73,32 +130,91 @@ const DEFAULT_FUNCTION: FunctionDefinition = {
       background-color: var(--surface-ground);
       border-radius: 6px;
       overflow: hidden;
-      height: 500px;
+      height: 700px;
 
-      .editor-container {
+      .editor-sections {
         height: 100%;
-        background-color: var(--surface-section);
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        padding: 1rem;
+        overflow-y: auto;
 
-        :host ::ng-deep .cm-editor {
-          height: 100%;
+        h3 {
+          margin: 0;
+          color: var(--primary-color);
+          font-size: 1.2rem;
+        }
 
-          .cm-scroller {
-            font-family: 'JetBrains Mono', monospace;
-            padding: 1rem;
-          }
+        .section-description {
+          color: var(--text-color-secondary);
+          font-size: 0.875rem;
+          margin: 0.5rem 0 1rem;
+        }
 
-          .cm-gutters {
+        .definition-section {
+          flex: 1;
+          min-height: 400px;
+          
+          .editor-container {
+            height: calc(100% - 80px);
             background-color: var(--surface-section);
-            border: none;
-          }
+            border-radius: 6px;
+            overflow: hidden;
 
-          .cm-activeLineGutter,
-          .cm-activeLine {
-            background-color: var(--surface-hover);
-          }
+            :host ::ng-deep .cm-editor {
+              height: 100%;
 
-          .cm-line {
-            padding: 0 0.5rem;
+              .cm-scroller {
+                font-family: 'JetBrains Mono', monospace;
+                padding: 1rem;
+              }
+
+              .cm-gutters {
+                background-color: var(--surface-section);
+                border: none;
+              }
+
+              .cm-activeLineGutter,
+              .cm-activeLine {
+                background-color: var(--surface-hover);
+              }
+
+              .cm-line {
+                padding: 0 0.5rem;
+              }
+            }
+          }
+        }
+
+        .implementation-section {
+          background: var(--surface-section);
+          border-radius: 6px;
+          padding: 1rem;
+
+          .implementation-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+
+            .form-field {
+              display: flex;
+              flex-direction: column;
+              gap: 0.5rem;
+
+              label {
+                font-weight: 500;
+                color: var(--text-color);
+              }
+
+              small {
+                color: var(--text-color-secondary);
+              }
+
+              input, p-inputNumber {
+                width: 100%;
+              }
+            }
           }
         }
       }
@@ -131,11 +247,11 @@ export class FunctionEditorComponent implements AfterViewInit, OnDestroy {
   private editor?: EditorView;
   error: string | null = null;
   isEditing = false;
+  functionImpl: FunctionDefinition['implementation'] | null = null;
 
   @Input()
   set visible(value: boolean) {
     if (value && this.editorContainer) {
-      // When dialog becomes visible, reinitialize the editor
       setTimeout(() => {
         this.editor?.destroy();
         this.initializeEditor();
@@ -149,7 +265,6 @@ export class FunctionEditorComponent implements AfterViewInit, OnDestroy {
   private _visible = false;
 
   ngAfterViewInit() {
-    // Initial setup of the editor container
     this.initializeEditor();
   }
 
@@ -181,12 +296,19 @@ export class FunctionEditorComponent implements AfterViewInit, OnDestroy {
       state: startState,
       parent: this.editorContainer.nativeElement
     });
+
+    // Initialize implementation form
+    const initialFunction = this.function || DEFAULT_FUNCTION;
+    this.functionImpl = initialFunction.implementation 
+      ? { ...initialFunction.implementation } 
+      : { ...DEFAULT_FUNCTION.implementation! };
+    this.isEditing = !!this.function;
   }
 
   private getInitialDoc(): string {
     const initialFunction = this.function || DEFAULT_FUNCTION;
-    this.isEditing = !!this.function;
-    return JSON.stringify(initialFunction, null, 2);
+    const { implementation, ...functionDef } = initialFunction;
+    return JSON.stringify(functionDef, null, 2);
   }
 
   private validateJson(jsonString: string): boolean {
@@ -227,7 +349,12 @@ export class FunctionEditorComponent implements AfterViewInit, OnDestroy {
     const jsonString = this.editor.state.doc.toString();
     if (this.validateJson(jsonString)) {
       const functionDef = JSON.parse(jsonString);
-      this.save.emit(functionDef);
+      // Merge the implementation details with the function definition
+      const fullFunction: FunctionDefinition = {
+        ...functionDef,
+        implementation: this.functionImpl || undefined
+      };
+      this.save.emit(fullFunction);
       this.visible = false;
       this.visibleChange.emit(false);
     }
