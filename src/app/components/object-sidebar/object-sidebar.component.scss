@@ -216,3 +216,8 @@ div[class*="tree-node"] {
   border-bottom: 1px solid var(--surface-border);
   margin-bottom: 0.5rem;
 }
+
+.panel-actions{
+  position: absolute;
+  right: 24px;
+}
