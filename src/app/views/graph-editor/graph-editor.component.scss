@@ -2,12 +2,26 @@
   width: 100%;
   height: 100vh;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   background-color: var(--surface-ground);
+}
+
+.assistant-library {
+  width: 250px;
+  height: 100%;
+  background-color: var(--surface-card);
+  border-right: 1px solid var(--surface-border);
+  padding: 1rem;
+  overflow-y: auto;
 }
 
 .graph-canvas {
   flex: 1;
   position: relative;
   overflow: hidden;
+  
+  canvas {
+    width: 100%;
+    height: 100%;
+  }
 }
