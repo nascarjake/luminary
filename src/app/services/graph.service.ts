@@ -121,6 +121,8 @@ export class GraphService {
 
       await window.electron.graph.save(configDir, activeProfile.id, graphData);
       console.log('Graph saved successfully for profile:', activeProfile.id);
+
+      // Don't reload the graph after saving - the state is already correct
     } catch (error) {
       console.error('Error saving graph:', error);
       throw error;
