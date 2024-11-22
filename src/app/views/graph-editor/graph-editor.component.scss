@@ -5,33 +5,66 @@
   position: relative;
 }
 
-.graph-area {
+.canvas-container {
   flex: 1;
-  display: flex;
-  flex-direction: column;
+  position: relative;
   height: 100%;
 }
 
-.graph-toolbar {
+.assistant-library {
+  width: 250px;
+  height: 100%;
+  background-color: var(--surface-card);
+  border-right: 1px solid var(--surface-border);
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.graph-area {
+  flex: 1;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  height: 100%;
+  overflow: hidden;
+}
+
+.graph-canvas {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  background-color: #1a1a1a;
+}
+
+.toolbar {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 250px; // Width of assistant-library
   height: 48px;
   background-color: var(--surface-card);
   border-bottom: 1px solid var(--surface-border);
-  padding: 0.5rem 1rem;
+  padding: 0 1rem;
   display: flex;
   align-items: center;
-  gap: 1rem;
+  justify-content: flex-end;
+  pointer-events: none; // Let clicks pass through to canvas
+  
+  // But enable pointer events for buttons
+  > * {
+    pointer-events: auto;
+  }
 }
 
 .save-button {
   padding: 0.5rem 1rem;
   background-color: var(--primary-color);
-  color: var(--primary-color-text);
+  color: white;
   border: none;
   border-radius: 4px;
   cursor: pointer;
   font-size: 0.875rem;
-  font-weight: 500;
   transition: background-color 0.2s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 
   &:hover {
     background-color: var(--primary-600);
@@ -42,44 +75,37 @@
   }
 }
 
-.graph-canvas {
-  flex: 1;
-  width: 100%;
-  height: 100%;
-  background-color: #1a1a1a;
-  
-  // Override litegraph.js styles
-  :global {
-    .litegraph {
-      background-color: var(--surface-ground);
+// Override litegraph.js styles
+:global {
+  .litegraph {
+    background-color: var(--surface-ground);
+    
+    .graphnode {
+      background-color: var(--surface-card);
+      border: 1px solid var(--surface-border);
+      border-radius: 4px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
       
-      .graphnode {
-        background-color: var(--surface-card);
+      &.selected {
+        box-shadow: 0 0 0 2px var(--primary-color);
+      }
+      
+      .nodeheader {
+        background-color: var(--surface-hover);
+        border-bottom: 1px solid var(--surface-border);
+        border-radius: 4px 4px 0 0;
+        padding: 6px 8px;
+      }
+      
+      .nodeinput, .nodeoutput {
+        background-color: var(--surface-section);
         border: 1px solid var(--surface-border);
-        border-radius: 4px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        border-radius: 3px;
+        margin: 2px 4px;
+        padding: 2px 6px;
         
-        &.selected {
-          box-shadow: 0 0 0 2px var(--primary-color);
-        }
-        
-        .nodeheader {
+        &:hover {
           background-color: var(--surface-hover);
-          border-bottom: 1px solid var(--surface-border);
-          border-radius: 4px 4px 0 0;
-          padding: 6px 8px;
-        }
-        
-        .nodeinput, .nodeoutput {
-          background-color: var(--surface-section);
-          border: 1px solid var(--surface-border);
-          border-radius: 3px;
-          margin: 2px 4px;
-          padding: 2px 6px;
-          
-          &:hover {
-            background-color: var(--surface-hover);
-          }
         }
       }
       
@@ -87,8 +113,7 @@
         stroke: var(--primary-color);
         stroke-width: 2px;
         
-        &.selected {
-          stroke: var(--primary-color);
+        &:hover {
           stroke-width: 4px;
         }
       }

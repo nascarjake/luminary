@@ -8,8 +8,6 @@ import { ObjectSchemaService } from '../../services/object-schema.service';
 import { IGraphNodeIO } from '../../interfaces/graph';
 import { ObjectSchema } from '../../interfaces/object-system';
 import * as LiteGraph from 'litegraph.js';
-import { Subscription } from 'rxjs';
-import { MessageService } from 'primeng/api';
 
 // Global LiteGraph type declarations
 declare global {
@@ -30,17 +28,15 @@ declare global {
   template: `
     <div class="graph-editor-container">
       <app-assistant-library></app-assistant-library>
-      <div class="graph-area">
-        <div class="graph-toolbar">
-          <button class="save-button" (click)="saveGraph()">Save Graph</button>
-        </div>
-        <canvas 
-          class="graph-canvas" 
-          #graphCanvas
-          (dragover)="onDragOver($event)"
-          (drop)="onDrop($event)"
-        >
-        </canvas>
+      <canvas 
+        class="graph-canvas" 
+        #graphCanvas
+        (dragover)="onDragOver($event)"
+        (drop)="onDrop($event)"
+      >
+      </canvas>
+      <div class="toolbar">
+        <button class="save-button" (click)="saveGraph()">Save Graph</button>
       </div>
     </div>
   `,
@@ -55,28 +51,24 @@ export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
   private isInitialized = false;
   private schemaCache = new Map<string, ObjectSchema>();
   private nodeRegistry = new Map<number, any>();
-  private profileSubscription: Subscription;
 
   constructor(
     private graphService: GraphService, 
     private configService: ConfigService, 
     private functionImplementationsService: FunctionImplementationsService,
     private objectSchemaService: ObjectSchemaService,
-    private messageService: MessageService,
     private ngZone: NgZone
-  ) {
-    // Subscribe to profile changes
-    this.profileSubscription = this.configService.activeProfile$.subscribe(async () => {
-      if (this.isInitialized) {
-        console.log('Active profile changed, reloading graph...');
-        await this.graphService.reloadGraph();
+  ) {}
+
+  ngOnInit() {
+    this.initializeLiteGraph();
+    
+    // Subscribe to graph state changes
+    this.graphService.state$.subscribe(state => {
+      if (this.isInitialized && state) {
+        this.loadGraphState(state);
       }
     });
-  }
-
-  async ngOnInit() {
-    await this.configService.initialize();
-    this.initializeLiteGraph();
   }
 
   ngAfterViewInit() {
@@ -89,14 +81,8 @@ export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   ngOnDestroy() {
-    if (this.profileSubscription) {
-      this.profileSubscription.unsubscribe();
-    }
     if (this.animationFrameId) {
       cancelAnimationFrame(this.animationFrameId);
-    }
-    if (this.canvas) {
-      this.canvas.clear();
     }
     if (this.graph) {
       this.graph.stop();
@@ -354,28 +340,89 @@ export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
   private loadGraphState(state: any) {
     if (!this.graph) return;
 
-    // Clear existing nodes
+    // Clear existing graph
     this.graph.clear();
+    this.nodeRegistry.clear();
 
-    // Add nodes
-    state.nodes.forEach((node: any) => {
-      const graphNode = window.LiteGraph.createNode('assistant/node');
-      graphNode.pos = [node.position.x, node.position.y];
-      graphNode.properties = {
-        assistantId: node.assistantId,
-        name: node.name
-      };
-      this.graph?.add(graphNode);
-    });
-
-    // Add connections
-    state.connections.forEach((conn: any) => {
-      const fromNode = this.graph?.getNodeById(conn.fromNode);
-      const toNode = this.graph?.getNodeById(conn.toNode);
-      if (fromNode && toNode) {
-        fromNode.connect(conn.fromOutput, toNode, conn.toInput);
+    // Load nodes
+    state.nodes.forEach(node => {
+      const graphNode = this.createAssistantNode(node.assistantId, node.name, node.position);
+      if (graphNode) {
+        this.nodeRegistry.set(graphNode.id, node);
       }
     });
+
+    // Load connections
+    state.connections.forEach(conn => {
+      const fromNode = Array.from(this.nodeRegistry.entries())
+        .find(([_, node]) => node.id === conn.fromNode)?.[0];
+      const toNode = Array.from(this.nodeRegistry.entries())
+        .find(([_, node]) => node.id === conn.toNode)?.[0];
+
+      if (fromNode !== undefined && toNode !== undefined) {
+        const fromGraphNode = this.graph!.getNodeById(fromNode);
+        const toGraphNode = this.graph!.getNodeById(toNode);
+        
+        if (fromGraphNode && toGraphNode) {
+          const outputSlot = this.findSlotIndex(fromGraphNode, conn.fromOutput, 'output');
+          const inputSlot = this.findSlotIndex(toGraphNode, conn.toInput, 'input');
+          
+          if (outputSlot !== -1 && inputSlot !== -1) {
+            fromGraphNode.connect(outputSlot, toGraphNode, inputSlot);
+          }
+        }
+      }
+    });
+
+    // Ensure canvas is updated
+    if (this.canvas) {
+      this.canvas.setDirty(true, true);
+    }
+  }
+
+  private findSlotIndex(node: LiteGraph.LGraphNode, slotName: string, type: 'input' | 'output'): number {
+    const slots = type === 'input' ? node.inputs : node.outputs;
+    return slots?.findIndex(slot => slot.name === slotName) ?? -1;
+  }
+
+  private createAssistantNode(assistantId: string, name: string, position: [number, number]): LiteGraph.LGraphNode | null {
+    const node = window.LiteGraph.createNode('assistant/node') as any;
+    if (!node) {
+      console.error('Failed to create node');
+      return null;
+    }
+
+    // Set node position
+    node.pos = position;
+
+    // Add node to graph first
+    this.graph!.add(node);
+
+    // Ensure node has an ID
+    if (!node.id) {
+      node.id = ++this.graph!.last_node_id;
+    }
+
+    // Register node in internal lookup for our own tracking
+    this.nodeRegistry.set(node.id, node);
+
+    console.log('Node added to graph:', {
+      nodeId: node.id,
+      graphNodes: Array.from(this.nodeRegistry.keys()),
+      addedNode: this.graph!.getNodeById(node.id)
+    });
+
+    return node;
+  }
+
+  async saveGraph() {
+    try {
+      await this.graphService.saveGraph();
+      // You could add a success notification here if desired
+    } catch (error) {
+      console.error('Failed to save graph:', error);
+      // You could add an error notification here if desired
+    }
   }
 
   onDragOver(event: DragEvent) {
@@ -407,37 +454,17 @@ export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
       const y = event.clientY - rect.top;
 
       // Create node instance
-      const node = window.LiteGraph.createNode('assistant/node') as any;
+      const node = this.createAssistantNode(assistant.id, assistant.name, [x, y]);
       if (!node) {
         console.error('Failed to create node');
         return;
       }
 
-      // Set node position
-      node.pos = [x, y];
-
-      // Add node to graph first
-      this.graph.add(node);
-
-      // Ensure node has an ID
-      if (!node.id) {
-        node.id = ++this.graph.last_node_id;
-      }
-
-      // Register node in internal lookup for our own tracking
-      this.nodeRegistry.set(node.id, node);
-
-      console.log('Node added to graph:', {
-        nodeId: node.id,
-        graphNodes: Array.from(this.nodeRegistry.keys()),
-        addedNode: this.graph.getNodeById(node.id)
-      });
-
       // Then update schemas
       await this.updateNodeSchemas(node, assistant);
 
       // Update graph
-      this.graph.setDirtyCanvas(true, true);
+      this.graph!.setDirtyCanvas(true, true);
     } catch (error) {
       console.error('Error handling drop:', error);
     }
@@ -529,34 +556,5 @@ export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
       .split('_')
       .map(word => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ');
-  }
-
-  async saveGraph() {
-    if (this.graph) {
-      try {
-        const activeProfile = this.configService.getActiveProfile();
-        if (!activeProfile) {
-          this.messageService.add({
-            severity: 'warn',
-            summary: 'Cannot Save Graph',
-            detail: 'No active profile selected. Please select a profile first.'
-          });
-          return;
-        }
-        await this.graphService.saveGraph();
-        this.messageService.add({
-          severity: 'success',
-          summary: 'Graph Saved',
-          detail: 'Graph has been saved successfully.'
-        });
-      } catch (error) {
-        console.error('Failed to save graph:', error);
-        this.messageService.add({
-          severity: 'error',
-          summary: 'Save Failed',
-          detail: 'Failed to save graph. Please try again.'
-        });
-      }
-    }
   }
 }
