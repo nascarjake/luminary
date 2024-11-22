@@ -47,6 +47,7 @@ export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
   private animationFrameId?: number;
   private isInitialized = false;
   private schemaCache = new Map<string, ObjectSchema>();
+  private nodeRegistry = new Map<number, any>();
 
   constructor(
     private graphService: GraphService, 
@@ -127,6 +128,14 @@ export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
       (this.graph as any).configure({
         align_to_grid: true
       });
+
+      // Add graph event listeners
+      this.graph.onNodeAdded = (node: any) => {
+        console.log('Node added:', node);
+        if (!node.id) {
+          node.id = this.graph!.last_node_id++;
+        }
+      };
       
       // Start graph execution
       this.graph.start();
@@ -149,6 +158,7 @@ export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
       size: [number, number];
       title: string;
       graph: any;
+      nodeRegistry: Map<number, any>;
 
       constructor() {
         super();
@@ -160,58 +170,146 @@ export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
           outputs: []
         };
         this.size = [180, 60];
+        
+        // Initialize inputs and outputs arrays
+        this.inputs = [];
+        this.outputs = [];
+        
+        // Initialize node registry
+        this.nodeRegistry = new Map<number, any>();
+      }
+
+      configure(info: any) {
+        super.configure(info);
+        return this;
+      }
+
+      onAdded(graph: any) {
+        if (super.onAdded) {
+          super.onAdded(graph);
+        }
+
+        // Ensure node has an ID
+        if (!this.id) {
+          this.id = ++graph.last_node_id;
+        }
+
+        // Get reference to the component's nodeRegistry
+        const component = (graph as any).component;
+        if (component) {
+          this.nodeRegistry = component.nodeRegistry;
+        }
+
+        // Register this node
+        this.nodeRegistry.set(this.id, this);
+
+        console.log('Node added to graph (onAdded):', {
+          nodeId: this.id,
+          graphNodes: Array.from(this.nodeRegistry.keys()),
+          nodesById: Array.from(this.nodeRegistry.entries())
+        });
       }
 
       onConnectionsChange(type: number, slotIndex: number, connected: boolean, linkInfo: any): boolean {
-        if (!linkInfo || !this.graph) return true;
-
-        const fromNode = this.graph._nodes.find((n: any) => n.id === linkInfo.origin_id);
-        const toNode = this.graph._nodes.find((n: any) => n.id === linkInfo.target_id);
+        console.log('onConnectionsChange', { 
+          type, 
+          slotIndex, 
+          connected, 
+          linkInfo,
+          nodeId: this.id,
+          graph: this.graph,
+          isOutput: type === (window.LiteGraph as any).OUTPUT
+        });
         
-        if (!fromNode || !toNode) return false;
-
-        // Check if schemas match
-        const outputSchema = fromNode.properties.outputs[linkInfo.origin_slot].schemaId;
-        const inputSchema = toNode.properties.inputs[linkInfo.target_slot].schemaId;
-        
-        if (outputSchema !== inputSchema) {
-          // Schemas don't match, prevent connection
+        if (!linkInfo || !this.graph) {
+          console.log('No linkInfo or graph');
           return false;
         }
 
-        return true;
-      }
-
-      onExecute() {
-        const inputs = this.properties.inputs;
-        const outputs = this.properties.outputs;
-
-        inputs.forEach((input: IGraphNodeIO, index: number) => {
-          const value = this.getInputData(index);
-          if (value !== undefined) {
-            // Process the input based on its schema
-            // TODO: Implement input processing
-          }
+        // Get nodes using graph's getNodeById method
+        const fromNode = this.graph.getNodeById(linkInfo.origin_id);
+        const toNode = this.graph.getNodeById(linkInfo.target_id);
+        
+        console.log('Found nodes:', {
+          fromNode: fromNode?.id,
+          toNode: toNode?.id,
+          fromNodeProps: fromNode?.properties,
+          toNodeProps: toNode?.properties,
+          thisNode: this.id
         });
 
-        outputs.forEach((output: IGraphNodeIO, index: number) => {
-          // TODO: Set output data based on assistant processing
-          this.setOutputData(index, null);
+        if (!fromNode || !toNode) {
+          console.log('Nodes not found', { 
+            fromNodeId: linkInfo.origin_id, 
+            toNodeId: linkInfo.target_id
+          });
+          return false;
+        }
+
+        // Ensure properties exist
+        if (!fromNode.properties || !toNode.properties) {
+          console.log('Missing properties');
+          return false;
+        }
+
+        // Handle connection based on type
+        if (type === (window.LiteGraph as any).OUTPUT) {
+          // Someone is connecting TO our output (we are fromNode)
+          console.log('Handling output connection - we are source');
+          return this.validateConnection(fromNode, toNode, slotIndex);
+        } else {
+          // Someone is connecting FROM their output TO our input (we are toNode)
+          console.log('Handling input connection - we are target');
+          return this.validateConnection(fromNode, toNode, slotIndex);
+        }
+      }
+
+      validateConnection(fromNode: any, toNode: any, slotIndex: number): boolean {
+        console.log('Validating connection:', {
+          fromId: fromNode.id,
+          toId: toNode.id,
+          slotIndex,
+          fromOutputs: fromNode.properties.outputs,
+          toInputs: toNode.properties.inputs,
+          thisNode: this.id
         });
-      }
 
-      // Add required LGraphNode methods
-      getInputData(index: number): any {
-        return super.getInputData(index);
-      }
+        // Ensure we have schemas to validate
+        if (!fromNode.properties.outputs || !toNode.properties.inputs) {
+          console.log('Missing input/output schemas');
+          return false;
+        }
 
-      setOutputData(index: number, data: any) {
-        super.setOutputData(index, data);
+        // Get the relevant schemas
+        const outputSchema = fromNode.properties.outputs[slotIndex];
+        const inputSchema = toNode.properties.inputs[slotIndex];
+
+        if (!outputSchema || !inputSchema) {
+          console.log('Missing schema for slot:', slotIndex);
+          return false;
+        }
+
+        // Check schema compatibility
+        const isCompatible = outputSchema.id === inputSchema.id;
+        console.log('Schema compatibility:', {
+          outputSchema: outputSchema.id,
+          inputSchema: inputSchema.id,
+          isCompatible,
+          fromNode: fromNode.id,
+          toNode: toNode.id
+        });
+
+        return isCompatible;
       }
     }
 
-    // Register the node type
-    window.LiteGraph.registerNodeType("assistant/base", AssistantNode);
+    // Register the node class
+    (window.LiteGraph as any).registerNodeType('assistant/node', AssistantNode);
+
+    // Store reference to component in graph
+    if (this.graph) {
+      (this.graph as any).component = this;
+    }
   }
 
   private startGraphLoop() {
@@ -237,7 +335,7 @@ export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
 
     // Add nodes
     state.nodes.forEach((node: any) => {
-      const graphNode = window.LiteGraph.createNode('assistant/base');
+      const graphNode = window.LiteGraph.createNode('assistant/node');
       graphNode.pos = [node.position.x, node.position.y];
       graphNode.properties = {
         assistantId: node.assistantId,
@@ -263,59 +361,61 @@ export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
     }
   }
 
-  async onDrop(event: DragEvent) {
-    event.preventDefault();
-    if (!event.dataTransfer || !this.graph || !this.isInitialized) {
-      console.error('Graph not ready for drops');
-      return;
-    }
-
-    const data = event.dataTransfer.getData('application/json');
-    if (!data) {
-      console.error('No data in drop event');
-      return;
-    }
-
+  public async onDrop(event: DragEvent) {
     try {
-      const assistant = JSON.parse(data);
-      if (assistant.type === 'assistant') {
-        // Get drop position relative to canvas
-        const rect = this.canvasRef.nativeElement.getBoundingClientRect();
-        const x = event.clientX - rect.left;
-        const y = event.clientY - rect.top;
+      event.preventDefault();
 
-        // Create node instance
-        const node = window.LiteGraph.createNode('assistant/base') as any;
-        if (!node) {
-          console.error('Failed to create node');
-          return;
-        }
-
-        // Set node properties
-        node.properties.assistantId = assistant.id;
-        node.properties.name = assistant.name;
-        node.title = assistant.name;
-
-        // Position the node
-        node.pos = [x, y];
-        
-        // Add node to graph
-        this.graph.add(node);
-
-        // Add node to graph service
-        const graphNode = this.graphService.addNode(assistant.id, assistant.name, { x, y });
-        node.id = parseInt(graphNode.id); // Ensure IDs match between visual and data nodes
-
-        // Load and update node schemas
-        await this.updateNodeSchemas(node, assistant);
-
-        // Force graph to redraw
-        if (this.canvas) {
-          this.canvas.setDirty(true, true);
-        }
+      const data = event.dataTransfer?.getData('application/json');
+      if (!data) {
+        console.error('No data in drag event');
+        return;
       }
+
+      const assistant = JSON.parse(data);
+      if (!this.graph || !this.canvas) {
+        console.error('Graph or canvas not initialized');
+        return;
+      }
+
+      // Get drop position relative to canvas
+      const rect = this.canvasRef.nativeElement.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+
+      // Create node instance
+      const node = window.LiteGraph.createNode('assistant/node') as any;
+      if (!node) {
+        console.error('Failed to create node');
+        return;
+      }
+
+      // Set node position
+      node.pos = [x, y];
+
+      // Add node to graph first
+      this.graph.add(node);
+
+      // Ensure node has an ID
+      if (!node.id) {
+        node.id = ++this.graph.last_node_id;
+      }
+
+      // Register node in internal lookup for our own tracking
+      this.nodeRegistry.set(node.id, node);
+
+      console.log('Node added to graph:', {
+        nodeId: node.id,
+        graphNodes: Array.from(this.nodeRegistry.keys()),
+        addedNode: this.graph.getNodeById(node.id)
+      });
+
+      // Then update schemas
+      await this.updateNodeSchemas(node, assistant);
+
+      // Update graph
+      this.graph.setDirtyCanvas(true, true);
     } catch (error) {
-      console.error('Failed to process dropped assistant:', error);
+      console.error('Error handling drop:', error);
     }
   }
 
@@ -341,12 +441,16 @@ export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
         })
       );
 
+      // Clear existing inputs/outputs
+      graphNode.inputs = [];
+      graphNode.outputs = [];
+
       // Update node properties with schema information
       graphNode.properties.inputs = config.inputs.map(schemaId => {
         const schema = this.schemaCache.get(schemaId);
         return {
           name: schema?.name || schemaId,
-          type: "object",
+          type: schema?.name || schemaId, // Use schema name as type
           schemaId,
           description: schema?.description
         };
@@ -356,7 +460,7 @@ export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
         const schema = this.schemaCache.get(schemaId);
         return {
           name: schema?.name || schemaId,
-          type: "object",
+          type: schema?.name || schemaId, // Use schema name as type
           schemaId,
           description: schema?.description
         };
@@ -366,14 +470,23 @@ export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
       graphNode.inputs = graphNode.properties.inputs.map((input: IGraphNodeIO) => ({
         name: input.name,
         type: input.type,
-        label: input.name
+        label: input.name,
+        link: null,
+        slot_index: graphNode.inputs.length
       }));
 
       graphNode.outputs = graphNode.properties.outputs.map((output: IGraphNodeIO) => ({
         name: output.name,
         type: output.type,
-        label: output.name
+        label: output.name,
+        links: [],
+        slot_index: graphNode.outputs.length
       }));
+      
+      // Update node properties
+      graphNode.properties.assistantId = assistant.id;
+      graphNode.properties.name = assistant.name;
+      graphNode.title = assistant.name;
       
       // Force node to resize based on new slots
       graphNode.size = graphNode.computeSize();
