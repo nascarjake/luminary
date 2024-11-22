@@ -44,6 +44,11 @@ declare module 'electron-api' {
     }): Promise<string>;
   }
 
+  interface ElectronGraph {
+    save(baseDir: string, profileId: string, graphData: any): Promise<boolean>;
+    load(baseDir: string, profileId: string): Promise<any>;
+  }
+
   interface Electron {
     fs: ElectronFS;
     path: ElectronPath;
@@ -51,6 +56,7 @@ declare module 'electron-api' {
     assistant: ElectronAssistant;
     download: ElectronDownload;
     terminal: ElectronTerminal;
+    graph: ElectronGraph;
   }
 
   global {

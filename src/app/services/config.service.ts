@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { AppConfig } from '../../lib/entities/AppConfig';
+import { BehaviorSubject, Observable } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
@@ -11,6 +12,7 @@ export class ConfigService {
     profiles: []
   };
   private initialized = false;
+  private activeProfileSubject = new BehaviorSubject<AppConfig['profiles'][number] | undefined>(undefined);
 
   constructor() {}
 
@@ -52,6 +54,11 @@ export class ConfigService {
     
     console.log('ConfigService initialized with active profile:', this.activeProfile);
     this.initialized = true;
+    this.activeProfileSubject.next(this.activeProfile);
+  }
+
+  public get activeProfile$(): Observable<AppConfig['profiles'][number] | undefined> {
+    return this.activeProfileSubject.asObservable();
   }
 
   public createProfile(profile: AppConfig['profiles'][number]): void {
@@ -90,6 +97,7 @@ export class ConfigService {
     }
     console.log('Setting active profile:', profile);
     this.activeProfile = profile;
+    this.activeProfileSubject.next(profile);
   }
 
   public setDefaultProfile(profile: AppConfig['profiles'][number]): void {

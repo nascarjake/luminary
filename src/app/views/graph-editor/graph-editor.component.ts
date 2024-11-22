@@ -8,6 +8,8 @@ import { ObjectSchemaService } from '../../services/object-schema.service';
 import { IGraphNodeIO } from '../../interfaces/graph';
 import { ObjectSchema } from '../../interfaces/object-system';
 import * as LiteGraph from 'litegraph.js';
+import { Subscription } from 'rxjs';
+import { MessageService } from 'primeng/api';
 
 // Global LiteGraph type declarations
 declare global {
@@ -28,13 +30,18 @@ declare global {
   template: `
     <div class="graph-editor-container">
       <app-assistant-library></app-assistant-library>
-      <canvas 
-        class="graph-canvas" 
-        #graphCanvas
-        (dragover)="onDragOver($event)"
-        (drop)="onDrop($event)"
-      >
-      </canvas>
+      <div class="graph-area">
+        <div class="graph-toolbar">
+          <button class="save-button" (click)="saveGraph()">Save Graph</button>
+        </div>
+        <canvas 
+          class="graph-canvas" 
+          #graphCanvas
+          (dragover)="onDragOver($event)"
+          (drop)="onDrop($event)"
+        >
+        </canvas>
+      </div>
     </div>
   `,
   styleUrls: ['./graph-editor.component.scss']
@@ -48,16 +55,27 @@ export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
   private isInitialized = false;
   private schemaCache = new Map<string, ObjectSchema>();
   private nodeRegistry = new Map<number, any>();
+  private profileSubscription: Subscription;
 
   constructor(
     private graphService: GraphService, 
     private configService: ConfigService, 
     private functionImplementationsService: FunctionImplementationsService,
     private objectSchemaService: ObjectSchemaService,
+    private messageService: MessageService,
     private ngZone: NgZone
-  ) {}
+  ) {
+    // Subscribe to profile changes
+    this.profileSubscription = this.configService.activeProfile$.subscribe(async () => {
+      if (this.isInitialized) {
+        console.log('Active profile changed, reloading graph...');
+        await this.graphService.reloadGraph();
+      }
+    });
+  }
 
-  ngOnInit() {
+  async ngOnInit() {
+    await this.configService.initialize();
     this.initializeLiteGraph();
   }
 
@@ -71,8 +89,14 @@ export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   ngOnDestroy() {
+    if (this.profileSubscription) {
+      this.profileSubscription.unsubscribe();
+    }
     if (this.animationFrameId) {
       cancelAnimationFrame(this.animationFrameId);
+    }
+    if (this.canvas) {
+      this.canvas.clear();
     }
     if (this.graph) {
       this.graph.stop();
@@ -505,5 +529,34 @@ export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
       .split('_')
       .map(word => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ');
+  }
+
+  async saveGraph() {
+    if (this.graph) {
+      try {
+        const activeProfile = this.configService.getActiveProfile();
+        if (!activeProfile) {
+          this.messageService.add({
+            severity: 'warn',
+            summary: 'Cannot Save Graph',
+            detail: 'No active profile selected. Please select a profile first.'
+          });
+          return;
+        }
+        await this.graphService.saveGraph();
+        this.messageService.add({
+          severity: 'success',
+          summary: 'Graph Saved',
+          detail: 'Graph has been saved successfully.'
+        });
+      } catch (error) {
+        console.error('Failed to save graph:', error);
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Save Failed',
+          detail: 'Failed to save graph. Please try again.'
+        });
+      }
+    }
   }
 }
