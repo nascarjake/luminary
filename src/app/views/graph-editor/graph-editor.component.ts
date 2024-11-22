@@ -4,7 +4,9 @@ import { AssistantLibraryComponent } from '../../components/assistant-library/as
 import { GraphService } from '../../services/graph.service';
 import { ConfigService } from '../../services/config.service';
 import { FunctionImplementationsService } from '../../services/function-implementations.service';
+import { ObjectSchemaService } from '../../services/object-schema.service';
 import { IGraphNodeIO } from '../../interfaces/graph';
+import { ObjectSchema } from '../../interfaces/object-system';
 import * as LiteGraph from 'litegraph.js';
 
 // Global LiteGraph type declarations
@@ -44,11 +46,13 @@ export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
   private canvas: LiteGraph.LGraphCanvas | null = null;
   private animationFrameId?: number;
   private isInitialized = false;
+  private schemaCache = new Map<string, ObjectSchema>();
 
   constructor(
     private graphService: GraphService, 
     private configService: ConfigService, 
     private functionImplementationsService: FunctionImplementationsService,
+    private objectSchemaService: ObjectSchemaService,
     private ngZone: NgZone
   ) {}
 
@@ -325,22 +329,51 @@ export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
         assistant.id
       );
 
+      // Load all schemas first
+      await Promise.all(
+        [...config.inputs, ...config.outputs].map(async (schemaId) => {
+          if (!this.schemaCache.has(schemaId)) {
+            const schema = await this.objectSchemaService.getSchema(schemaId);
+            if (schema) {
+              this.schemaCache.set(schemaId, schema);
+            }
+          }
+        })
+      );
+
       // Update node properties with schema information
-      graphNode.properties.inputs = config.inputs.map(schemaId => ({
-        name: schemaId, // We can later get the actual schema name
-        type: "object",
-        schemaId
+      graphNode.properties.inputs = config.inputs.map(schemaId => {
+        const schema = this.schemaCache.get(schemaId);
+        return {
+          name: schema?.name || schemaId,
+          type: "object",
+          schemaId,
+          description: schema?.description
+        };
+      });
+
+      graphNode.properties.outputs = config.outputs.map(schemaId => {
+        const schema = this.schemaCache.get(schemaId);
+        return {
+          name: schema?.name || schemaId,
+          type: "object",
+          schemaId,
+          description: schema?.description
+        };
+      });
+
+      // Update node appearance with labeled slots
+      graphNode.inputs = graphNode.properties.inputs.map((input: IGraphNodeIO) => ({
+        name: input.name,
+        type: input.type,
+        label: input.name
       }));
 
-      graphNode.properties.outputs = config.outputs.map(schemaId => ({
-        name: schemaId, // We can later get the actual schema name
-        type: "object",
-        schemaId
+      graphNode.outputs = graphNode.properties.outputs.map((output: IGraphNodeIO) => ({
+        name: output.name,
+        type: output.type,
+        label: output.name
       }));
-
-      // Update node appearance
-      graphNode.inputs = graphNode.properties.inputs.map((input: IGraphNodeIO) => [input.type, input.name]);
-      graphNode.outputs = graphNode.properties.outputs.map((output: IGraphNodeIO) => [output.type, output.name]);
       
       // Force node to resize based on new slots
       graphNode.size = graphNode.computeSize();
@@ -350,5 +383,14 @@ export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
     } catch (error) {
       console.error('Failed to update node schemas:', error);
     }
+  }
+
+  private formatSchemaName(schemaId: string): string {
+    // Convert schema ID to a readable name
+    // Example: "function_call_request" -> "Function Call Request"
+    return schemaId
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
   }
 }
