@@ -17,6 +17,7 @@ import { FunctionDefinition } from '../../../components/function-editor/function
 import { FunctionImplementationsService } from '../../../services/function-implementations.service';
 import { ObjectSchemaService } from '../../../services/object-schema.service';
 import { ObjectSchema } from '../../../interfaces/object-system';
+import { ConfigService } from '../../../services/config.service';
 
 @Component({
   selector: 'app-assistant-form',
@@ -58,7 +59,8 @@ export class AssistantFormComponent implements OnInit, OnChanges {
     private formBuilder: FormBuilder,
     private openAiService: OpenAiApiService,
     private functionImplementationsService: FunctionImplementationsService,
-    private objectSchemaService: ObjectSchemaService
+    private objectSchemaService: ObjectSchemaService,
+    private configService: ConfigService
   ) {
     this.assistantForm = this.formBuilder.group({
       name: ['', Validators.required],
@@ -121,9 +123,30 @@ export class AssistantFormComponent implements OnInit, OnChanges {
   private async loadFunctionImplementations(functionDefs: FunctionDefinition[]) {
     if (!this.assistant) return;
 
+    const activeProfile = await this.configService.getActiveProfile();
+    if (!activeProfile) {
+      console.error('No active profile found');
+      this.functions = functionDefs;
+      return;
+    }
+
     try {
-      const implementations = await this.functionImplementationsService.loadFunctionImplementations(this.assistant.id);
-      this.functions = await this.functionImplementationsService.mergeFunctionImplementations(functionDefs, implementations);
+      const config = await this.functionImplementationsService.loadFunctionImplementations(
+        activeProfile.id,
+        this.assistant.id
+      );
+      
+      // Update functions
+      this.functions = await this.functionImplementationsService.mergeFunctionImplementations(
+        functionDefs, 
+        config.functions.functions
+      );
+      
+      // Update form with inputs and outputs from saved config
+      this.assistantForm.patchValue({
+        input_schemas: config.inputs || [],
+        output_schemas: config.outputs || []
+      });
     } catch (error) {
       console.error('Failed to load function implementations:', error);
       this.functions = functionDefs;
@@ -185,12 +208,37 @@ export class AssistantFormComponent implements OnInit, OnChanges {
         }
       };
 
+      // Include the ID if we're editing an existing assistant
+      if (this.assistant?.id) {
+        assistantData.id = this.assistant.id;
+      }
+
       this.save.emit(assistantData);
     }
   }
 
-  onFunctionsChange(functions: FunctionDefinition[]) {
+  async onFunctionsChange(functions: FunctionDefinition[]) {
     this.functions = functions;
+
+    if (this.assistant) {
+      const activeProfile = await this.configService.getActiveProfile();
+      if (!activeProfile) {
+        console.error('No active profile found');
+        return;
+      }
+
+      try {
+        await this.functionImplementationsService.saveFunctionImplementations(
+          activeProfile.id,
+          this.assistant.id,
+          functions,
+          this.assistantForm.value.input_schemas,
+          this.assistantForm.value.output_schemas
+        );
+      } catch (error) {
+        console.error('Failed to save function implementations:', error);
+      }
+    }
   }
 
   showInstructionsDialog() {

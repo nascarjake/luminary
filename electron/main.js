@@ -164,6 +164,58 @@ ipcMain.handle('terminal:executeCommand', async (event, options) => {
   });
 });
 
+// Assistant configuration handling
+ipcMain.handle('assistant:save', async (_, baseDir, profileId, assistantId, config) => {
+  console.log('Saving assistant configuration:', { profileId, assistantId });
+  const filePath = path.join(baseDir, `assistant-${profileId}-${assistantId}.json`);
+  
+  try {
+    fs.writeFileSync(filePath, JSON.stringify(config, null, 2));
+    return true;
+  } catch (error) {
+    console.error('Error saving assistant configuration:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('assistant:load', async (_, baseDir, profileId, assistantId) => {
+  console.log('Loading assistant configuration:', { profileId, assistantId });
+  const filePath = path.join(baseDir, `assistant-${profileId}-${assistantId}.json`);
+  
+  try {
+    if (!fs.existsSync(filePath)) {
+      // Try to load from old location for backward compatibility
+      const oldFunctionsDir = path.join(baseDir, 'functions');
+      const oldFilePath = path.join(oldFunctionsDir, `functions-${assistantId}.json`);
+      
+      if (fs.existsSync(oldFilePath)) {
+        console.log('Found old function file, migrating to new format...');
+        const oldContent = fs.readFileSync(oldFilePath, 'utf8');
+        const functions = JSON.parse(oldContent);
+        // Migrate to new format
+        const newConfig = {
+          functions,
+          inputs: [],
+          outputs: []
+        };
+        // Save in new format
+        fs.writeFileSync(filePath, JSON.stringify(newConfig, null, 2));
+        return newConfig;
+      }
+      
+      console.log('No configuration found for assistant:', { profileId, assistantId });
+      return null;
+    }
+    const content = fs.readFileSync(filePath, 'utf8');
+    return JSON.parse(content);
+  } catch (error) {
+    console.error('Error loading assistant configuration:', error);
+    throw error;
+  }
+});
+
+// Keep old handlers for backward compatibility during transition
+
 function createWindow() {
   console.log('Creating window');
   

@@ -18,6 +18,19 @@ declare module 'electron-api' {
     load(baseDir: string, assistantId: string): Promise<any>;
   }
 
+  interface ElectronAssistant {
+    save(baseDir: string, profileId: string, assistantId: string, config: {
+      functions: any;
+      inputs: string[];
+      outputs: string[];
+    }): Promise<boolean>;
+    load(baseDir: string, profileId: string, assistantId: string): Promise<{
+      functions: any;
+      inputs: string[];
+      outputs: string[];
+    } | null>;
+  }
+
   interface ElectronDownload {
     downloadFile(url: string, filePath: string): Promise<boolean>;
   }
@@ -35,6 +48,7 @@ declare module 'electron-api' {
     fs: ElectronFS;
     path: ElectronPath;
     functions: ElectronFunctions;
+    assistant: ElectronAssistant;
     download: ElectronDownload;
     terminal: ElectronTerminal;
   }

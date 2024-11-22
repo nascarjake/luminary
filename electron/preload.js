@@ -39,6 +39,14 @@ contextBridge.exposeInMainWorld('electron', {
       return ipcRenderer.invoke('functions:load', baseDir, assistantId);
     }
   },
+  assistant: {
+    async save(baseDir, profileId, assistantId, config) {
+      return ipcRenderer.invoke('assistant:save', baseDir, profileId, assistantId, config);
+    },
+    async load(baseDir, profileId, assistantId) {
+      return ipcRenderer.invoke('assistant:load', baseDir, profileId, assistantId);
+    }
+  },
   download: {
     downloadFile: (url, filePath) => ipcRenderer.invoke('download:file', { url, filePath })
   },
