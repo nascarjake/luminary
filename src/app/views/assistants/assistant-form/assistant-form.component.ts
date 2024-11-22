@@ -9,11 +9,14 @@ import { CardModule } from 'primeng/card';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { DialogModule } from 'primeng/dialog';
 import { TooltipModule } from 'primeng/tooltip';
+import { MultiSelectModule } from 'primeng/multiselect';
 import { OAAssistant } from '../../../../lib/entities/OAAssistant';
 import { OpenAiApiService } from '../../../services/open-ai-api.service';
 import { FunctionListComponent } from '../../../components/function-list/function-list.component';
 import { FunctionDefinition } from '../../../components/function-editor/function-editor.component';
 import { FunctionImplementationsService } from '../../../services/function-implementations.service';
+import { ObjectSchemaService } from '../../../services/object-schema.service';
+import { ObjectSchema } from '../../../interfaces/object-system';
 
 @Component({
   selector: 'app-assistant-form',
@@ -30,6 +33,7 @@ import { FunctionImplementationsService } from '../../../services/function-imple
     InputNumberModule,
     DialogModule,
     TooltipModule,
+    MultiSelectModule,
     FunctionListComponent
   ],
   templateUrl: './assistant-form.component.html',
@@ -48,22 +52,29 @@ export class AssistantFormComponent implements OnInit, OnChanges {
   fullScreenInstructions = '';
   availableModels: { label: string; value: string; }[] = [];
   functions: FunctionDefinition[] = [];
+  availableSchemas: ObjectSchema[] = [];
 
   constructor(
-    private fb: FormBuilder,
-    private openAiApiService: OpenAiApiService,
-    private functionImplementationsService: FunctionImplementationsService
+    private formBuilder: FormBuilder,
+    private openAiService: OpenAiApiService,
+    private functionImplementationsService: FunctionImplementationsService,
+    private objectSchemaService: ObjectSchemaService
   ) {
-    this.assistantForm = this.fb.group({
+    this.assistantForm = this.formBuilder.group({
       name: ['', Validators.required],
       instructions: [''],
       model: ['', Validators.required],
       temperature: [0.7],
+      functions: [[]],
+      input_schemas: [[]],
+      output_schemas: [[]]
     });
   }
 
   ngOnInit() {
-    this.loadAvailableModels();
+    this.loadModels();
+    this.loadFunctions();
+    this.loadSchemas();
   }
 
   ngOnChanges(changes: SimpleChanges) {
@@ -85,6 +96,8 @@ export class AssistantFormComponent implements OnInit, OnChanges {
         instructions: this.assistant.instructions || '',
         model: this.assistant.model,
         temperature: this.assistant.temperature || 0.7,
+        input_schemas: this.assistant.metadata?.input_schemas || [],
+        output_schemas: this.assistant.metadata?.output_schemas || []
       });
 
       // Convert OpenAI tools format to our FunctionDefinition format
@@ -117,9 +130,9 @@ export class AssistantFormComponent implements OnInit, OnChanges {
     }
   }
 
-  async loadAvailableModels() {
+  private async loadModels() {
     try {
-      const modelList = await this.openAiApiService.listModels();
+      const modelList = await this.openAiService.listModels();
       this.availableModels = modelList.map(model => ({
         label: model.id,
         value: model.id
@@ -134,6 +147,48 @@ export class AssistantFormComponent implements OnInit, OnChanges {
     }
   }
 
+  private async loadSchemas() {
+    try {
+      this.availableSchemas = await this.objectSchemaService.listSchemas();
+    } catch (error) {
+      console.error('Failed to load schemas:', error);
+    }
+  }
+
+  private async loadFunctions() {
+    if (!this.assistant) return;
+  }
+
+  onSubmit() {
+    if (this.assistantForm.valid) {
+      const formValue = this.assistantForm.value;
+      const assistantData: Partial<OAAssistant> = {
+        name: formValue.name,
+        instructions: formValue.instructions,
+        model: formValue.model,
+        temperature: formValue.temperature,
+        tools: this.functions.map(func => ({
+          type: 'function',
+          function: {
+            name: func.name,
+            description: func.description,
+            parameters: {
+              type: func.parameters.type,
+              properties: func.parameters.properties,
+              required: func.parameters.required
+            }
+          }
+        })),
+        metadata: {
+          input_schemas: formValue.input_schemas,
+          output_schemas: formValue.output_schemas
+        }
+      };
+
+      this.save.emit(assistantData);
+    }
+  }
+
   onFunctionsChange(functions: FunctionDefinition[]) {
     this.functions = functions;
   }
@@ -143,64 +198,16 @@ export class AssistantFormComponent implements OnInit, OnChanges {
     this.showFullScreenInstructions = true;
   }
 
-  hideInstructionsDialog() {
-    this.showFullScreenInstructions = false;
-  }
-
-  applyInstructions() {
+  applyFullScreenInstructions() {
     this.assistantForm.patchValue({
       instructions: this.fullScreenInstructions
     });
-    this.hideInstructionsDialog();
+    this.showFullScreenInstructions = false;
   }
 
   hideDialog() {
     this.visible = false;
     this.visibleChange.emit(false);
     this.cancel.emit();
-  }
-
-  async onSubmit() {
-    if (this.assistantForm.invalid) return;
-
-    this.loading = true;
-    try {
-      const formValue = this.assistantForm.value;
-
-      // Convert our function definitions to OpenAI format
-      const tools = this.functions.map(func => ({
-        type: 'function',
-        function: {
-          name: func.name,
-          description: func.description,
-          parameters: func.parameters
-        }
-      }));
-
-      const assistant = await this.openAiApiService.createOrUpdateAssistant({
-        id: this.assistant?.id,
-        name: formValue.name,
-        instructions: formValue.instructions,
-        model: formValue.model,
-        temperature: formValue.temperature,
-        tools
-      });
-
-      // Save function implementations
-      if (this.assistant?.id) {
-        await this.functionImplementationsService.saveFunctionImplementations(
-          this.assistant.id,
-          this.functions
-        );
-      }
-
-      this.save.emit(assistant);
-      this.visible = false;
-      this.visibleChange.emit(false);
-    } catch (error) {
-      console.error('Failed to save assistant:', error);
-    } finally {
-      this.loading = false;
-    }
   }
 }

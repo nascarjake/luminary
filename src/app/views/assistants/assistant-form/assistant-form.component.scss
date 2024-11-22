@@ -8,6 +8,12 @@
     color: var(--text-color);
   }
 
+  .helper-text {
+    display: block;
+    margin-top: 0.25rem;
+    color: var(--text-color-secondary);
+  }
+
   input, textarea {
     width: 100%;
   }
@@ -30,6 +36,7 @@
 }
 
 .instructions-textarea {
+  width: 100%;
   min-height: 100px !important;
   resize: vertical;
 }
@@ -48,6 +55,21 @@
     line-height: 1.5;
     padding: 1rem;
   }
+}
+
+.full-screen-instructions {
+  width: 100%;
+  height: calc(100% - 80px);
+  resize: none;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--surface-border);
 }
 
 :host ::ng-deep {

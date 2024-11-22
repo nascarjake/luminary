@@ -57,63 +57,87 @@
         [max]="2"
         [step]="0.1"
         [showButtons]="true"
+        buttonLayout="horizontal"
+        spinnerMode="horizontal"
         [style]="{ width: '100%' }"
+        decrementButtonClass="p-button-secondary"
+        incrementButtonClass="p-button-secondary"
       ></p-inputNumber>
     </div>
 
-    <app-function-list
-      [(functions)]="functions"
-    ></app-function-list>
-  </form>
+    <div class="form-field">
+      <label>Input Schemas</label>
+      <p-multiSelect
+        formControlName="input_schemas"
+        [options]="availableSchemas"
+        optionLabel="name"
+        optionValue="id"
+        [style]="{ width: '100%' }"
+        placeholder="Select input schemas"
+        display="chip"
+      ></p-multiSelect>
+      <small class="helper-text">Objects this assistant can accept as input</small>
+    </div>
 
-  <ng-template pTemplate="footer">
-    <p-button 
-      label="Cancel" 
-      icon="pi pi-times" 
-      (onClick)="hideDialog()" 
-      [outlined]="true"
-      [style]="{ marginRight: '.5rem' }"
-    ></p-button>
-    <p-button 
-      label="Save" 
-      icon="pi pi-check" 
-      (onClick)="onSubmit()"
-      [loading]="loading"
-    ></p-button>
-  </ng-template>
+    <div class="form-field">
+      <label>Output Schemas</label>
+      <p-multiSelect
+        formControlName="output_schemas"
+        [options]="availableSchemas"
+        optionLabel="name"
+        optionValue="id"
+        [style]="{ width: '100%' }"
+        placeholder="Select output schemas"
+        display="chip"
+      ></p-multiSelect>
+      <small class="helper-text">Objects this assistant can produce as output</small>
+    </div>
+
+    <div class="form-field">
+      <label>Functions</label>
+      <app-function-list
+        [functions]="functions"
+        (functionsChange)="onFunctionsChange($event)"
+      ></app-function-list>
+    </div>
+
+    <div class="dialog-footer">
+      <p-button
+        label="Cancel"
+        (onClick)="hideDialog()"
+        styleClass="p-button-text"
+      ></p-button>
+      <p-button
+        label="Save"
+        type="submit"
+        [loading]="loading"
+      ></p-button>
+    </div>
+  </form>
 </p-dialog>
 
-<!-- Full screen instructions dialog -->
-<p-dialog 
-  [(visible)]="showFullScreenInstructions" 
-  [modal]="true" 
-  [style]="{width: '90vw', height: '90vh'}" 
+<p-dialog
+  [(visible)]="showFullScreenInstructions"
+  [modal]="true"
+  [style]="{width: '90vw', height: '90vh'}"
   header="Edit Instructions"
-  [maximizable]="true"
-  [closeOnEscape]="true"
-  [draggable]="false"
-  (onHide)="hideInstructionsDialog()"
 >
   <textarea
     pInputTextarea
     [(ngModel)]="fullScreenInstructions"
+    [rows]="20"
     [autoResize]="true"
-    [style]="{ width: '100%', height: 'calc(100% - 80px)' }"
-    class="instructions-textarea"
+    class="full-screen-instructions"
   ></textarea>
-
-  <ng-template pTemplate="footer">
-    <p-button 
-      label="Cancel" 
-      icon="pi pi-times" 
-      (onClick)="hideInstructionsDialog()" 
-      [outlined]="true"
-      [style]="{ marginRight: '.5rem' }"
+  <div class="dialog-footer">
+    <p-button
+      label="Cancel"
+      (onClick)="showFullScreenInstructions = false"
+      styleClass="p-button-text"
     ></p-button>
-    <p-button 
-      label="Apply" 
-      icon="pi pi-check" 
-      (onClick)="applyInstructions()"
+    <p-button
+      label="Apply"
+      (onClick)="applyFullScreenInstructions()"
     ></p-button>
-  </ng-template>
+  </div>
 </p-dialog>

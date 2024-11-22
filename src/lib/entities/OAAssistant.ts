@@ -15,7 +15,11 @@ export interface OAAssistant {
     };
   }>;
   file_ids?: string[];
-  metadata?: Record<string, any>;
+  metadata?: {
+    input_schemas?: string[];  // Array of schema IDs that this assistant accepts as input
+    output_schemas?: string[]; // Array of schema IDs that this assistant produces as output
+    [key: string]: any;
+  };
   temperature?: number;
   response_format?: { type: string };
 }
