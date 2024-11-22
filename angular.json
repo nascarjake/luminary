@@ -27,19 +27,25 @@
             "inlineStyleLanguage": "scss",
             "assets": [
               "src/favicon.ico",
-              "src/assets"
+              "src/assets",
+              {
+                "glob": "**/*",
+                "input": "src/assets/litegraph",
+                "output": "/assets/litegraph"
+              }
             ],
             "styles": [
-              "src/styles.scss"
+              "src/styles.scss",
+              "node_modules/litegraph.js/css/litegraph.css"
             ],
-            "scripts": [],
             "stylePreprocessorOptions": {
                 "includePaths": [
                     "src/styles"
                 ]
             },
             "allowedCommonJsDependencies": [
-              "qs"
+              "qs",
+              "litegraph.js"
             ]
           },
           "configurations": {
