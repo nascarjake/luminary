@@ -3,6 +3,12 @@ import { AssistantFunctionImplementations, FunctionImplementation } from '../int
 import { FunctionDefinition } from '../components/function-editor/function-editor.component';
 import { ConfigService } from './config.service';
 
+interface AssistantConfig {
+  functions: AssistantFunctionImplementations;
+  inputs: string[];
+  outputs: string[];
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -17,14 +23,13 @@ export class FunctionImplementationsService {
         throw new Error('Electron API not available');
       }
 
-      // Get the app config directory and ensure the functions subdirectory exists
+      // Get the app config directory
       this.baseDir = await window.electron.path.appConfigDir();
-      await window.electron.functions.ensureDir(this.baseDir);
     }
     return this.baseDir;
   }
 
-  async saveFunctionImplementations(assistantId: string, functions: FunctionDefinition[]): Promise<void> {
+  async saveFunctionImplementations(profileId: string, assistantId: string, functions: FunctionDefinition[], inputSchemas: string[] = [], outputSchemas: string[] = []): Promise<void> {
     try {
       const baseDir = await this.ensureBaseDir();
 
@@ -45,14 +50,19 @@ export class FunctionImplementationsService {
         throw new Error('Electron API not available');
       }
 
-      await window.electron.functions.save(baseDir, assistantId, implementations);
+      // Save to the new assistant configuration file
+      await window.electron.assistant.save(baseDir, profileId, assistantId, {
+        functions: implementations,
+        inputs: inputSchemas,
+        outputs: outputSchemas
+      });
     } catch (error) {
-      console.error('Failed to save function implementations:', error);
-      throw new Error(`Failed to save function implementations: ${error instanceof Error ? error.message : String(error)}`);
+      console.error('Failed to save assistant configuration:', error);
+      throw new Error(`Failed to save assistant configuration: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
-  async loadFunctionImplementations(assistantId: string): Promise<FunctionImplementation[]> {
+  async loadFunctionImplementations(profileId: string, assistantId: string): Promise<AssistantConfig> {
     try {
       const baseDir = await this.ensureBaseDir();
 
@@ -60,15 +70,15 @@ export class FunctionImplementationsService {
         throw new Error('Electron API not available');
       }
 
-      const data = await window.electron.functions.load(baseDir, assistantId);
-      if (!data) {
-        return [];
+      const config = await window.electron.assistant.load(baseDir, profileId, assistantId);
+      if (!config) {
+        return { functions: { assistantId, functions: [] }, inputs: [], outputs: [] };
       }
 
-      return data.functions;
+      return config;
     } catch (error) {
-      console.error('Failed to load function implementations:', error);
-      throw new Error(`Failed to load function implementations: ${error instanceof Error ? error.message : String(error)}`);
+      console.error('Failed to load assistant configuration:', error);
+      throw new Error(`Failed to load assistant configuration: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
