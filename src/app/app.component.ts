@@ -29,7 +29,6 @@ import { firstValueFrom } from 'rxjs';
   providers: [
     MessageService,
     AuthService,
-    ConfigService,
     ObjectSchemaService,
     ObjectInstanceService,
     ObjectMigrationService,

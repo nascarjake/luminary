@@ -55,12 +55,24 @@ ipcMain.handle('path:join', async (_, ...paths) => {
 
 ipcMain.handle('graph:save', async (_, baseDir, profileId, graphData) => {
   try {
+    console.log('graph:save called with:', {
+      baseDir,
+      profileId,
+      graphDataType: typeof graphData
+    });
+
     const graphDir = path.join(baseDir, 'graphs');
+    console.log('Creating graph directory at:', graphDir);
+    
     if (!fs.existsSync(graphDir)) {
       fs.mkdirSync(graphDir, { recursive: true });
     }
+    
     const graphPath = path.join(graphDir, `graph-${profileId}.json`);
-    await fs.promises.writeFile(graphPath, JSON.stringify(graphData, null, 2));
+    console.log('Saving graph to:', graphPath, graphData);
+    
+    fs.writeFileSync(graphPath, JSON.stringify(graphData, null, 2));
+    console.log('Graph saved successfully');
     return true;
   } catch (error) {
     console.error('Error saving graph:', error);
