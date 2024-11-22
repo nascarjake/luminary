@@ -1,9 +1,8 @@
 .graph-editor-container {
   width: 100%;
-  height: 100vh;
+  height: 100%;
   display: flex;
-  flex-direction: row;
-  background-color: var(--surface-ground);
+  position: relative;
 }
 
 .assistant-library {
@@ -17,11 +16,54 @@
 
 .graph-canvas {
   flex: 1;
-  position: relative;
-  overflow: hidden;
+  width: 100%;
+  height: 100%;
+  background-color: #1a1a1a;
   
-  canvas {
-    width: 100%;
-    height: 100%;
+  // Override litegraph.js styles
+  :global {
+    .litegraph {
+      background-color: var(--surface-ground);
+      
+      .graphnode {
+        background-color: var(--surface-card);
+        border: 1px solid var(--surface-border);
+        border-radius: 4px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        
+        &.selected {
+          box-shadow: 0 0 0 2px var(--primary-color);
+        }
+        
+        .nodeheader {
+          background-color: var(--surface-hover);
+          border-bottom: 1px solid var(--surface-border);
+          border-radius: 4px 4px 0 0;
+          padding: 6px 8px;
+        }
+        
+        .nodeinput, .nodeoutput {
+          background-color: var(--surface-section);
+          border: 1px solid var(--surface-border);
+          border-radius: 3px;
+          margin: 2px 4px;
+          padding: 2px 6px;
+          
+          &:hover {
+            background-color: var(--surface-hover);
+          }
+        }
+      }
+      
+      .connection {
+        stroke: var(--primary-color);
+        stroke-width: 2px;
+        
+        &.selected {
+          stroke: var(--primary-color);
+          stroke-width: 4px;
+        }
+      }
+    }
   }
 }
