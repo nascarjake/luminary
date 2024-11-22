@@ -48,11 +48,11 @@ contextBridge.exposeInMainWorld('electron', {
     }
   },
   graph: {
-    async save(baseDir, graphData) {
-      return ipcRenderer.invoke('graph:save', baseDir, graphData);
+    async save(baseDir, profileId, graphData) {
+      return ipcRenderer.invoke('graph:save', baseDir, profileId, graphData);
     },
-    async load(baseDir) {
-      return ipcRenderer.invoke('graph:load', baseDir);
+    async load(baseDir, profileId) {
+      return ipcRenderer.invoke('graph:load', baseDir, profileId);
     }
   },
   download: {

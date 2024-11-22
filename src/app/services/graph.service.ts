@@ -17,6 +17,14 @@ export class GraphService {
   constructor(private configService: ConfigService) {
     // Load saved graph state if exists
     this.loadGraph();
+
+    // Also subscribe to future profile changes
+    this.configService.activeProfile$.subscribe(profile => {
+      if (profile) {
+        console.log('Active profile changed, reloading graph...');
+        this.loadGraph();
+      }
+    });
   }
 
   get state$(): Observable<IGraphState> {
@@ -82,6 +90,11 @@ export class GraphService {
     });
   }
 
+  updateState(state: IGraphState): void {
+    console.log('Updating graph state:', state);
+    this.graphState.next(state);
+  }
+
   private async getConfigDir(): Promise<string> {
     return await window.electron.path.appConfigDir();
   }
@@ -96,11 +109,15 @@ export class GraphService {
         return;
       }
 
+      console.log('Current graph state before save:', this.currentState);
+      
       const graphData: IGraphSaveData = {
         ...this.currentState,
         version: this.CURRENT_VERSION,
         lastModified: new Date().toISOString()
       };
+
+      console.log('Prepared graph data for save:', graphData);
 
       await window.electron.graph.save(configDir, activeProfile.id, graphData);
       console.log('Graph saved successfully for profile:', activeProfile.id);
