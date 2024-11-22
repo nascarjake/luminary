@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { IAssistantNode, IGraphSaveData, IGraphState } from '../interfaces/graph';
 import { v4 as uuidv4 } from 'uuid';
+import { ConfigService } from '../services/config.service';
 
 @Injectable({
   providedIn: 'root'
@@ -13,7 +14,7 @@ export class GraphService {
     connections: []
   });
 
-  constructor() {
+  constructor(private configService: ConfigService) {
     // Load saved graph state if exists
     this.loadGraph();
   }
@@ -81,29 +82,66 @@ export class GraphService {
     });
   }
 
-  saveGraph(): void {
-    const saveData: IGraphSaveData = {
-      ...this.currentState,
-      version: this.CURRENT_VERSION,
-      lastModified: new Date().toISOString()
-    };
-    localStorage.setItem('graph_state', JSON.stringify(saveData));
+  private async getConfigDir(): Promise<string> {
+    return await window.electron.path.appConfigDir();
   }
 
-  private loadGraph(): void {
-    const savedState = localStorage.getItem('graph_state');
-    if (savedState) {
-      try {
-        const parsed: IGraphSaveData = JSON.parse(savedState);
-        if (parsed.version === this.CURRENT_VERSION) {
-          this.graphState.next({
-            nodes: parsed.nodes,
-            connections: parsed.connections
-          });
-        }
-      } catch (e) {
-        console.error('Failed to load saved graph state:', e);
+  async saveGraph(): Promise<void> {
+    try {
+      const configDir = await this.getConfigDir();
+      const activeProfile = this.configService.getActiveProfile();
+      
+      if (!activeProfile) {
+        console.warn('No active profile found, cannot save graph');
+        return;
       }
+
+      const graphData: IGraphSaveData = {
+        ...this.currentState,
+        version: this.CURRENT_VERSION,
+        lastModified: new Date().toISOString()
+      };
+
+      await window.electron.graph.save(configDir, activeProfile.id, graphData);
+      console.log('Graph saved successfully for profile:', activeProfile.id);
+    } catch (error) {
+      console.error('Error saving graph:', error);
+      throw error;
     }
+  }
+
+  private async loadGraph(): Promise<void> {
+    try {
+      const configDir = await this.getConfigDir();
+      const activeProfile = this.configService.getActiveProfile();
+      
+      if (!activeProfile) {
+        console.warn('No active profile found, starting with empty graph');
+        return;
+      }
+
+      const graphData = await window.electron.graph.load(configDir, activeProfile.id);
+      
+      if (graphData) {
+        // Version check and migration could be added here if needed
+        const { version, lastModified, ...state } = graphData;
+        this.graphState.next(state);
+        console.log('Graph loaded successfully for profile:', activeProfile.id);
+      } else {
+        // Initialize empty graph for new profile
+        this.graphState.next({
+          nodes: [],
+          connections: []
+        });
+        console.log('No existing graph found for profile:', activeProfile.id);
+      }
+    } catch (error) {
+      console.error('Error loading graph:', error);
+      // Don't throw here - just start with empty graph
+    }
+  }
+
+  async reloadGraph(): Promise<void> {
+    await this.loadGraph();
   }
 }

@@ -47,6 +47,14 @@ contextBridge.exposeInMainWorld('electron', {
       return ipcRenderer.invoke('assistant:load', baseDir, profileId, assistantId);
     }
   },
+  graph: {
+    async save(baseDir, graphData) {
+      return ipcRenderer.invoke('graph:save', baseDir, graphData);
+    },
+    async load(baseDir) {
+      return ipcRenderer.invoke('graph:load', baseDir);
+    }
+  },
   download: {
     downloadFile: (url, filePath) => ipcRenderer.invoke('download:file', { url, filePath })
   },

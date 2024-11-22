@@ -53,6 +53,35 @@ ipcMain.handle('path:join', async (_, ...paths) => {
   return result;
 });
 
+ipcMain.handle('graph:save', async (_, baseDir, profileId, graphData) => {
+  try {
+    const graphDir = path.join(baseDir, 'graphs');
+    if (!fs.existsSync(graphDir)) {
+      fs.mkdirSync(graphDir, { recursive: true });
+    }
+    const graphPath = path.join(graphDir, `graph-${profileId}.json`);
+    await fs.promises.writeFile(graphPath, JSON.stringify(graphData, null, 2));
+    return true;
+  } catch (error) {
+    console.error('Error saving graph:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('graph:load', async (_, baseDir, profileId) => {
+  try {
+    const graphPath = path.join(baseDir, 'graphs', `graph-${profileId}.json`);
+    if (!fs.existsSync(graphPath)) {
+      return null;
+    }
+    const data = await fs.promises.readFile(graphPath, 'utf8');
+    return JSON.parse(data);
+  } catch (error) {
+    console.error('Error loading graph:', error);
+    throw error;
+  }
+});
+
 // Function implementations directory handling
 ipcMain.handle('functions:ensureDir', async (_, baseDir) => {
   console.log('Ensuring functions directory exists');
