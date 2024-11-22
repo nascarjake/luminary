@@ -75,6 +75,7 @@
         [style]="{ width: '100%' }"
         placeholder="Select input schemas"
         display="chip"
+        (onChange)="onInputSchemasChange()"
       ></p-multiSelect>
       <small class="helper-text">Objects this assistant can accept as input</small>
     </div>
@@ -89,6 +90,7 @@
         [style]="{ width: '100%' }"
         placeholder="Select output schemas"
         display="chip"
+        (onChange)="onOutputSchemasChange()"
       ></p-multiSelect>
       <small class="helper-text">Objects this assistant can produce as output</small>
     </div>

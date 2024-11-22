@@ -219,26 +219,37 @@ export class AssistantFormComponent implements OnInit, OnChanges {
 
   async onFunctionsChange(functions: FunctionDefinition[]) {
     this.functions = functions;
+    await this.saveImplementations();
+  }
 
-    if (this.assistant) {
-      const activeProfile = await this.configService.getActiveProfile();
-      if (!activeProfile) {
-        console.error('No active profile found');
-        return;
-      }
+  private async saveImplementations() {
+    if (!this.assistant) return;
 
-      try {
-        await this.functionImplementationsService.saveFunctionImplementations(
-          activeProfile.id,
-          this.assistant.id,
-          functions,
-          this.assistantForm.value.input_schemas,
-          this.assistantForm.value.output_schemas
-        );
-      } catch (error) {
-        console.error('Failed to save function implementations:', error);
-      }
+    const activeProfile = await this.configService.getActiveProfile();
+    if (!activeProfile) {
+      console.error('No active profile found');
+      return;
     }
+
+    try {
+      await this.functionImplementationsService.saveFunctionImplementations(
+        activeProfile.id,
+        this.assistant.id,
+        this.functions,
+        this.assistantForm.value.input_schemas,
+        this.assistantForm.value.output_schemas
+      );
+    } catch (error) {
+      console.error('Failed to save function implementations:', error);
+    }
+  }
+
+  async onInputSchemasChange() {
+    await this.saveImplementations();
+  }
+
+  async onOutputSchemasChange() {
+    await this.saveImplementations();
   }
 
   showInstructionsDialog() {
