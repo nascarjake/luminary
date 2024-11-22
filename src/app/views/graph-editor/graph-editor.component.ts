@@ -422,9 +422,9 @@ export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
         return;
       }
 
-      // Convert the current graph state to our format using findNodesByClass
-      const nodes = this.graph.findNodesByClass(LiteGraph.LGraphNode).map(node => ({
-        id: node.id.toString(), // Convert to string
+      // Convert nodes from our registry
+      const nodes = Array.from(this.nodeRegistry.values()).map(node => ({
+        id: node.id.toString(),
         assistantId: node.properties?.assistantId || '',
         name: node.properties?.name || '',
         inputs: node.properties?.inputs || [],
@@ -438,10 +438,10 @@ export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
       // Convert links using the public links property
       const links = Object.values(this.graph.links);
       const connections = links.map(link => ({
-        fromNode: link.origin_id.toString(), // Convert to string
-        fromOutput: link.origin_slot.toString(), // Convert to string
-        toNode: link.target_id.toString(), // Convert to string
-        toInput: link.target_slot.toString() // Convert to string
+        fromNode: link.origin_id.toString(),
+        fromOutput: link.origin_slot.toString(),
+        toNode: link.target_id.toString(),
+        toInput: link.target_slot.toString()
       }));
 
       // Update the graph service state
