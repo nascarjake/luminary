@@ -17,6 +17,10 @@ export const routes: Routes = [
     loadComponent: () => import('./views/assistants/assistants.component').then(c => c.AssistantsComponent)
   },
   {
+    path: 'graph',
+    loadComponent: () => import('./views/graph-editor/graph-editor.component').then(c => c.GraphEditorComponent)
+  },
+  {
     path: 'objects',
     component: ObjectManagerComponent,
     children: [
