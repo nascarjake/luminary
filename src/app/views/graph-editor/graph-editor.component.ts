@@ -191,6 +191,31 @@ export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
 
       configure(info: any) {
         super.configure(info);
+        
+        // Restore properties from saved state
+        if (info.properties) {
+          this.properties = info.properties;
+          this.title = this.properties.name || "Assistant";
+
+          // Clear existing inputs/outputs
+          this.inputs.length = 0;
+          this.outputs.length = 0;
+
+          // Restore inputs
+          if (this.properties.inputs) {
+            this.properties.inputs.forEach((input: IGraphNodeIO) => {
+              this.addInput(input.name, input.type);
+            });
+          }
+
+          // Restore outputs
+          if (this.properties.outputs) {
+            this.properties.outputs.forEach((output: IGraphNodeIO) => {
+              this.addOutput(output.name, output.type);
+            });
+          }
+        }
+        
         return this;
       }
 
@@ -221,16 +246,6 @@ export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
       }
 
       onConnectionsChange(type: number, slotIndex: number, connected: boolean, linkInfo: any): boolean {
-        console.log('onConnectionsChange', { 
-          type, 
-          slotIndex, 
-          connected, 
-          linkInfo,
-          nodeId: this.id,
-          graph: this.graph,
-          isOutput: type === (window.LiteGraph as any).OUTPUT
-        });
-        
         if (!linkInfo || !this.graph) {
           console.log('No linkInfo or graph');
           return false;
@@ -239,20 +254,9 @@ export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
         // Get nodes using graph's getNodeById method
         const fromNode = this.graph.getNodeById(linkInfo.origin_id);
         const toNode = this.graph.getNodeById(linkInfo.target_id);
-        
-        console.log('Found nodes:', {
-          fromNode: fromNode?.id,
-          toNode: toNode?.id,
-          fromNodeProps: fromNode?.properties,
-          toNodeProps: toNode?.properties,
-          thisNode: this.id
-        });
 
         if (!fromNode || !toNode) {
-          console.log('Nodes not found', { 
-            fromNodeId: linkInfo.origin_id, 
-            toNodeId: linkInfo.target_id
-          });
+          console.log('Nodes not found');
           return false;
         }
 
@@ -264,32 +268,13 @@ export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
 
         // Handle connection based on type
         if (type === (window.LiteGraph as any).OUTPUT) {
-          // Someone is connecting TO our output (we are fromNode)
-          console.log('Handling output connection - we are source');
           return this.validateConnection(fromNode, toNode, slotIndex);
         } else {
-          // Someone is connecting FROM their output TO our input (we are toNode)
-          console.log('Handling input connection - we are target');
           return this.validateConnection(fromNode, toNode, slotIndex);
         }
       }
 
       validateConnection(fromNode: any, toNode: any, slotIndex: number): boolean {
-        console.log('Validating connection:', {
-          fromId: fromNode.id,
-          toId: toNode.id,
-          slotIndex,
-          fromOutputs: fromNode.properties.outputs,
-          toInputs: toNode.properties.inputs,
-          thisNode: this.id
-        });
-
-        // Ensure we have schemas to validate
-        if (!fromNode.properties.outputs || !toNode.properties.inputs) {
-          console.log('Missing input/output schemas');
-          return false;
-        }
-
         // Get the relevant schemas
         const outputSchema = fromNode.properties.outputs[slotIndex];
         const inputSchema = toNode.properties.inputs[slotIndex];
@@ -300,26 +285,19 @@ export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
         }
 
         // Check schema compatibility
-        const isCompatible = outputSchema.id === inputSchema.id;
-        console.log('Schema compatibility:', {
-          outputSchema: outputSchema.id,
-          inputSchema: inputSchema.id,
-          isCompatible,
-          fromNode: fromNode.id,
-          toNode: toNode.id
-        });
-
-        return isCompatible;
+        return outputSchema.id === inputSchema.id;
       }
     }
 
-    // Register the node class
-    (window.LiteGraph as any).registerNodeType('assistant/node', AssistantNode);
-
+    // Register the node type
+    window.LiteGraph.registerNodeType("assistant/node", AssistantNode);
+    
     // Store reference to component in graph
     if (this.graph) {
       (this.graph as any).component = this;
     }
+    
+    console.log('Registered AssistantNode type');
   }
 
   private startGraphLoop() {
@@ -340,79 +318,133 @@ export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
   private loadGraphState(state: any) {
     if (!this.graph) return;
 
+    console.log('Loading graph state:', state);
+
     // Clear existing graph
     this.graph.clear();
     this.nodeRegistry.clear();
 
     // Load nodes
     state.nodes.forEach(node => {
-      const graphNode = this.createAssistantNode(node.assistantId, node.name, node.position);
+      console.log('Loading node:', node);
+      
+      // Convert string ID to number for LiteGraph
+      const numericId = parseInt(node.id);
+      if (numericId > this.graph!.last_node_id) {
+        this.graph!.last_node_id = numericId;
+      }
+
+      // Create node with proper type
+      const graphNode = window.LiteGraph.createNode('assistant/node') as LiteGraph.LGraphNode;
       if (graphNode) {
-        this.nodeRegistry.set(graphNode.id, node);
-      }
-    });
-
-    // Load connections
-    state.connections.forEach(conn => {
-      const fromNode = Array.from(this.nodeRegistry.entries())
-        .find(([_, node]) => node.id === conn.fromNode)?.[0];
-      const toNode = Array.from(this.nodeRegistry.entries())
-        .find(([_, node]) => node.id === conn.toNode)?.[0];
-
-      if (fromNode !== undefined && toNode !== undefined) {
-        const fromGraphNode = this.graph!.getNodeById(fromNode);
-        const toGraphNode = this.graph!.getNodeById(toNode);
+        // Set position and ID
+        graphNode.pos = [node.position.x, node.position.y];
+        graphNode.id = numericId;
         
-        if (fromGraphNode && toGraphNode) {
-          const outputSlot = this.findSlotIndex(fromGraphNode, conn.fromOutput, 'output');
-          const inputSlot = this.findSlotIndex(toGraphNode, conn.toInput, 'input');
-          
-          if (outputSlot !== -1 && inputSlot !== -1) {
-            fromGraphNode.connect(outputSlot, toGraphNode, inputSlot);
-          }
-        }
+        // Configure the node with saved properties
+        graphNode.configure({
+          id: numericId,
+          type: "assistant/node",
+          pos: [node.position.x, node.position.y],
+          size: [180, 60],
+          properties: {
+            assistantId: node.assistantId,
+            name: node.name,
+            inputs: node.inputs || [],
+            outputs: node.outputs || []
+          },
+          flags: {},
+          mode: 0,
+          inputs: (node.inputs || []).map((input: any) => ({
+            name: input.name,
+            type: input.type,
+            link: null
+          })),
+          outputs: (node.outputs || []).map((output: any) => ({
+            name: output.name,
+            type: output.type,
+            links: null
+          })),
+          title: node.name || "Assistant"
+        });
+
+        // Add to graph
+        this.graph!.add(graphNode);
+        
+        console.log('Created graph node:', {
+          id: graphNode.id,
+          properties: graphNode.properties,
+          inputs: graphNode.inputs,
+          outputs: graphNode.outputs
+        });
+
+        // Store the original node data in registry
+        this.nodeRegistry.set(numericId, node);
       }
     });
 
-    // Ensure canvas is updated
+    // Load connections after all nodes are created
+    state.connections.forEach(conn => {
+      console.log('Loading connection:', conn);
+      const fromId = parseInt(conn.fromNode);
+      const toId = parseInt(conn.toNode);
+      const fromNode = this.graph!.getNodeById(fromId);
+      const toNode = this.graph!.getNodeById(toId);
+
+      console.log('Found nodes for connection:', {
+        fromNode: fromNode ? { id: fromNode.id, properties: fromNode.properties } : null,
+        toNode: toNode ? { id: toNode.id, properties: toNode.properties } : null
+      });
+
+      if (fromNode && toNode) {
+        const fromSlot = parseInt(conn.fromOutput);
+        const toSlot = parseInt(conn.toInput);
+        fromNode.connect(fromSlot, toNode, toSlot);
+      }
+    });
+
+    // Force a redraw
     if (this.canvas) {
       this.canvas.setDirty(true, true);
     }
   }
 
-  private findSlotIndex(node: LiteGraph.LGraphNode, slotName: string, type: 'input' | 'output'): number {
-    const slots = type === 'input' ? node.inputs : node.outputs;
-    return slots?.findIndex(slot => slot.name === slotName) ?? -1;
-  }
-
-  private createAssistantNode(assistantId: string, name: string, position: [number, number]): LiteGraph.LGraphNode | null {
-    const node = window.LiteGraph.createNode('assistant/node') as any;
-    if (!node) {
-      console.error('Failed to create node');
+  createAssistantNode(assistantId: string, name: string, position: [number, number]): LiteGraph.LGraphNode | null {
+    console.log('Creating assistant node:', { assistantId, name, position });
+    
+    if (!this.graph) {
+      console.error('Cannot create node: graph not initialized');
       return null;
     }
 
-    // Set node position
-    node.pos = position;
-
-    // Add node to graph first
-    this.graph!.add(node);
-
-    // Ensure node has an ID
-    if (!node.id) {
-      node.id = ++this.graph!.last_node_id;
+    const node = window.LiteGraph.createNode('assistant/node') as LiteGraph.LGraphNode;
+    if (!node) {
+      console.error('Failed to create assistant node');
+      return null;
     }
 
-    // Register node in internal lookup for our own tracking
-    this.nodeRegistry.set(node.id, node);
+    // Set node properties
+    node.properties = {
+      assistantId,
+      name,
+      inputs: [],
+      outputs: []
+    };
 
-    console.log('Node added to graph:', {
-      nodeId: node.id,
-      graphNodes: Array.from(this.nodeRegistry.keys()),
-      addedNode: this.graph!.getNodeById(node.id)
-    });
+    console.log('Node properties set:', node.properties);
+
+    // Set position
+    node.pos = position;
+
+    // Add to graph
+    this.graph.add(node);
 
     return node;
+  }
+
+  private findSlotIndex(node: LiteGraph.LGraphNode, slotName: string, type: 'input' | 'output'): number {
+    const slots = type === 'input' ? node.inputs : node.outputs;
+    return slots?.findIndex(slot => slot.name === slotName) ?? -1;
   }
 
   async saveGraph() {
@@ -422,21 +454,19 @@ export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
         return;
       }
 
-      // Convert nodes from our registry
       const nodes = Array.from(this.nodeRegistry.values()).map(node => ({
-        id: node.id.toString(),
-        assistantId: node.properties?.assistantId || '',
-        name: node.properties?.name || '',
-        inputs: node.properties?.inputs || [],
-        outputs: node.properties?.outputs || [],
+        id: node.id,
+        assistantId: node.assistantId,
+        name: node.name,
+        inputs: node.inputs,
+        outputs: node.outputs,
         position: {
-          x: node.pos[0],
-          y: node.pos[1]
+          x: node.position.x,
+          y: node.position.y
         }
       }));
 
-      // Convert links using the public links property
-      const links = Object.values(this.graph.links);
+      const links = this.graph.links ? Object.values(this.graph.links) : [];
       const connections = links.map(link => ({
         fromNode: link.origin_id.toString(),
         fromOutput: link.origin_slot.toString(),
@@ -444,17 +474,16 @@ export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
         toInput: link.target_slot.toString()
       }));
 
-      // Update the graph service state
       this.graphService.updateState({
         nodes,
         connections
       });
 
-      // Now save the updated state
       await this.graphService.saveGraph();
       console.log('Graph saved successfully');
     } catch (error) {
       console.error('Failed to save graph:', error);
+      throw error;
     }
   }
 
