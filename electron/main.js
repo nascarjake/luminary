@@ -291,6 +291,25 @@ function createWindow() {
   win.webContents.on('did-finish-load', () => {
     console.log('Window finished loading');
   });
+
+  // Handle window close
+  win.on('close', async (e) => {
+    e.preventDefault();
+    // Check if we're on the graph page and if there are unsaved changes
+    const hasUnsavedChanges = await win.webContents.executeJavaScript(`
+      const graphEditor = document.querySelector('app-graph-editor');
+      graphEditor ? graphEditor.hasUnsavedChanges() : false;
+    `);
+    
+    if (hasUnsavedChanges) {
+      const response = await win.webContents.executeJavaScript('window.confirm("You have unsaved changes. Are you sure you want to exit?")');
+      if (response) {
+        win.destroy();
+      }
+    } else {
+      win.destroy();
+    }
+  });
 }
 
 app.whenReady().then(() => {
