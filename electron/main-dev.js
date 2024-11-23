@@ -221,7 +221,26 @@ console.log('Registered download:file handler');
 ipcMain.handle('terminal:executeCommand', async (event, options) => {
   return new Promise((resolve, reject) => {
     const { command, args, cwd, stdin } = options;
-    const child = spawn(command, args, { cwd });
+    
+    // Normalize paths in arguments
+    const normalizedArgs = args.map(arg => {
+      if (typeof arg === 'string' && (arg.includes('/') || arg.includes('\\'))) {
+        return path.normalize(arg);
+      }
+      return arg;
+    });
+
+    // Normalize working directory
+    const normalizedCwd = cwd ? path.normalize(cwd) : undefined;
+
+    // Create process with platform-specific options
+    const spawnOptions = {
+      cwd: normalizedCwd,
+      shell: os.platform() === 'win32', // Use shell on Windows
+      env: { ...process.env }
+    };
+
+    const child = spawn(command, normalizedArgs, spawnOptions);
     let output = '';
 
     if (stdin) {
@@ -232,13 +251,13 @@ ipcMain.handle('terminal:executeCommand', async (event, options) => {
     child.stdout.on('data', (data) => {
       const str = data.toString();
       output += str;
-        event.sender.send('terminal:output', str);
+      event.sender.send('terminal:output', str);
     });
 
     child.stderr.on('data', (data) => {
       const str = data.toString();
       output += str;
-        event.sender.send('terminal:output', str);
+      event.sender.send('terminal:output', str);
     });
 
     child.on('error', (error) => {
@@ -249,12 +268,11 @@ ipcMain.handle('terminal:executeCommand', async (event, options) => {
       if (code === 0) {
         resolve(output);
       } else {
-        reject(new Error(`Command failed with code ${code}`));
+        reject(new Error(`Command failed with code ${code}\n${output}`));
       }
     });
   });
 });
-console.log('Registered terminal:executeCommand handler');
 
 function createWindow() {
   console.log('Creating window');
