@@ -54,6 +54,11 @@ export class AssistantFormComponent implements OnInit, OnChanges {
   availableModels: { label: string; value: string; }[] = [];
   functions: FunctionDefinition[] = [];
   availableSchemas: ObjectSchema[] = [];
+  responseFormatOptions = [
+    { label: 'Text', value: 'text' },
+    { label: 'JSON Object', value: 'json_object' },
+    { label: 'JSON Schema', value: 'json_schema' }
+  ];
 
   constructor(
     private formBuilder: FormBuilder,
@@ -67,6 +72,8 @@ export class AssistantFormComponent implements OnInit, OnChanges {
       instructions: [''],
       model: ['', Validators.required],
       temperature: [0.7],
+      top_p: [1],
+      response_format_type: ['text'],
       functions: [[]],
       input_schemas: [[]],
       output_schemas: [[]]
@@ -87,6 +94,8 @@ export class AssistantFormComponent implements OnInit, OnChanges {
         instructions: '',
         model: '',
         temperature: 0.7,
+        top_p: 1,
+        response_format_type: 'text',
       });
       this.functions = [];
       return;
@@ -98,6 +107,8 @@ export class AssistantFormComponent implements OnInit, OnChanges {
         instructions: this.assistant.instructions || '',
         model: this.assistant.model,
         temperature: this.assistant.temperature || 0.7,
+        top_p: this.assistant.top_p || 1,
+        response_format_type: this.assistant.response_format?.type || 'text',
         input_schemas: this.assistant.metadata?.input_schemas || [],
         output_schemas: this.assistant.metadata?.output_schemas || []
       });
@@ -182,14 +193,20 @@ export class AssistantFormComponent implements OnInit, OnChanges {
     if (!this.assistant) return;
   }
 
-  onSubmit() {
-    if (this.assistantForm.valid) {
+  async onSubmit() {
+    if (this.assistantForm.invalid) {
+      return;
+    }
+
+    try {
       const formValue = this.assistantForm.value;
       const assistantData: Partial<OAAssistant> = {
         name: formValue.name,
         instructions: formValue.instructions,
         model: formValue.model,
         temperature: formValue.temperature,
+        top_p: formValue.top_p,
+        response_format: { type: formValue.response_format_type },
         tools: this.functions.map(func => ({
           type: 'function',
           function: {
@@ -214,6 +231,8 @@ export class AssistantFormComponent implements OnInit, OnChanges {
       }
 
       this.save.emit(assistantData);
+    } catch (error) {
+      console.error('Failed to save assistant:', error);
     }
   }
 
