@@ -158,14 +158,12 @@ async function main() {
   try {
     // Get all inputs as a single JSON object with defaults
     const { 
-      content, 
-      threadId, 
+      content,  
       title = '', 
       outputDir = './output' 
     } = JSON.parse(await new Promise(resolve => process.stdin.once('data', resolve)));
 
-    console.log('🚀 Starting video generation:', { 
-      threadId, 
+    console.log('🚀 Starting video generation:', {  
       title 
     });
 
