@@ -9,7 +9,7 @@ import { OAAssistant } from '../../../lib/entities/OAAssistant';
   imports: [CommonModule],
   template: `
     <div class="assistant-library">
-      <h3>Assistant Library</h3>
+      <h3 style="padding-top: 35px; text-align: center">Assistant Library</h3>
       <div class="assistant-list">
         <div 
           *ngFor="let assistant of assistants" 
@@ -29,6 +29,7 @@ import { OAAssistant } from '../../../lib/entities/OAAssistant';
       display: flex;
       flex-direction: column;
       gap: 1rem;
+      min-width: 250px;
     }
 
     h3 {
