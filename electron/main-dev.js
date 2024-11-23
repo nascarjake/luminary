@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, protocol } = require('electron');
+const { app, BrowserWindow, ipcMain, protocol, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -51,6 +51,10 @@ ipcMain.handle('path:join', async (_, ...paths) => {
   const result = path.join(...paths);
   console.log('Joining paths:', paths, 'Result:', result);
   return result;
+});
+
+ipcMain.handle('path:relative', async (_, from, to) => {
+  return path.relative(from, to);
 });
 
 ipcMain.handle('graph:save', async (_, baseDir, profileId, graphData) => {
@@ -216,6 +220,12 @@ ipcMain.handle('download:file', async (_, fileUrl, filePath) => {
   });
 });
 console.log('Registered download:file handler');
+
+// Dialog handlers
+ipcMain.handle('dialog:showOpenDialog', async (event, options) => {
+  const window = BrowserWindow.fromWebContents(event.sender);
+  return dialog.showOpenDialog(window, options);
+});
 
 // Terminal execution
 ipcMain.handle('terminal:executeCommand', async (event, options) => {

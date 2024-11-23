@@ -10,6 +10,7 @@ declare module 'electron-api' {
   interface ElectronPath {
     appConfigDir(): Promise<string>;
     join(...paths: string[]): Promise<string>;
+    relative(from: string, to: string): Promise<string>;
   }
 
   interface ElectronFunctions {
@@ -49,7 +50,21 @@ declare module 'electron-api' {
     load(baseDir: string, profileId: string): Promise<any>;
   }
 
+  interface ElectronDialog {
+    showOpenDialog(options: {
+      title?: string;
+      defaultPath?: string;
+      buttonLabel?: string;
+      filters?: { name: string; extensions: string[] }[];
+      properties?: Array<'openFile' | 'openDirectory' | 'multiSelections' | 'showHiddenFiles'>;
+    }): Promise<{
+      canceled: boolean;
+      filePaths: string[];
+    }>;
+  }
+
   interface IpcRenderer {
+    invoke(channel: string, ...args: any[]): Promise<any>;
     on(channel: string, listener: (event: any, ...args: any[]) => void): void;
     removeListener(channel: string, listener: (event: any, ...args: any[]) => void): void;
   }
@@ -62,6 +77,7 @@ declare module 'electron-api' {
     download: ElectronDownload;
     terminal: ElectronTerminal;
     graph: ElectronGraph;
+    dialog: ElectronDialog;
     ipcRenderer: IpcRenderer;
   }
 

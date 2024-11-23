@@ -4,7 +4,7 @@
   "parameters": {
     "type": "object",
     "properties": {
-      "output": {
+      "content": {
         "type": "string",
         "description": "JSON string containing the video content"
       },

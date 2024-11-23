@@ -21,12 +21,13 @@ contextBridge.exposeInMainWorld('electron', {
     }
   },
   path: {
+    async join(...paths) {
+      return ipcRenderer.invoke('path:join', ...paths);
+    },
     async appConfigDir() {
       return ipcRenderer.invoke('path:appConfigDir');
     },
-    async join(...paths) {
-      return ipcRenderer.invoke('path:join', ...paths);
-    }
+    relative: (from, to) => ipcRenderer.invoke('path:relative', from, to)
   },
   functions: {
     async ensureDir(baseDir) {
@@ -103,6 +104,9 @@ contextBridge.exposeInMainWorld('electron', {
         throw error;
       }
     }
+  },
+  dialog: {
+    showOpenDialog: (options) => ipcRenderer.invoke('dialog:showOpenDialog', options)
   },
   ipcRenderer: {
     on: (channel, listener) => ipcRenderer.on(channel, listener),
