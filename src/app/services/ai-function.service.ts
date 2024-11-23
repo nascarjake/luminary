@@ -383,59 +383,42 @@ export class AiFunctionService {
         throw new Error(`Invalid implementation for function: ${functionName}`);
       }
 
-      // Convert function arguments to command line arguments
-      const { args: cmdArgs, stdin } = this.convertArgsToCommandLine(args);
-      
-      // Execute the command with output handling
-      const result = await new Promise<string>((resolve, reject) => {
-        console.log('Executing command:', command, script, cmdArgs.join(' '));
-        window.electron.terminal.executeCommand({
-          command,
-          args: [script, ...cmdArgs],
-          cwd: workingDir || baseDir,
-          stdin,  // Pass JSON data through stdin if present
-          onOutput: (data: string) => {
-            try {
-              // Try to parse as JSON
-              const jsonData = JSON.parse(data);
-              // If it has a message field, use that
-              if (jsonData.message) {
-                this.emitSystemMessage(jsonData.message);
-              } else {
-                // Otherwise stringify the whole object
-                this.emitSystemMessage(JSON.stringify(jsonData));
-              }
-            } catch {
-              // Not JSON, just emit as is
-              this.emitSystemMessage(data);
-            }
+      // Parse any JSON strings in the args object
+      const processedArgs = Object.entries(args).reduce((acc, [key, value]) => {
+        if (typeof value === 'string') {
+          try {
+            acc[key] = JSON.parse(value);
+          } catch {
+            acc[key] = value; // Keep as string if not valid JSON
           }
-        }).then(resolve).catch(reject);
+        } else {
+          acc[key] = value;
+        }
+        return acc;
+      }, {} as Record<string, any>);
+
+      console.log('Executing function:', functionName, 'with processed args:', processedArgs);
+
+      // Execute the command with output handling
+      const result = await window.electron.terminal.executeCommand({
+        command,
+        args: [script],
+        cwd: workingDir || baseDir,
+        stdin: JSON.stringify(processedArgs)
       });
 
-      return { output: result };
+      try {
+        // Try to parse as JSON
+        const jsonData = JSON.parse(result);
+        // If it has a message field, use that
+        return { output: jsonData.message || result };
+      } catch {
+        // If not JSON, return as is
+        return { output: result };
+      }
     } catch (error: any) {
       console.error('Error executing function:', error);
       throw new Error(`Failed to execute function ${functionName}: ${error.message}`);
     }
-  }
-
-  /**
-   * Converts function arguments to command line arguments
-   */
-  private convertArgsToCommandLine(args: any): { args: string[], stdin?: string } {
-    const cmdArgs: string[] = [];
-    let stdinData: string | undefined;
-
-    for (const [key, value] of Object.entries(args)) {
-      if (typeof value === 'object') {
-        stdinData = JSON.stringify(value);
-        cmdArgs.push(`--${key}`, '-');  // Use '-' to indicate stdin
-      } else {
-        cmdArgs.push(`--${key}`, String(value));
-      }
-    }
-    
-    return { args: cmdArgs, stdin: stdinData };
   }
 }

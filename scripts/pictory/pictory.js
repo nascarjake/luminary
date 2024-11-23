@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 
-import yargs from 'yargs';
-import { hideBin } from 'yargs/helpers';
 import axios from 'axios';
 import fs from 'fs/promises';
 import path from 'path';
+import PictoryClient from './client.js';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 class PictoryClient {
   constructor(config) {
@@ -153,33 +155,18 @@ class PictoryClient {
 }
 
 async function main() {
-  const argv = yargs(hideBin(process.argv))
-    .option('content', {
-      describe: 'JSON string of the Pictory content (use "-" for stdin)',
-      type: 'string',
-      demandOption: true
-    })
-    .option('threadId', {
-      describe: 'Thread ID for tracking',
-      type: 'string',
-      demandOption: true
-    })
-    .option('title', {
-      describe: 'Title of the video',
-      type: 'string',
-      default: ''
-    })
-    .option('outputDir', {
-      describe: 'Directory to save the video',
-      type: 'string',
-      default: './output'
-    })
-    .parse();
-
   try {
+    // Get all inputs as a single JSON object with defaults
+    const { 
+      content, 
+      threadId, 
+      title = '', 
+      outputDir = './output' 
+    } = JSON.parse(await new Promise(resolve => process.stdin.once('data', resolve)));
+
     console.log('🚀 Starting video generation:', { 
-      threadId: argv.threadId, 
-      title: argv.title 
+      threadId, 
+      title 
     });
 
     // Load config from environment
@@ -192,16 +179,6 @@ async function main() {
 
     // Initialize client
     const client = new PictoryClient(config);
-    
-    // Parse content from stdin if specified
-    let content;
-    if (argv.content === '-') {
-      content = JSON.parse(await new Promise(resolve => process.stdin.once('data', resolve)));
-      console.log('📝 Parsed content from stdin');
-    } else {
-      content = JSON.parse(argv.content);
-      console.log('📝 Parsed content from argument');
-    }
     
     // Create storyboard
     const storyboard = await client.createStoryboard(content);
@@ -222,10 +199,10 @@ async function main() {
     }
     
     // Download video
-    const videoName = argv.title || `video-${renderStatus.job_id}`;
+    const videoName = title || `video-${renderStatus.job_id}`;
     const videoPath = await client.downloadVideo(
       renderStatus.data.videoURL,
-      argv.outputDir,
+      outputDir,
       videoName
     );
     

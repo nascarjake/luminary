@@ -1,41 +1,29 @@
 #!/usr/bin/env node
 
-import yargs from 'yargs';
-import { hideBin } from 'yargs/helpers';
-
 async function main() {
-  const argv = yargs(hideBin(process.argv))
-    .option('input', {
-      describe: 'JSON input data (use "-" for stdin)',
-      type: 'string',
-      demandOption: true
-    })
-    .option('param2', {
-      describe: 'Example additional parameter',
-      type: 'string',
-      default: 'default value'
-    })
-    .parse();
-
   try {
-    // Read JSON input from stdin if specified
-    let inputData;
-    if (argv.input === '-') {
-      inputData = JSON.parse(await new Promise(resolve => process.stdin.once('data', resolve)));
-    } else {
-      inputData = argv.input;
-    }
+    // Get all inputs as a single JSON object
+    const inputs = JSON.parse(await new Promise(resolve => process.stdin.once('data', resolve)));
+    
+    // Example of destructuring with defaults
+    const { 
+      requiredParam,           // Required parameter
+      optionalParam = 'default value'  // Optional parameter with default
+    } = inputs;
 
     // Your function logic here
     const result = {
       message: 'Success',
-      data: inputData,
-      param2: argv.param2
+      data: {
+        required: requiredParam,
+        optional: optionalParam
+      }
     };
 
     // Always output JSON
     console.log(JSON.stringify(result));
   } catch (error) {
+    // Always output errors as JSON
     console.error(JSON.stringify({
       error: error.message
     }));
