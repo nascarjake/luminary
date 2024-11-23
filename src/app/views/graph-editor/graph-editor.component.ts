@@ -145,6 +145,20 @@ export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
         if (!node.id) {
           node.id = this.graph!.last_node_id++;
         }
+
+        this.nodeRegistry.set(node.id, {
+          id: node.id.toString(),
+          assistantId: node.properties?.assistantId || '',
+          name: node.properties?.name || '',
+          inputs: node.properties?.inputs || [],
+          outputs: node.properties?.outputs || [],
+          position: {
+            x: node.pos[0],
+            y: node.pos[1]
+          }
+        });
+        
+        console.log('Node registered:', this.nodeRegistry.get(node.id));
       };
       
       // Start graph execution
@@ -454,17 +468,19 @@ export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
         return;
       }
 
-      const nodes = Array.from(this.nodeRegistry.values()).map(node => ({
-        id: node.id,
-        assistantId: node.assistantId,
-        name: node.name,
-        inputs: node.inputs,
-        outputs: node.outputs,
-        position: {
-          x: node.position.x,
-          y: node.position.y
+      const nodes = Array.from(this.nodeRegistry.values()).map(node => {
+          return {
+          id: node.id,
+          assistantId: node.assistantId,
+          name: node.name,
+          inputs: node.inputs,
+          outputs: node.outputs,
+          position: {
+            x: node.position.x,
+            y: node.position.y
+          }
         }
-      }));
+      });
 
       const links = this.graph.links ? Object.values(this.graph.links) : [];
       const connections = links.map(link => ({
@@ -554,16 +570,12 @@ export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
         })
       );
 
-      // Clear existing inputs/outputs
-      graphNode.inputs = [];
-      graphNode.outputs = [];
-
       // Update node properties with schema information
       graphNode.properties.inputs = config.inputs.map(schemaId => {
         const schema = this.schemaCache.get(schemaId);
         return {
           name: schema?.name || schemaId,
-          type: schema?.name || schemaId, // Use schema name as type
+          type: schema?.name || schemaId,
           schemaId,
           description: schema?.description
         };
@@ -573,7 +585,7 @@ export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
         const schema = this.schemaCache.get(schemaId);
         return {
           name: schema?.name || schemaId,
-          type: schema?.name || schemaId, // Use schema name as type
+          type: schema?.name || schemaId,
           schemaId,
           description: schema?.description
         };
@@ -595,11 +607,21 @@ export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
         links: [],
         slot_index: graphNode.outputs.length
       }));
-      
+
       // Update node properties
       graphNode.properties.assistantId = assistant.id;
       graphNode.properties.name = assistant.name;
       graphNode.title = assistant.name;
+      // Update node registry with the new inputs and outputs
+      const existingNode = this.nodeRegistry.get(graphNode.id);
+      if (existingNode) {
+        this.nodeRegistry.set(graphNode.id, {
+          ...existingNode,
+          name: assistant.name,
+          inputs: graphNode.properties.inputs,
+          outputs: graphNode.properties.outputs
+        });
+      }
       
       // Force node to resize based on new slots
       graphNode.size = graphNode.computeSize();
