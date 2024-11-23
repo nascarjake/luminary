@@ -63,6 +63,37 @@
         decrementButtonClass="p-button-secondary"
         incrementButtonClass="p-button-secondary"
       ></p-inputNumber>
+      <small class="helper-text">Controls randomness in responses. Lower values make output more focused and deterministic, higher values make output more creative and varied.</small>
+    </div>
+
+    <div class="form-field">
+      <label for="top_p">Top P</label>
+      <p-inputNumber
+        id="top_p"
+        formControlName="top_p"
+        [min]="0"
+        [max]="1"
+        [step]="0.1"
+        [showButtons]="true"
+        buttonLayout="horizontal"
+        spinnerMode="horizontal"
+        [style]="{ width: '100%' }"
+        decrementButtonClass="p-button-secondary"
+        incrementButtonClass="p-button-secondary"
+      ></p-inputNumber>
+      <small class="helper-text">Controls diversity of model outputs. Lower values make output more focused, higher values more creative.</small>
+    </div>
+
+    <div class="form-field">
+      <label for="response_format">Response Format</label>
+      <p-dropdown
+        id="response_format"
+        [options]="responseFormatOptions"
+        formControlName="response_format_type"
+        [style]="{ width: '100%' }"
+        placeholder="Select response format"
+      ></p-dropdown>
+      <small class="helper-text">Specifies the format that the assistant should use when responding.</small>
     </div>
 
     <div class="form-field">
@@ -96,7 +127,6 @@
     </div>
 
     <div class="form-field">
-      <label>Functions</label>
       <app-function-list
         [functions]="functions"
         (functionsChange)="onFunctionsChange($event)"

@@ -21,5 +21,8 @@ export interface OAAssistant {
     [key: string]: any;
   };
   temperature?: number;
-  response_format?: { type: string };
+  top_p?: number;
+  response_format?: {
+    type: 'text' | 'json_object' | 'json_schema';
+  };
 }
