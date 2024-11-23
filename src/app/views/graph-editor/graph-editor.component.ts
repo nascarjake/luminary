@@ -200,7 +200,15 @@ export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
 
       // Track node movement using canvas events
       if (this.canvas) {
-        this.canvas.onNodeMoved = () => {
+        this.canvas.onNodeMoved = (node: any) => {
+          const registryNode = this.nodeRegistry.get(node.id);
+          if (registryNode) {
+            registryNode.position = {
+              x: node.pos[0],
+              y: node.pos[1]
+            };
+            this.nodeRegistry.set(node.id, registryNode);
+          }
           this.markDirty();
         };
       }
