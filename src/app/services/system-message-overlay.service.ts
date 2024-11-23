@@ -18,7 +18,30 @@ type SystemMessageOverlays = {
   providedIn: 'root'
 })
 export class SystemMessageOverlayService {
+  private overlayLock: Promise<void> = Promise.resolve();
+  
   constructor(private readonly configService: ConfigService) {}
+
+  private async withLock<T>(operation: () => Promise<T>): Promise<T> {
+    const currentLock = this.overlayLock;
+    let releaseLock: () => void;
+    
+    // Create new lock
+    this.overlayLock = new Promise<void>(resolve => {
+      releaseLock = resolve;
+    });
+
+    // Wait for previous operation to complete
+    await currentLock;
+
+    try {
+      // Perform the operation
+      return await operation();
+    } finally {
+      // Release the lock
+      releaseLock!();
+    }
+  }
 
   private async getOverlayFilePath(): Promise<string> {
     const profile = this.configService.getActiveProfile();
@@ -59,32 +82,38 @@ export class SystemMessageOverlayService {
   }
 
   async addSystemMessage(threadId: string, content: string, insertAfterMessageId: string): Promise<void> {
-    const overlays = await this.getOverlays();
-    
-    if (!overlays[threadId]) {
-      overlays[threadId] = {
-        threadId,
-        systemMessages: []
-      };
-    }
-    console.log('Adding system message:', { threadId, content, insertAfterMessageId });
-    overlays[threadId].systemMessages.push({
-      content,
-      insertAfterMessageId
-    });
+    await this.withLock(async () => {
+      const overlays = await this.getOverlays();
+      
+      if (!overlays[threadId]) {
+        overlays[threadId] = {
+          threadId,
+          systemMessages: []
+        };
+      }
+      console.log('Adding system message:', { threadId, content, insertAfterMessageId });
+      overlays[threadId].systemMessages.push({
+        content,
+        insertAfterMessageId
+      });
 
-    await this.saveOverlays(overlays);
+      await this.saveOverlays(overlays);
+    });
   }
 
   async getSystemMessagesForThread(threadId: string): Promise<SystemMessageOverlay['systemMessages']> {
-    const overlays = await this.getOverlays();
-    return overlays[threadId]?.systemMessages || [];
+    return this.withLock(async () => {
+      const overlays = await this.getOverlays();
+      return overlays[threadId]?.systemMessages || [];
+    });
   }
 
   async deleteThreadOverlay(threadId: string): Promise<void> {
-    const overlays = await this.getOverlays();
-    delete overlays[threadId];
-    await this.saveOverlays(overlays);
+    await this.withLock(async () => {
+      const overlays = await this.getOverlays();
+      delete overlays[threadId];
+      await this.saveOverlays(overlays);
+    });
   }
 
   async mergeSystemMessages(threadId: string, messages: OAThreadMessage[]): Promise<OAThreadMessage[]> {
