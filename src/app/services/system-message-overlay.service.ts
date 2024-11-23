@@ -67,7 +67,7 @@ export class SystemMessageOverlayService {
         systemMessages: []
       };
     }
-
+    console.log('Adding system message:', { threadId, content, insertAfterMessageId });
     overlays[threadId].systemMessages.push({
       content,
       insertAfterMessageId
@@ -94,31 +94,61 @@ export class SystemMessageOverlayService {
     // For each system message, find where it should be inserted and add it
     for (const sysMsg of systemMessages) {
       const parentIndex = result.findIndex(m => m.id === sysMsg.insertAfterMessageId);
-      // Skip if we can't find the message to insert after
-      if (parentIndex === -1) {
+      let insertIndex: number;
+      
+      // If no insertAfterMessageId is specified, insert after the first message
+      if (!sysMsg.insertAfterMessageId || parentIndex === -1) {
+        insertIndex = result.length > 0 ? 0 : -1;
+      } else {
+        // Find the message to insert after
+        insertIndex = result.findIndex(m => m.id === sysMsg.insertAfterMessageId);
+      }
+
+      // If we can't find the message to insert after and it's not an empty insertAfterMessageId
+      if (insertIndex === -1 && sysMsg.insertAfterMessageId) {
         console.log(`Skipping system message "${sysMsg.content.slice(0, 20)}..." - parent message not found`);
         continue;
       }
 
       // Find the next user message after the parent
-      let insertIndex = parentIndex + 1;
-      while (insertIndex < result.length && (result[insertIndex].role === 'system' || result[insertIndex].role === 'assistant')) {
-        insertIndex++;
+      let targetIndex = insertIndex + 1;
+      while (targetIndex < result.length && (result[targetIndex].role === 'system' || result[targetIndex].role === 'assistant')) {
+        targetIndex++;
       }
 
       // If we found a next user message, insert after it
-      if (insertIndex < result.length && result[insertIndex].role === 'user') {
+      if (targetIndex < result.length && result[targetIndex].role === 'user') {
         // Find how many system messages we've already inserted after this message
         let offset = 1;
         while (
-          insertIndex + offset < result.length && 
-          result[insertIndex + offset].role === 'system' &&
-          result[insertIndex + offset].id.startsWith('system-')
+          targetIndex + offset < result.length && 
+          result[targetIndex + offset].role === 'system' &&
+          result[targetIndex + offset].id.startsWith('system-')
         ) {
           offset++;
         }
 
-        result.splice(insertIndex + offset, 0, {
+        result.splice(targetIndex + offset, 0, {
+          id: `system-${Date.now()}-${Math.random()}`,
+          created_at: Date.now(),
+          thread_id: threadId,
+          role: 'system',
+          object: 'thread.message',
+          content: [{
+            type: 'text',
+            text: {
+              value: sysMsg.content,
+              annotations: []
+            }
+          }],
+          file_ids: [],
+          assistant_id: null,
+          run_id: null,
+          metadata: {}
+        });
+      } else if (insertIndex === 0 || !result.length) {
+        // If we're inserting at the start or there are no messages yet
+        result.unshift({
           id: `system-${Date.now()}-${Math.random()}`,
           created_at: Date.now(),
           thread_id: threadId,
