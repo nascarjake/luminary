@@ -71,21 +71,23 @@ export class ChatComponent implements OnDestroy {
     });
   }
 
-  private async addSystemMessage(content: string) {
-    if (!this.threadMessages || !this.threadId) return;
-
+  private get lastMessage() {
+    const filteredMessages = this.threadMessages.filter(msg => !msg.id.startsWith('system-') && !msg.id.startsWith('temp-'))
     // Find the last non-system message (from OpenAI)
-    const lastMessage = [...this.threadMessages]
+    const lastMessage = [...(filteredMessages.length > 1 ? this.threadMessages : [])]
       .reverse()
       .find(msg => !msg.id.startsWith('system-') && !msg.id.startsWith('temp-'));
+      return lastMessage;
+  }
 
-    if (!lastMessage) return;
+  private async addSystemMessage(content: string) {
+    if (!this.threadMessages || !this.threadId) return;
 
     // Save to overlay using the permanent OpenAI message ID
     await this.systemMessageOverlay.addSystemMessage(
       this.threadId,
       content,
-      lastMessage.id
+      this.lastMessage?.id || ''
     );
 
     // Add to current messages
