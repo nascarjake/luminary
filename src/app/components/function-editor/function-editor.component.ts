@@ -87,15 +87,25 @@ const DEFAULT_FUNCTION: FunctionDefinition = {
               
               <div class="form-field">
                 <label>Script Path</label>
-                <input type="text" pInputText [(ngModel)]="functionImpl.script" 
-                       placeholder="e.g., scripts/my_function.py">
+                <div class="p-inputgroup">
+                  <input type="text" pInputText [(ngModel)]="functionImpl.script" 
+                         placeholder="e.g., scripts/my_function.py">
+                  <button pButton type="button" icon="pi pi-folder-open" 
+                          (click)="browseScript()" 
+                          pTooltip="Browse for script file"></button>
+                </div>
                 <small>Path to the script file relative to working directory</small>
               </div>
               
               <div class="form-field">
                 <label>Working Directory</label>
-                <input type="text" pInputText [(ngModel)]="functionImpl.workingDir" 
-                       placeholder="Optional: /path/to/working/dir">
+                <div class="p-inputgroup">
+                  <input type="text" pInputText [(ngModel)]="functionImpl.workingDir" 
+                         placeholder="Optional: /path/to/working/dir">
+                  <button pButton type="button" icon="pi pi-folder-open" 
+                          (click)="browseWorkingDir()" 
+                          pTooltip="Browse for working directory"></button>
+                </div>
                 <small>Optional: Working directory for the script</small>
               </div>
               
@@ -235,6 +245,14 @@ const DEFAULT_FUNCTION: FunctionDefinition = {
       border-top: 1px solid var(--surface-border);
       background-color: var(--surface-section);
     }
+
+    .p-inputgroup {
+      display: flex;
+      align-items: center;
+    }
+    .p-inputgroup .p-button {
+      margin-left: 4px;
+    }
   `]
 })
 export class FunctionEditorComponent implements AfterViewInit, OnDestroy {
@@ -364,5 +382,59 @@ export class FunctionEditorComponent implements AfterViewInit, OnDestroy {
     this.cancel.emit();
     this.visible = false;
     this.visibleChange.emit(false);
+  }
+
+  async browseScript() {
+    try {
+      const result = await window.electron.dialog.showOpenDialog({
+        title: 'Select Script File',
+        properties: ['openFile'],
+        filters: [
+          { name: 'Scripts', extensions: ['py', 'js', 'sh', 'bat', 'cmd'] },
+          { name: 'All Files', extensions: ['*'] }
+        ]
+      });
+      
+      if (!result.canceled && result.filePaths.length > 0) {
+        // Get the selected file path
+        const filePath = result.filePaths[0];
+        // If there's a working directory set, try to make the path relative
+        if (this.functionImpl?.workingDir) {
+          // We'll add the relative path functionality in a moment
+          this.functionImpl.script = filePath;
+          // Request relative path from main process
+          const baseDir = this.functionImpl.workingDir;
+          try {
+            // Use the path API through electron
+            const relativePath = await window.electron.path.relative(baseDir, filePath);
+            this.functionImpl.script = relativePath;
+          } catch (error) {
+            console.error('Error making path relative:', error);
+            // Fallback to absolute path
+            this.functionImpl.script = filePath;
+          }
+        } else {
+          // No working directory set, use absolute path
+          this.functionImpl.script = filePath;
+        }
+      }
+    } catch (error) {
+      console.error('Error browsing for script:', error);
+    }
+  }
+
+  async browseWorkingDir() {
+    try {
+      const result = await window.electron.dialog.showOpenDialog({
+        title: 'Select Working Directory',
+        properties: ['openDirectory']
+      });
+      
+      if (!result.canceled && result.filePaths.length > 0) {
+        this.functionImpl.workingDir = result.filePaths[0];
+      }
+    } catch (error) {
+      console.error('Error browsing for working directory:', error);
+    }
   }
 }
