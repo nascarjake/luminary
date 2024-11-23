@@ -170,7 +170,7 @@ console.log('Registered download:file handler');
 // Terminal execution
 ipcMain.handle('terminal:executeCommand', async (event, options) => {
   return new Promise((resolve, reject) => {
-    const { command, args, cwd, onOutput, stdin } = options;
+    const { command, args, cwd, stdin } = options;
     const child = spawn(command, args, { cwd });
     let output = '';
 
@@ -182,17 +182,13 @@ ipcMain.handle('terminal:executeCommand', async (event, options) => {
     child.stdout.on('data', (data) => {
       const str = data.toString();
       output += str;
-      if (onOutput) {
         event.sender.send('terminal:output', str);
-      }
     });
 
     child.stderr.on('data', (data) => {
       const str = data.toString();
       output += str;
-      if (onOutput) {
         event.sender.send('terminal:output', str);
-      }
     });
 
     child.on('error', (error) => {
@@ -208,6 +204,7 @@ ipcMain.handle('terminal:executeCommand', async (event, options) => {
     });
   });
 });
+console.log('Registered terminal:executeCommand handler');
 
 // Assistant configuration handling
 ipcMain.handle('assistant:save', async (_, baseDir, profileId, assistantId, config) => {
