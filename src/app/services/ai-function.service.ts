@@ -368,7 +368,10 @@ export class AiFunctionService {
       
       // Load function implementation for this assistant
       const implementations = await window.electron.functions.load(baseDir, assistantId);
-      const implementation = implementations[functionName];
+      const functions = implementations?.functions ?Object.fromEntries(
+        implementations?.functions.map(func => [func.name, func])
+      ) : {};
+      const implementation = functions[functionName];
 
       if (!implementation) {
         throw new Error(`No implementation found for function: ${functionName}`);
