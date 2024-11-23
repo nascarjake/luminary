@@ -155,7 +155,7 @@ class PictoryClient {
 async function main() {
   const argv = yargs(hideBin(process.argv))
     .option('content', {
-      describe: 'JSON string of the Pictory content',
+      describe: 'JSON string of the Pictory content (use "-" for stdin)',
       type: 'string',
       demandOption: true
     })
@@ -193,14 +193,14 @@ async function main() {
     // Initialize client
     const client = new PictoryClient(config);
     
-    // Parse content
+    // Parse content from stdin if specified
     let content;
-    try {
+    if (argv.content === '-') {
+      content = JSON.parse(await new Promise(resolve => process.stdin.once('data', resolve)));
+      console.log('📝 Parsed content from stdin');
+    } else {
       content = JSON.parse(argv.content);
-      console.log('📝 Parsed content successfully');
-    } catch (error) {
-      console.error('❌ JSON parsing failed:', error);
-      throw new Error('Invalid JSON format for Pictory content');
+      console.log('📝 Parsed content from argument');
     }
     
     // Create storyboard
