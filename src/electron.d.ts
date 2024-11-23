@@ -41,13 +41,17 @@ declare module 'electron-api' {
       args: string[];
       cwd: string;
       stdin?: string;
-      onOutput?: (data: string) => void;
     }): Promise<string>;
   }
 
   interface ElectronGraph {
     save(baseDir: string, profileId: string, graphData: any): Promise<boolean>;
     load(baseDir: string, profileId: string): Promise<any>;
+  }
+
+  interface IpcRenderer {
+    on(channel: string, listener: (event: any, ...args: any[]) => void): void;
+    removeListener(channel: string, listener: (event: any, ...args: any[]) => void): void;
   }
 
   interface Electron {
@@ -58,6 +62,7 @@ declare module 'electron-api' {
     download: ElectronDownload;
     terminal: ElectronTerminal;
     graph: ElectronGraph;
+    ipcRenderer: IpcRenderer;
   }
 
   global {
