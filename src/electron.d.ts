@@ -40,6 +40,7 @@ declare module 'electron-api' {
       command: string;
       args: string[];
       cwd: string;
+      stdin?: string;
       onOutput?: (data: string) => void;
     }): Promise<string>;
   }

@@ -378,19 +378,22 @@ export class AiFunctionService {
       }
 
       const { command, script, workingDir } = implementation;
+      
       if (!command || !script) {
         throw new Error(`Invalid implementation for function: ${functionName}`);
       }
 
       // Convert function arguments to command line arguments
-      const cmdArgs = this.convertArgsToCommandLine(args);
+      const { args: cmdArgs, stdin } = this.convertArgsToCommandLine(args);
       
       // Execute the command with output handling
       const result = await new Promise<string>((resolve, reject) => {
+        console.log('Executing command:', command, script, cmdArgs.join(' '));
         window.electron.terminal.executeCommand({
           command,
           args: [script, ...cmdArgs],
           cwd: workingDir || baseDir,
+          stdin,  // Pass JSON data through stdin if present
           onOutput: (data: string) => {
             try {
               // Try to parse as JSON
@@ -420,24 +423,19 @@ export class AiFunctionService {
   /**
    * Converts function arguments to command line arguments
    */
-  private convertArgsToCommandLine(args: any): string[] {
+  private convertArgsToCommandLine(args: any): { args: string[], stdin?: string } {
     const cmdArgs: string[] = [];
-    
+    let stdinData: string | undefined;
+
     for (const [key, value] of Object.entries(args)) {
-      // Handle different types of arguments
-      if (typeof value === 'boolean') {
-        if (value) {
-          cmdArgs.push(`--${key}`);
-        }
-      } else if (Array.isArray(value)) {
-        cmdArgs.push(`--${key}`, value.join(','));
-      } else if (typeof value === 'object' && value !== null) {
-        cmdArgs.push(`--${key}`, JSON.stringify(value));
+      if (typeof value === 'object') {
+        stdinData = JSON.stringify(value);
+        cmdArgs.push(`--${key}`, '-');  // Use '-' to indicate stdin
       } else {
         cmdArgs.push(`--${key}`, String(value));
       }
     }
     
-    return cmdArgs;
+    return { args: cmdArgs, stdin: stdinData };
   }
 }

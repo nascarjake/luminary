@@ -217,7 +217,8 @@ export class ChatComponent implements OnDestroy {
 
   private async fetchThreadMessages(): Promise<void> {
     const { data } = await this.openAiApiService.listThreadMessages(this.thread!);
-    const messages = data.sort((a, b) => a.created_at > b.created_at ? 1 : -1);
+    // Sort messages by creation time in ascending order (older first, newer last)
+    const messages = data.sort((a, b) => b.created_at - a.created_at).reverse();
     // Merge with system messages from overlay
     this.threadMessages = await this.systemMessageOverlay.mergeSystemMessages(this.thread!.id, messages);
   }
@@ -258,7 +259,10 @@ export class ChatComponent implements OnDestroy {
       this.thread = await this.openAiApiService.getThread(threadId);
       
       // Get messages from the thread
-      const messages = (await this.openAiApiService.listThreadMessages({ id: threadId })).data;
+      const { data } = await this.openAiApiService.listThreadMessages({ id: threadId });
+      
+      // Sort messages by creation time in ascending order (older first, newer last)
+      const messages = data.sort((a, b) => b.created_at - a.created_at).reverse();
       
       // Merge with system messages from overlay
       this.threadMessages = await this.systemMessageOverlay.mergeSystemMessages(threadId, messages);

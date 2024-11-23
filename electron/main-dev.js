@@ -219,16 +219,20 @@ console.log('Registered download:file handler');
 
 // Terminal execution
 ipcMain.handle('terminal:executeCommand', async (event, options) => {
-  const { command, args, cwd } = options;
-  
   return new Promise((resolve, reject) => {
-    let output = '';
+    const { command, args, cwd, onOutput, stdin } = options;
     const child = spawn(command, args, { cwd });
+    let output = '';
+
+    if (stdin) {
+      child.stdin.write(stdin);
+      child.stdin.end();
+    }
 
     child.stdout.on('data', (data) => {
       const str = data.toString();
       output += str;
-      if (options.onOutput) {
+      if (onOutput) {
         event.sender.send('terminal:output', str);
       }
     });
@@ -236,7 +240,7 @@ ipcMain.handle('terminal:executeCommand', async (event, options) => {
     child.stderr.on('data', (data) => {
       const str = data.toString();
       output += str;
-      if (options.onOutput) {
+      if (onOutput) {
         event.sender.send('terminal:output', str);
       }
     });
