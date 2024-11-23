@@ -549,7 +549,12 @@ export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
         connections
       };
 
-      await this.graphService.updateState(newState);
+      // First update the in-memory state
+      this.graphService.updateState(newState);
+      
+      // Then persist to disk
+      await this.graphService.saveGraph();
+      
       this.markClean();
     } catch (error) {
       console.error('Error saving graph:', error);
