@@ -5,7 +5,7 @@
   "main": "pictory.js",
   "type": "module",
   "dependencies": {
-    "axios": "^1.6.2",
+    "axios": "^1.7.7",
     "yargs": "^17.7.2"
   }
 }

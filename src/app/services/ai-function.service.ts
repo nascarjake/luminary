@@ -363,14 +363,18 @@ export class AiFunctionService {
     assistantId: string
   ): Promise<{ output: string }> {
     try {
-      // Get app config directory for function implementations
+      // Get app config directory
       const baseDir = await window.electron.path.appConfigDir();
       
-      // Load function implementation for this assistant
-      const implementations = await window.electron.functions.load(baseDir, assistantId);
-      const functions = implementations?.functions ? Object.fromEntries(
-        implementations?.functions.map(func => [func.name, func])
-      ) : {};
+      // Load assistant file
+      const profileId = '97980360-679d-45ed-83fa-2dda2e21fc72'; // TODO: Get this from service
+      const assistantPath = await window.electron.path.join(baseDir, `assistant-${profileId}-${assistantId}.json`);
+      const assistantContent = await window.electron.fs.readTextFile(assistantPath);
+      const assistant = JSON.parse(assistantContent);
+      
+      // Get function implementation from assistant file
+      const functions = assistant.functions?.functions ? 
+        Object.fromEntries(assistant.functions.functions.map(func => [func.name, func])) : {};
       const implementation = functions[functionName];
 
       if (!implementation) {
