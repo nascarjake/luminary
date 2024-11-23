@@ -368,7 +368,7 @@ export class AiFunctionService {
       
       // Load function implementation for this assistant
       const implementations = await window.electron.functions.load(baseDir, assistantId);
-      const functions = implementations?.functions ?Object.fromEntries(
+      const functions = implementations?.functions ? Object.fromEntries(
         implementations?.functions.map(func => [func.name, func])
       ) : {};
       const implementation = functions[functionName];
@@ -383,27 +383,40 @@ export class AiFunctionService {
         throw new Error(`Invalid implementation for function: ${functionName}`);
       }
 
-      // Parse any JSON strings in the args object
-      const processedArgs = Object.entries(args).reduce((acc, [key, value]) => {
+      // Process any paths in the arguments to be platform-independent
+      const processedArgs: Record<string, any> = {};
+      for (const [key, value] of Object.entries(args)) {
         if (typeof value === 'string') {
           try {
-            acc[key] = JSON.parse(value);
+            // First try to parse as JSON
+            processedArgs[key] = JSON.parse(value);
           } catch {
-            acc[key] = value; // Keep as string if not valid JSON
+            // If it's a path-like string (contains / or \), normalize it
+            if (value.includes('/') || value.includes('\\')) {
+              // If it's not absolute, make it relative to baseDir
+              const isAbsolute = value.startsWith('/') || /^[A-Za-z]:/.test(value);
+              processedArgs[key] = isAbsolute ? value : await window.electron.path.join(baseDir, value);
+            } else {
+              processedArgs[key] = value;
+            }
           }
         } else {
-          acc[key] = value;
+          processedArgs[key] = value;
         }
-        return acc;
-      }, {} as Record<string, any>);
+      }
 
-      console.log('Executing function:', functionName, 'with processed args:', processedArgs);
+      // Normalize working directory path
+      const normalizedWorkingDir = workingDir ? (
+        workingDir.startsWith('/') || /^[A-Za-z]:/.test(workingDir)
+          ? workingDir 
+          : await window.electron.path.join(baseDir, workingDir)
+      ) : baseDir;
 
       // Execute the command with output handling
       const result = await window.electron.terminal.executeCommand({
         command,
         args: [script],
-        cwd: workingDir || baseDir,
+        cwd: normalizedWorkingDir,
         stdin: JSON.stringify(processedArgs)
       });
 
