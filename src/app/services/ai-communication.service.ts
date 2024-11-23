@@ -9,6 +9,13 @@ export class AiCommunicationService {
   private systemMessageSource = new Subject<string>();
   systemMessage$ = this.systemMessageSource.asObservable();
 
+  constructor() {
+    // Listen for terminal output
+    window.electron.ipcRenderer.on('terminal:output', (event: any, data: string) => {
+      this.emitSystemMessage(data);
+    });
+  }
+
   emitSystemMessage(message: string) {
     this.systemMessageSource.next(message);
   }

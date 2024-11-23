@@ -104,6 +104,10 @@ contextBridge.exposeInMainWorld('electron', {
       }
     }
   },
+  ipcRenderer: {
+    on: (channel, listener) => ipcRenderer.on(channel, listener),
+    removeListener: (channel, listener) => ipcRenderer.removeListener(channel, listener)
+  }
 });
 
 console.log('=== PRELOAD SCRIPT FINISHED ===');
