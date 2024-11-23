@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { ObjectManagerComponent } from './modules/object-manager/components/object-manager/object-manager.component';
 import { SchemaListComponent } from './modules/object-manager/components/schema-list/schema-list.component';
 import { InstanceListComponent } from './modules/object-manager/components/instance-list/instance-list.component';
+import { LeaveGraphGuard } from './guards/leave-graph.guard';
 
 export const routes: Routes = [
   {
@@ -18,7 +19,8 @@ export const routes: Routes = [
   },
   {
     path: 'graph',
-    loadComponent: () => import('./views/graph-editor/graph-editor.component').then(c => c.GraphEditorComponent)
+    loadComponent: () => import('./views/graph-editor/graph-editor.component').then(c => c.GraphEditorComponent),
+    canDeactivate: [LeaveGraphGuard]
   },
   {
     path: 'objects',

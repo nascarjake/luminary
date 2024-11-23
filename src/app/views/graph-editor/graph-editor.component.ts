@@ -51,6 +51,8 @@ export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
   private isInitialized = false;
   private schemaCache = new Map<string, ObjectSchema>();
   private nodeRegistry = new Map<number, any>();
+  private isDirty = false;
+  private lastSavedState: string = '';
 
   constructor(
     private graphService: GraphService, 
@@ -58,7 +60,28 @@ export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
     private functionImplementationsService: FunctionImplementationsService,
     private objectSchemaService: ObjectSchemaService,
     private ngZone: NgZone
-  ) {}
+  ) {
+    // Handle beforeunload event
+    window.addEventListener('beforeunload', (e) => {
+      if (this.isDirty) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    });
+  }
+
+  // Public method to check if there are unsaved changes
+  public hasUnsavedChanges(): boolean {
+    return this.isDirty;
+  }
+
+  private markDirty() {
+    this.isDirty = true;
+  }
+
+  private markClean() {
+    this.isDirty = false;
+  }
 
   ngOnInit() {
     this.initializeLiteGraph();
@@ -159,7 +182,28 @@ export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
         });
         
         console.log('Node registered:', this.nodeRegistry.get(node.id));
+        this.markDirty();
+
+        // Add remove listener to the node
+        node.onRemoved = () => {
+          // Remove from registry when node is removed
+          this.nodeRegistry.delete(node.id);
+          console.log('Node removed from registry:', node.id);
+          this.markDirty();
+        };
       };
+
+      // Track connections using connectionChange event
+      this.graph.connectionChange = (node: any) => {
+        this.markDirty();
+      };
+
+      // Track node movement using canvas events
+      if (this.canvas) {
+        this.canvas.onNodeMoved = () => {
+          this.markDirty();
+        };
+      }
       
       // Start graph execution
       this.graph.start();
@@ -167,6 +211,7 @@ export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
       // Load saved state
       const state = this.graphService.currentState;
       this.loadGraphState(state);
+      this.markClean(); // Initial state is clean
     }
   }
 
@@ -421,6 +466,7 @@ export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
     if (this.canvas) {
       this.canvas.setDirty(true, true);
     }
+    this.markClean();
   }
 
   createAssistantNode(assistantId: string, name: string, position: [number, number]): LiteGraph.LGraphNode | null {
@@ -490,16 +536,15 @@ export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
         toInput: link.target_slot.toString()
       }));
 
-      this.graphService.updateState({
+      const newState = {
         nodes,
         connections
-      });
+      };
 
-      await this.graphService.saveGraph();
-      console.log('Graph saved successfully');
+      await this.graphService.updateState(newState);
+      this.markClean();
     } catch (error) {
-      console.error('Failed to save graph:', error);
-      throw error;
+      console.error('Error saving graph:', error);
     }
   }
 
