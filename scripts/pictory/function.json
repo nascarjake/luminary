@@ -8,10 +8,6 @@
         "type": "string",
         "description": "JSON string containing the video content"
       },
-      "threadId": {
-        "type": "string",
-        "description": "Thread ID for tracking"
-      },
       "title": {
         "type": "string",
         "description": "Optional title for the video"
