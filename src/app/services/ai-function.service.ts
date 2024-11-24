@@ -9,6 +9,7 @@ import { AiCommunicationService } from './ai-communication.service';
 import { PictoryUtils, PictoryJobResponse, PictoryJobStatus } from '../utils/pictory.utils';
 import { ObjectSchemaService } from './object-schema.service';
 import { ObjectInstanceService } from './object-instance.service';
+import { GraphService } from './graph.service'; // Import GraphService
 import type { Electron } from 'electron-api';
 
 declare global {
@@ -53,12 +54,13 @@ export class AiFunctionService {
   private scriptSchemaId?: string;
 
   constructor(
+    private http: HttpClient,
     private messageService: MessageService,
     private openAiApiService: OpenAiApiService,
-    private http: HttpClient,
     private aiCommunicationService: AiCommunicationService,
-    private schemaService: ObjectSchemaService,
-    private instanceService: ObjectInstanceService
+    private objectSchemaService: ObjectSchemaService,
+    private objectInstanceService: ObjectInstanceService,
+    private graphService: GraphService // Inject GraphService
   ) {
     this.pictoryUtils = new PictoryUtils(http);
   }
@@ -153,7 +155,7 @@ export class AiFunctionService {
           console.log('✅ Assistant started, run ID:', run.id, 'for thread:', thread.id);
           
           // Store outline in object system
-          await this.instanceService.createInstance(this.outlineSchemaId, {
+          await this.objectInstanceService.createInstance(this.outlineSchemaId, {
             title: outlineTitle,
             content: outline
           });
@@ -222,7 +224,7 @@ export class AiFunctionService {
       console.log('✅ Assistant started, run ID:', run.id);
 
       // Store script in object system
-      await this.instanceService.createInstance(this.scriptSchemaId, {
+      await this.objectInstanceService.createInstance(this.scriptSchemaId, {
         title: title || `Script ${counters.scripts}`,
         content: script,
         threadId: thread.id
@@ -283,7 +285,7 @@ export class AiFunctionService {
       this.emitSystemMessage(`🎥 Video generation started. Job ID: ${response.jobId}`);
 
       // Save initial Pictory request
-      await this.instanceService.createInstance(this.scriptSchemaId, {
+      await this.objectInstanceService.createInstance(this.scriptSchemaId, {
         title: title,
         content: JSON.stringify({title, threadId,content, jobId: response.jobId, preview: ''}),
         threadId: threadId,
@@ -308,7 +310,7 @@ export class AiFunctionService {
       }
 
       // Save the render status
-      await this.instanceService.createInstance(this.scriptSchemaId, {
+      await this.objectInstanceService.createInstance(this.scriptSchemaId, {
         title: title,
         content: JSON.stringify({
           jobId: renderStatus.job_id,
@@ -325,7 +327,7 @@ export class AiFunctionService {
       const videoPath = await this.pictoryUtils.downloadVideo(renderStatus.data.videoURL, videoName);
 
       // Save video object
-      await this.instanceService.createInstance(this.scriptSchemaId, {
+      await this.objectInstanceService.createInstance(this.scriptSchemaId, {
         title: videoName,
         content: JSON.stringify({
           name: videoName,
@@ -354,88 +356,119 @@ export class AiFunctionService {
     }
   }
 
-  /**
-   * Executes a function based on its implementation details and parameters
-   */
+  private async validateAndSaveInstance(data: any, schemaId: string): Promise<{ valid: boolean; instance?: any; errors?: string[] }> {
+    try {
+      // Validate data against schema
+      const validationResult = await this.objectSchemaService.validateInstance(schemaId, data);
+      
+      if (!validationResult.valid) {
+        return { valid: false, errors: validationResult.errors };
+      }
+
+      // Save validated instance
+      const instance = await this.objectInstanceService.createInstance(schemaId, data);
+      return { valid: true, instance };
+    } catch (error) {
+      console.error('Error in validation:', error);
+      return { valid: false, errors: [error.message] };
+    }
+  }
+
+  private async routeToNextAssistants(
+    sourceNodeId: string, 
+    data: any
+  ): Promise<{ success: boolean; errors?: string[] }> {
+    try {
+      const state = this.graphService.currentState;
+      const connections = state.connections.filter(c => c.fromNode === sourceNodeId);
+      
+      for (const connection of connections) {
+        const targetNode = state.nodes.find(n => n.id === connection.toNode);
+        if (!targetNode) continue;
+
+        // Handle array data
+        const dataItems = Array.isArray(data) ? data : [data];
+        
+        for (const item of dataItems) {
+          try {
+            // Create new message for target assistant
+            await this.openAiApiService.createMessage(
+              targetNode.assistantId,
+              JSON.stringify(item)
+            );
+          } catch (error) {
+            console.error(`Error routing to assistant ${targetNode.assistantId}:`, error);
+          }
+        }
+      }
+      
+      return { success: true };
+    } catch (error) {
+      return { success: false, errors: [error.message] };
+    }
+  }
+
   async executeFunction(
     functionName: string,
     args: any,
     assistantId: string
   ): Promise<{ output: string }> {
     try {
-      // Get app config directory
-      const baseDir = await window.electron.path.appConfigDir();
+      // Find nodes for this assistant
+      const state = this.graphService.currentState;
+      const sourceNodes = state.nodes.filter(n => n.assistantId === assistantId);
       
-      // Load assistant file
-      const profileId = '97980360-679d-45ed-83fa-2dda2e21fc72'; // TODO: Get this from service
-      const assistantPath = await window.electron.path.join(baseDir, `assistant-${profileId}-${assistantId}.json`);
-      const assistantContent = await window.electron.fs.readTextFile(assistantPath);
-      const assistant = JSON.parse(assistantContent);
-      
-      // Get function implementation from assistant file
-      const functions = assistant.functions?.functions ? 
-        Object.fromEntries(assistant.functions.functions.map(func => [func.name, func])) : {};
-      const implementation = functions[functionName];
-
-      if (!implementation) {
-        throw new Error(`No implementation found for function: ${functionName}`);
+      if (sourceNodes.length === 0) {
+        return { output: JSON.stringify(args) }; // No routing needed
       }
 
-      const { command, script, workingDir } = implementation;
-      
-      if (!command || !script) {
-        throw new Error(`Invalid implementation for function: ${functionName}`);
-      }
+      const results = [];
+      const errors = [];
 
-      // Process any paths in the arguments to be platform-independent
-      const processedArgs: Record<string, any> = {};
-      for (const [key, value] of Object.entries(args)) {
-        if (typeof value === 'string') {
-          try {
-            // First try to parse as JSON
-            processedArgs[key] = JSON.parse(value);
-          } catch {
-            // If it's a path-like string (contains / or \), normalize it
-            if (value.includes('/') || value.includes('\\')) {
-              // If it's not absolute, make it relative to baseDir
-              const isAbsolute = value.startsWith('/') || /^[A-Za-z]:/.test(value);
-              processedArgs[key] = isAbsolute ? value : await window.electron.path.join(baseDir, value);
-            } else {
-              processedArgs[key] = value;
-            }
+      for (const sourceNode of sourceNodes) {
+        // Get output connections
+        const connections = state.connections.filter(c => c.fromNode === sourceNode.id);
+        
+        if (connections.length === 0) {
+          results.push(args); // No connections, just pass through
+          continue;
+        }
+
+        for (const connection of connections) {
+          // Get schemas for validation
+          const outputDot = sourceNode.outputs.find(o => o.name === connection.fromOutput);
+          if (!outputDot?.schemaId) continue;
+
+          // Validate and save instance
+          const validationResult = await this.validateAndSaveInstance(args, outputDot.schemaId);
+          if (!validationResult.valid) {
+            errors.push(`Validation failed for ${outputDot.name}: ${validationResult.errors?.join(', ')}`);
+            continue;
           }
-        } else {
-          processedArgs[key] = value;
+
+          // Route to next assistants
+          const routingResult = await this.routeToNextAssistants(sourceNode.id, validationResult.instance);
+          if (!routingResult.success) {
+            errors.push(`Routing failed: ${routingResult.errors?.join(', ')}`);
+          }
+
+          results.push(validationResult.instance);
         }
       }
 
-      // Normalize working directory path
-      const normalizedWorkingDir = workingDir ? (
-        workingDir.startsWith('/') || /^[A-Za-z]:/.test(workingDir)
-          ? workingDir 
-          : await window.electron.path.join(baseDir, workingDir)
-      ) : baseDir;
-
-      // Execute the command with output handling
-      const result = await window.electron.terminal.executeCommand({
-        command,
-        args: [script],
-        cwd: normalizedWorkingDir,
-        stdin: JSON.stringify(processedArgs)
-      });
-
-      try {
-        // Try to parse as JSON
-        const jsonData = JSON.parse(result);
-        // If it has a message field, use that
-        return { output: jsonData.message || result };
-      } catch {
-        // If not JSON, return as is
-        return { output: result };
+      // Log errors if any
+      if (errors.length > 0) {
+        console.error('Execution errors:', errors);
+        this.aiCommunicationService.emitSystemMessage(`⚠️ Warnings during execution: ${errors.join('; ')}`);
       }
-    } catch (error: any) {
-      console.error('Error executing function:', error);
-      throw new Error(`Failed to execute function ${functionName}: ${error.message}`);
+
+      // Return results
+      return {
+        output: JSON.stringify(results.length === 1 ? results[0] : results)
+      };
+    } catch (error) {
+      console.error('Error in executeFunction:', error);
+      throw error;
     }
   }
 }
