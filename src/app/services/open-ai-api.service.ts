@@ -26,6 +26,24 @@ export class OpenAiApiService {
   private apiKeySubject = new Subject<string>();
   public apiKey$ = this.apiKeySubject.asObservable();
 
+  private readonly DEFAULT_PROCESS_FUNCTION = {
+    type: 'function' as const,
+    function: {
+      name: 'processOutput',
+      description: 'Process and forward the assistant\'s output to the next assistant in the pipeline',
+      parameters: {
+        type: 'object',
+        properties: {
+          output: {
+            type: 'string',
+            description: 'The output to process and forward'
+          }
+        },
+        required: ['output']
+      }
+    }
+  };
+
   constructor(private http: HttpClient) {}
 
   public getApiKey(): string {
@@ -96,6 +114,13 @@ export class OpenAiApiService {
   }
 
   public createAssistant(assistant: Partial<OAAssistant>): Promise<OAAssistant> {
+    // Ensure tools array exists and includes our default function
+    const tools = assistant.tools || [];
+    if (!tools.some(t => t.type === 'function' && t.function.name === 'processOutput')) {
+      tools.push(this.DEFAULT_PROCESS_FUNCTION);
+    }
+    assistant.tools = tools;
+
     console.log('Creating assistant with payload:', assistant);
     return this.http.post<OAAssistant>(`${this.apiUrl}/assistants`, assistant, { headers: this.getHeaders() })
       .pipe(
@@ -210,6 +235,14 @@ export class OpenAiApiService {
     } else {
       return this.createAssistant(assistant);
     }
+  }
+
+  public async createMessage(threadId: string, content: string): Promise<OAThreadMessage> {
+    return this.http.post<OAThreadMessage>(
+      `${this.apiUrl}/threads/${threadId}/messages`,
+      { role: 'user', content },
+      { headers: this.getHeaders() }
+    ).pipe(catchError(this.handleError)).toPromise();
   }
 
   private handleError(error: HttpErrorResponse): Promise<never> {
