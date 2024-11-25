@@ -420,13 +420,87 @@ export class AiFunctionService {
         arguments: args
       });
 
+      // Get app config directory and load assistant implementation
+      const baseDir = await window.electron.path.appConfigDir();
+      const profileId = '97980360-679d-45ed-83fa-2dda2e21fc72'; // TODO: Get this from service
+      const assistantPath = await window.electron.path.join(baseDir, `assistant-${profileId}-${assistantId}.json`);
+      
+      // Initialize function result with args as fallback
+      let functionResult = args;
+      
+      try {
+        // Try to load and execute assistant function
+        const assistantContent = await window.electron.fs.readTextFile(assistantPath);
+        const assistant = JSON.parse(assistantContent);
+        
+        // Get function implementation from assistant file
+        const functions = assistant.functions?.functions ? 
+          Object.fromEntries(assistant.functions.functions.map(func => [func.name, func])) : {};
+        const implementation = functions[functionName];
+
+        if (implementation) {
+          const { command, script, workingDir } = implementation;
+          
+          if (command && script) {
+            // Process any paths in the arguments to be platform-independent
+            const processedArgs: Record<string, any> = {};
+            for (const [key, value] of Object.entries(args)) {
+              if (typeof value === 'string') {
+                try {
+                  // First try to parse as JSON
+                  processedArgs[key] = JSON.parse(value);
+                } catch {
+                  // If it's a path-like string (contains / or \), normalize it
+                  if (value.includes('/') || value.includes('\\')) {
+                    // If it's not absolute, make it relative to baseDir
+                    const isAbsolute = value.startsWith('/') || /^[A-Za-z]:/.test(value);
+                    processedArgs[key] = isAbsolute ? value : await window.electron.path.join(baseDir, value);
+                  } else {
+                    processedArgs[key] = value;
+                  }
+                }
+              } else {
+                processedArgs[key] = value;
+              }
+            }
+
+            // Normalize working directory path
+            const normalizedWorkingDir = workingDir ? (
+              workingDir.startsWith('/') || /^[A-Za-z]:/.test(workingDir)
+                ? workingDir 
+                : await window.electron.path.join(baseDir, workingDir)
+            ) : baseDir;
+
+            // Execute the command with output handling
+            console.log('🖥️ Executing terminal command:', command);
+            const output = await window.electron.terminal.executeCommand({
+              command,
+              args: [script],
+              cwd: normalizedWorkingDir,
+              stdin: JSON.stringify(processedArgs)
+            });
+
+            try {
+              // Try to parse as JSON
+              const jsonData = JSON.parse(output);
+              functionResult = jsonData;
+            } catch {
+              // If not JSON, return as is
+              functionResult = { output };
+            }
+          }
+        }
+      } catch (error) {
+        console.warn('⚠️ Failed to load/execute assistant function:', error);
+      }
+
       // Find nodes for this assistant
       const state = this.graphService.currentState;
       const sourceNodes = state.nodes.filter(n => n.assistantId === assistantId);
       
       if (sourceNodes.length === 0) {
-        console.log('ℹ️ No source nodes found, returning args directly');
-        return { output: JSON.stringify(args) }; // No routing needed
+        console.log('ℹ️ No source nodes found, returning function result');
+        return { output: JSON.stringify(functionResult) };
       }
 
       const results = [];
@@ -435,12 +509,75 @@ export class AiFunctionService {
       for (const sourceNode of sourceNodes) {
         console.log('🔄 Processing source node:', sourceNode.id);
         
-        // Get output connections
-        const connections = state.connections.filter(c => c.fromNode === sourceNode.id);
+        // Process all outputs first
+        const outputs = sourceNode.outputs || [];
+        if (outputs.length > 0) {
+          console.log('📤 Processing outputs:', outputs.length);
+          
+          if (outputs.length === 1) {
+            // Single output case
+            const output = outputs[0];
+            if (!output.schemaId) {
+              console.warn('⚠️ No schema found for single output');
+              continue;
+            }
+
+            // Check if functionResult has a key matching the output name
+            const outputValue = typeof functionResult === 'object' && functionResult[output.name] !== undefined
+              ? functionResult[output.name]
+              : functionResult;
+
+            console.log('✨ Validating single output against schema:', output.schemaId);
+            const validationResult = await this.validateAndSaveInstance(outputValue, output.schemaId);
+            if (!validationResult.valid) {
+              const errorMsg = `Validation failed for ${output.name}: ${validationResult.errors?.join(', ')}`;
+              console.error('❌ Validation Error:', errorMsg);
+              errors.push(errorMsg);
+            } else {
+              console.log('✅ Validation successful for single output');
+              results.push(validationResult.instance);
+            }
+          } else {
+            // Multiple outputs case - expect object with keys matching output names
+            if (typeof functionResult !== 'object') {
+              const errorMsg = 'Multiple outputs require object result with keys matching output names';
+              console.error('❌ Error:', errorMsg);
+              errors.push(errorMsg);
+              continue;
+            }
+
+            for (const output of outputs) {
+              if (!output.schemaId) {
+                console.warn('⚠️ No schema found for output:', output.name);
+                continue;
+              }
+
+              const outputValue = functionResult[output.name];
+              if (outputValue === undefined) {
+                const errorMsg = `No value found for output ${output.name}`;
+                console.error('❌ Error:', errorMsg);
+                errors.push(errorMsg);
+                continue;
+              }
+
+              console.log('✨ Validating output against schema:', output.name, output.schemaId);
+              const validationResult = await this.validateAndSaveInstance(outputValue, output.schemaId);
+              if (!validationResult.valid) {
+                const errorMsg = `Validation failed for ${output.name}: ${validationResult.errors?.join(', ')}`;
+                console.error('❌ Validation Error:', errorMsg);
+                errors.push(errorMsg);
+              } else {
+                console.log('✅ Validation successful for:', output.name);
+                results.push(validationResult.instance);
+              }
+            }
+          }
+        }
         
+        // Now handle connections for routing
+        const connections = state.connections.filter(c => c.fromNode === sourceNode.id);
         if (connections.length === 0) {
           console.log('ℹ️ No connections found for node:', sourceNode.id);
-          results.push(args); // No connections, just pass through
           continue;
         }
 
@@ -451,27 +588,21 @@ export class AiFunctionService {
             output: connection.fromOutput
           });
 
-          // Get schemas for validation
+          // Get output schema
           const outputDot = sourceNode.outputs.find(o => o.name === connection.fromOutput);
           if (!outputDot?.schemaId) {
             console.log('⚠️ No schema found for output:', connection.fromOutput);
             continue;
           }
 
-          // Validate and save instance
-          console.log('✨ Validating instance against schema:', outputDot.schemaId);
-          const validationResult = await this.validateAndSaveInstance(args, outputDot.schemaId);
-          if (!validationResult.valid) {
-            const errorMsg = `Validation failed for ${outputDot.name}: ${validationResult.errors?.join(', ')}`;
-            console.error('❌ Validation Error:', errorMsg);
-            errors.push(errorMsg);
-            continue;
-          }
-          console.log('✅ Validation successful');
+          // Find the matching validated result for this output
+          const outputValue = typeof functionResult === 'object' && functionResult[outputDot.name] !== undefined
+            ? functionResult[outputDot.name]
+            : functionResult;
 
           // Route to next assistants
           console.log('🚀 Routing to next assistants');
-          const routingResult = await this.routeToNextAssistants(sourceNode.id, validationResult.instance);
+          const routingResult = await this.routeToNextAssistants(sourceNode.id, outputValue);
           if (!routingResult.success) {
             const errorMsg = `Routing failed: ${routingResult.errors?.join(', ')}`;
             console.error('❌ Routing Error:', errorMsg);
@@ -479,11 +610,9 @@ export class AiFunctionService {
           } else {
             console.log('✅ Routing successful');
           }
-
-          results.push(validationResult.instance);
         }
       }
-
+      
       // Log errors if any
       if (errors.length > 0) {
         console.error('❌ Execution errors:', errors);
