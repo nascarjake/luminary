@@ -154,7 +154,7 @@ export class ObjectSchemaService implements IObjectSchemaService {
     } catch (error) {
       return {
         valid: false,
-        errors: error.errors?.map((e: any) => e.message) || ['Invalid data']
+        errors: error.errors?.map((e: any) => `${e.code} ${e.message} ${e.path.join(',')}`) || ['Invalid data']
       };
     }
   }

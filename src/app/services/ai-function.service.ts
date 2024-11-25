@@ -439,6 +439,11 @@ export class AiFunctionService {
           Object.fromEntries(assistant.functions.functions.map(func => [func.name, func])) : {};
         implementation = functions[functionName];
 
+        if (!implementation) {
+          this.emitSystemMessage(`⚠️ Routing Error: Function "${functionName}" not found in assistant implementation`);
+          throw new Error(`Function "${functionName}" not found in assistant implementation`);
+        }
+
         // Execute terminal command if present
         if (implementation?.command && implementation?.script) {
           const { command, script, workingDir } = implementation;
@@ -474,24 +479,31 @@ export class AiFunctionService {
 
           // Execute the command with output handling
           console.log('🖥️ Executing terminal command:', command);
-          const output = await window.electron.terminal.executeCommand({
-            command,
-            args: [script],
-            cwd: normalizedWorkingDir,
-            stdin: JSON.stringify(processedArgs)
-          });
-
           try {
-            // Try to parse as JSON
-            const jsonData = JSON.parse(output);
-            functionResult = jsonData;
-          } catch {
-            // If not JSON, return as is
-            functionResult = { output };
+            const output = await window.electron.terminal.executeCommand({
+              command,
+              args: [script],
+              cwd: normalizedWorkingDir,
+              stdin: JSON.stringify(processedArgs)
+            });
+
+            try {
+              // Try to parse as JSON
+              const jsonData = JSON.parse(output);
+              functionResult = jsonData;
+            } catch {
+              // If not JSON, return as is
+              functionResult = { output };
+            }
+          } catch (execError) {
+            this.emitSystemMessage(`❌ Execution Error: Failed to execute command "${command}": ${execError.message}`);
+            throw execError;
           }
         }
       } catch (error) {
         console.warn('⚠️ Failed to load/execute assistant function:', error);
+        this.emitSystemMessage(`⚠️ Function Error: ${error.message}`);
+        throw error;
       }
 
       // Find nodes for this assistant
@@ -519,7 +531,9 @@ export class AiFunctionService {
             // Single output case
             const output = outputs[0];
             if (!output.schemaId) {
-              console.warn('⚠️ No schema found for single output');
+              const errorMsg = 'No schema found for single output';
+              this.emitSystemMessage(`⚠️ Validation Error: ${errorMsg}`);
+              console.warn('⚠️', errorMsg);
               continue;
             }
 
@@ -532,6 +546,7 @@ export class AiFunctionService {
             const validationResult = await this.validateAndSaveInstance(outputValue, output.schemaId);
             if (!validationResult.valid) {
               const errorMsg = `Validation failed for ${output.name}: ${validationResult.errors?.join(', ')}`;
+              this.emitSystemMessage(`❌ Validation Error: ${errorMsg}`);
               console.error('❌ Validation Error:', errorMsg);
               errors.push(errorMsg);
             } else {
@@ -565,6 +580,7 @@ export class AiFunctionService {
               const validationResult = await this.validateAndSaveInstance(outputValue, output.schemaId);
               if (!validationResult.valid) {
                 const errorMsg = `Validation failed for ${output.name}: ${validationResult.errors?.join(', ')}`;
+                this.emitSystemMessage(`❌ Validation Error: ${errorMsg}`);
                 console.error('❌ Validation Error:', errorMsg);
                 errors.push(errorMsg);
               } else {
