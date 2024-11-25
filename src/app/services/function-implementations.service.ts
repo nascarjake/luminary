@@ -42,7 +42,8 @@ export class FunctionImplementationsService {
             command: f.implementation!.command,
             script: f.implementation!.script,
             workingDir: f.implementation!.workingDir,
-            timeout: f.implementation!.timeout
+            timeout: f.implementation!.timeout,
+            isOutput: f.implementation!.isOutput
           }))
       };
 
@@ -96,7 +97,8 @@ export class FunctionImplementationsService {
           command: impl.command,
           script: impl.script,
           workingDir: impl.workingDir,
-          timeout: impl.timeout
+          timeout: impl.timeout,
+          isOutput: impl.isOutput
         }
       };
     });
