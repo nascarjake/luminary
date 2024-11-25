@@ -72,9 +72,75 @@
   border-top: 1px solid var(--surface-border);
 }
 
+.instruction-field {
+  position: relative;
+  margin-bottom: 1.5rem;
+
+  .instructions-header {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    z-index: 1;
+  }
+
+  .instruction-textarea {
+    min-height: 120px;
+    max-height: 300px;
+    padding: 0.75rem;
+    padding-right: 3rem;
+    resize: vertical;
+    font-family: var(--font-family);
+    line-height: 1.5;
+    overflow-y: auto !important;
+    
+    &[readonly] {
+      cursor: default;
+      background-color: var(--surface-ground);
+    }
+  }
+}
+
+.instruction-dialog {
+  .instruction-dialog-content {
+    height: calc(100% - 4rem);
+    padding: 1rem;
+    
+    .instruction-textarea {
+      height: 100%;
+      resize: none;
+      font-family: monospace;
+      line-height: 1.5;
+      padding: 1rem;
+      overflow-y: auto !important;
+    }
+  }
+}
+
 :host ::ng-deep {
-  .p-dialog-content {
-    padding-bottom: 0;
+  .p-dialog {
+    .p-dialog-header {
+      padding: 1.5rem 2rem 0;
+    }
+
+    .p-dialog-content {
+      padding: 0 2rem 2rem;
+      height: calc(100% - 8rem);
+    }
+
+    .p-dialog-footer {
+      padding: 1rem 2rem;
+      border-top: 1px solid var(--surface-border);
+    }
+  }
+
+  .p-tabview {
+    .p-tabview-panels {
+      padding: 1.5rem 0 0;
+    }
+  }
+
+  .p-inputtext, .p-dropdown {
+    margin: 0.5rem 0;
   }
 
   .p-inputtext {
@@ -129,6 +195,15 @@
   margin-bottom: 0.5rem;
   line-height: 1.4;
 }
+
+.form-group {
+  padding-bottom:15px;
+}
+
+.instruction-section h4 {
+  margin-bottom: 0.5rem;
+}
+
 
 .field-container {
   margin-bottom: 1rem;

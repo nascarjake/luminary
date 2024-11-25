@@ -11,187 +11,261 @@
     </ng-template>
 
     <form [formGroup]="form" (ngSubmit)="onSubmit()">
-        <div class="grid">
-            <div class="col-12 md:col-6">
-                <label for="name">Name</label>
-                <input id="name" type="text" pInputText formControlName="name" class="w-full">
-                <small class="help-text">A descriptive name that identifies this assistant's purpose in the workflow.</small>
-            </div>
-
-            <div class="col-12 md:col-6">
-                <label for="model">Model</label>
-                <p-dropdown id="model" [options]="availableModels" formControlName="model" 
-                    optionLabel="label" optionValue="value" [filter]="true" class="w-full">
-                </p-dropdown>
-                <small class="help-text">The OpenAI model to use. More capable models can better handle complex instructions.</small>
-            </div>
-
-            <div class="col-12 md:col-6">
-                <label for="response_format">Response Format</label>
-                <p-dropdown
-                    id="response_format"
-                    [options]="responseFormatOptions"
-                    formControlName="response_format_type"
-                    class="w-full"
-                    placeholder="Select response format"
-                ></p-dropdown>
-                <small class="help-text">Specifies the format that the assistant should use when responding.</small>
-            </div>
-        </div>
-
-        <div class="grid mt-3">
-            <div class="col-12">
-                <label for="description">Description</label>
-                <textarea id="description" pInputTextarea formControlName="description" 
-                    [rows]="3" class="w-full"></textarea>
-                <small class="help-text">A detailed description of what this assistant does and how it should be used.</small>
-            </div>
-        </div>
-
-        <p-tabView class="mt-3">
-            <!-- System Instructions Tab -->
-            <p-tabPanel header="System Instructions">
+        <p-tabView>
+            <!-- General Tab -->
+            <p-tabPanel header="General">
                 <div class="grid">
-                    <div class="col-12 md:col-6">
-                        <h4>Input Schemas</h4>
-                        <p-multiSelect 
-                            [options]="availableSchemas"
-                            [(ngModel)]="instructionParts.coreInstructions.inputSchemas"
-                            [ngModelOptions]="{standalone: true}"
-                            optionLabel="name"
-                            optionValue="id"
-                            [filter]="true"
+                    <div class="col-12 md:col-6 form-group">
+                        <label for="name">Name</label>
+                        <input id="name" type="text" pInputText formControlName="name" class="w-full">
+                        <small class="help-text">A descriptive name that identifies this assistant's purpose in the workflow.</small>
+                    </div>
+    
+                    <div class="col-12 md:col-6 form-group">
+                        <label for="model">Model</label>
+                        <p-dropdown id="model" [options]="availableModels" formControlName="model" 
+                            optionLabel="label" optionValue="value" [filter]="true" class="w-full">
+                        </p-dropdown>
+                        <small class="help-text">The OpenAI model to use. More capable models can better handle complex instructions.</small>
+                    </div>
+    
+                    <div class="col-12 md:col-6 form-group">
+                        <label for="response_format">Response Format</label>
+                        <p-dropdown
+                            id="response_format"
+                            [options]="responseFormatOptions"
+                            formControlName="response_format_type"
                             class="w-full"
-                            (onChange)="onInputSchemasChange()">
-                        </p-multiSelect>
-                        <small class="help-text">Define the structure of data this assistant expects to receive.</small>
+                            placeholder="Select response format"
+                        ></p-dropdown>
+                        <small class="help-text">Specifies the format that the assistant should use when responding.</small>
                     </div>
-
-                    <div class="col-12 md:col-6">
-                        <h4>Output Schemas</h4>
-                        <p-multiSelect 
-                            [options]="availableSchemas"
-                            [(ngModel)]="instructionParts.coreInstructions.outputSchemas"
-                            [ngModelOptions]="{standalone: true}"
-                            optionLabel="name"
-                            optionValue="id"
-                            [filter]="true"
-                            class="w-full"
-                            (onChange)="onOutputSchemasChange()">
-                        </p-multiSelect>
-                        <small class="help-text">Define the structure of data this assistant will produce.</small>
-                    </div>
-
-                    <div class="col-12 md:col-6 mt-3">
-                        <h4>Default Output Format</h4>
-                        <input type="text" pInputText 
-                            [(ngModel)]="instructionParts.coreInstructions.defaultOutputFormat"
-                            [ngModelOptions]="{standalone: true}"
-                            class="w-full">
-                        <small class="help-text">Specify how the assistant should format its responses by default.</small>
-                    </div>
-
-                    <div class="col-12 md:col-6 mt-3">
-                        <h4>Array Handling</h4>
-                        <input type="text" pInputText 
-                            [(ngModel)]="instructionParts.coreInstructions.arrayHandling"
-                            [ngModelOptions]="{standalone: true}"
-                            class="w-full">
-                        <small class="help-text">Define how the assistant should process lists or arrays of data.</small>
+    
+                    <div class="col-12 form-group">
+                        <label for="description">Description</label>
+                        <textarea id="description" pInputTextarea formControlName="description" 
+                            [rows]="3" class="w-full"></textarea>
+                        <small class="help-text">A detailed description of what this assistant does and how it should be used.</small>
                     </div>
                 </div>
             </p-tabPanel>
-
-            <!-- User Instructions Tab -->
-            <p-tabPanel header="User Instructions">
-                <div class="grid">
-                    <div class="col-12">
-                        <h4>Business Logic</h4>
-                        <p-editor 
-                            [(ngModel)]="instructionParts.userInstructions.businessLogic"
-                            [ngModelOptions]="{standalone: true}"
-                            [style]="{'height':'200px'}"
-                            class="w-full">
-                        </p-editor>
-                        <small class="help-text">Define the core rules and logic that guide how the assistant processes information.</small>
-                    </div>
-
-                    <div class="col-12 mt-3">
-                        <h4>Processing Steps</h4>
-                        <p-editor 
-                            [(ngModel)]="instructionParts.userInstructions.processingSteps"
-                            [ngModelOptions]="{standalone: true}"
-                            [style]="{'height':'200px'}"
-                            class="w-full">
-                        </p-editor>
-                        <small class="help-text">Outline the specific steps the assistant should follow when processing input.</small>
-                    </div>
-
-                    <div class="col-12 mt-3">
-                        <h4>Custom Functions</h4>
-                        <p-editor 
-                            [(ngModel)]="instructionParts.userInstructions.customFunctions"
-                            [ngModelOptions]="{standalone: true}"
-                            [style]="{'height':'200px'}"
-                            class="w-full">
-                        </p-editor>
-                        <small class="help-text">Define any special functions or capabilities the assistant should have access to.</small>
-                    </div>
-                </div>
-            </p-tabPanel>
-
-            <!-- Preview Tab -->
-            <p-tabPanel header="Preview">
-                <p-card>
-                    <pre class="whitespace-pre-wrap">{{combineInstructions()}}</pre>
-                </p-card>
-            </p-tabPanel>
-
+    
             <!-- Model Parameters Tab -->
             <p-tabPanel header="Model Parameters">
                 <div class="grid">
-                    <div class="col-12 md:col-6">
+                    <div class="col-12 md:col-6 parameter-group">
                         <h4>Temperature</h4>
                         <p-inputNumber 
                             formControlName="temperature"
                             [min]="0"
                             [max]="2"
                             [step]="0.1"
+                            [showButtons]="true"
                             buttonLayout="horizontal"
                             spinnerMode="horizontal"
                             class="w-full"
                             decrementButtonClass="p-button-secondary"
-                            incrementButtonClass="p-button-secondary">
-                        </p-inputNumber>
-                        <small class="help-text">Controls randomness in responses. Higher values (0.8) make output more creative, lower values (0.2) make it more focused.</small>
+                            incrementButtonClass="p-button-secondary"
+                        ></p-inputNumber>
+                        <small class="help-text">Controls randomness in responses. Lower values make output more focused and deterministic, higher values make output more creative and varied.</small>
                     </div>
-
-                    <div class="col-12 md:col-6">
+    
+                    <div class="col-12 md:col-6 parameter-group">
                         <h4>Top P</h4>
                         <p-inputNumber 
                             formControlName="top_p"
                             [min]="0"
                             [max]="1"
                             [step]="0.1"
+                            [showButtons]="true"
                             buttonLayout="horizontal"
                             spinnerMode="horizontal"
                             class="w-full"
                             decrementButtonClass="p-button-secondary"
-                            incrementButtonClass="p-button-secondary">
-                        </p-inputNumber>
-                        <small class="help-text">Controls response diversity. Lower values (0.1) make output more focused, higher values (0.9) allow more variety.</small>
+                            incrementButtonClass="p-button-secondary"
+                        ></p-inputNumber>
+                        <small class="help-text">Controls diversity of model outputs. Lower values make output more focused, higher values more creative.</small>
                     </div>
-
-                    <div class="col-12 mt-4" style="margin-top:20px">
-                        <app-function-list
-                            [functions]="functions"
-                            (functionsChange)="onFunctionsChange($event)"
-                        ></app-function-list>
+                </div>
+            </p-tabPanel>
+    
+            <!-- User Instructions Tab -->
+            <p-tabPanel header="User Instructions">
+                <div class="grid">
+                    <div class="col-12 instruction-section">
+                        <h4>Business Logic</h4>
+                        <div class="instruction-field">
+                            <div class="instructions-header">
+                                <p-button 
+                                    icon="pi pi-window-maximize" 
+                                    (onClick)="openInstructionDialog('businessLogic')"
+                                    [text]="true"
+                                    [rounded]="true"
+                                    styleClass="p-button-sm p-button-secondary"
+                                    pTooltip="Edit in full screen">
+                                </p-button>
+                            </div>
+                            <textarea 
+                                pInputTextarea 
+                                [rows]="5" 
+                                [autoResize]="true"
+                                [(ngModel)]="instructionParts.userInstructions.businessLogic"
+                                [ngModelOptions]="{standalone: true}"
+                                class="w-full instruction-textarea">
+                            </textarea>
+                            <small class="help-text">Define the core rules and logic that guide how the assistant processes information and makes decisions.</small>
+                        </div>
+                    </div>
+    
+                    <div class="col-12 instruction-section">
+                        <h4>Processing Steps</h4>
+                        <div class="instruction-field">
+                            <div class="instructions-header">
+                                <p-button 
+                                    icon="pi pi-window-maximize" 
+                                    (onClick)="openInstructionDialog('processingSteps')"
+                                    [text]="true"
+                                    [rounded]="true"
+                                    styleClass="p-button-sm p-button-secondary"
+                                    pTooltip="Edit in full screen">
+                                </p-button>
+                            </div>
+                            <textarea 
+                                pInputTextarea 
+                                [rows]="5" 
+                                [autoResize]="true"
+                                [(ngModel)]="instructionParts.userInstructions.processingSteps"
+                                [ngModelOptions]="{standalone: true}"
+                                class="w-full instruction-textarea">
+                            </textarea>
+                            <small class="help-text">Outline the specific steps and workflow the assistant should follow when processing input and generating responses.</small>
+                        </div>
+                    </div>
+    
+                    <div class="col-12 instruction-section">
+                        <h4>Custom Functions</h4>
+                        <div class="instruction-field">
+                            <div class="instructions-header">
+                                <p-button 
+                                    icon="pi pi-window-maximize" 
+                                    (onClick)="openInstructionDialog('customFunctions')"
+                                    [text]="true"
+                                    [rounded]="true"
+                                    styleClass="p-button-sm p-button-secondary"
+                                    pTooltip="Edit in full screen">
+                                </p-button>
+                            </div>
+                            <textarea 
+                                pInputTextarea 
+                                [rows]="5" 
+                                [autoResize]="true"
+                                [(ngModel)]="instructionParts.userInstructions.customFunctions"
+                                [ngModelOptions]="{standalone: true}"
+                                class="w-full instruction-textarea">
+                            </textarea>
+                            <small class="help-text">Define any special functions, capabilities, or tools the assistant should use while processing requests.</small>
+                        </div>
+                    </div>
+                </div>
+            </p-tabPanel>
+    
+            <!-- System Instructions Tab -->
+            <p-tabPanel header="System Instructions">
+                <div class="grid">
+                    <div class="col-12 md:col-6 instruction-section">
+                        <label>Input Schemas</label>
+                        <p-multiSelect
+                            formControlName="input_schemas"
+                            [options]="availableSchemas"
+                            optionLabel="name"
+                            optionValue="id"
+                            class="w-full"
+                            placeholder="Select input schemas"
+                            display="chip"
+                            (onChange)="onInputSchemasChange()">
+                        </p-multiSelect>
+                        <small class="help-text">Define the structure of data this assistant can process.</small>
+                    </div>
+    
+                    <div class="col-12 md:col-6 instruction-section">
+                        <label>Output Schemas</label>
+                        <p-multiSelect
+                            formControlName="output_schemas"
+                            [options]="availableSchemas"
+                            optionLabel="name"
+                            optionValue="id"
+                            class="w-full"
+                            placeholder="Select output schemas"
+                            display="chip"
+                            (onChange)="onOutputSchemasChange()">
+                        </p-multiSelect>
+                        <small class="help-text">Define the structure of data this assistant will produce.</small>
+                    </div>
+    
+                    <div class="col-12 md:col-6 instruction-section" *ngIf="instructionParts.coreInstructions.defaultOutputFormat">
+                        <h4>Default Output Format</h4>
+                        <div class="instruction-field">
+                            <div class="instructions-header">
+                                <p-button 
+                                    icon="pi pi-window-maximize" 
+                                    (onClick)="openDefaultOutputFormatDialog()"
+                                    [text]="true"
+                                    [rounded]="true"
+                                    styleClass="p-button-sm p-button-secondary"
+                                    pTooltip="View in full screen">
+                                </p-button>
+                            </div>
+                            <textarea 
+                                pInputTextarea 
+                                [rows]="5" 
+                                [autoResize]="true"
+                                [(ngModel)]="instructionParts.coreInstructions.defaultOutputFormat"
+                                [ngModelOptions]="{standalone: true}"
+                                [readonly]="true"
+                                class="w-full instruction-textarea">
+                            </textarea>
+                            <small class="help-text">Automatically generated format instructions based on selected schemas and functions.</small>
+                        </div>
+                    </div>
+    
+                    <div class="col-12 md:col-6 instruction-section">
+                        <h4>Array Handling</h4>
+                        <div class="instruction-field">
+                            <div class="instructions-header">
+                                <p-button 
+                                    icon="pi pi-window-maximize" 
+                                    (onClick)="openArrayHandlingDialog()"
+                                    [text]="true"
+                                    [rounded]="true"
+                                    styleClass="p-button-sm p-button-secondary"
+                                    pTooltip="View in full screen">
+                                </p-button>
+                            </div>
+                            <textarea 
+                                pInputTextarea 
+                                [rows]="5" 
+                                [autoResize]="true"
+                                [(ngModel)]="instructionParts.coreInstructions.arrayHandling"
+                                [ngModelOptions]="{standalone: true}"
+                                [readonly]="true"
+                                class="w-full instruction-textarea">
+                            </textarea>
+                            <small class="help-text">System-generated instructions for handling arrays and lists of data.</small>
+                        </div>
+                    </div>
+                </div>
+            </p-tabPanel>
+    
+            <!-- Preview Tab -->
+            <p-tabPanel header="Preview">
+                <div class="grid">
+                    <div class="col-12">
+                        <h4>Combined Instructions</h4>
+                        <pre class="instruction-preview">{{combineInstructions()}}</pre>
                     </div>
                 </div>
             </p-tabPanel>
         </p-tabView>
-
     </form>
 
     <ng-template pTemplate="footer">
@@ -202,25 +276,44 @@
     </ng-template>
 </p-dialog>
 
-<!-- Full Screen Instructions Dialog -->
-<p-dialog [(visible)]="showFullScreenInstructions" 
+<!-- Full Screen Instruction Dialog -->
+<p-dialog 
+    [(visible)]="fullScreenDialogVisible" 
     [modal]="true" 
     [style]="{width: '90vw', height: '90vh'}"
+    [header]="fullScreenDialogTitle"
     [draggable]="false"
-    [resizable]="false">
-    <ng-template pTemplate="header">
-        <h3>Full Instructions Preview</h3>
-    </ng-template>
-    <div class="p-3">
-        <pre class="whitespace-pre-wrap">{{combineInstructions()}}</pre>
+    [resizable]="false"
+    class="instruction-dialog">
+    <div class="instruction-dialog-content">
+        <textarea 
+            pInputTextarea 
+            [(ngModel)]="fullScreenContent"
+            [rows]="20"
+            [autoResize]="true"
+            [readonly]="currentInstructionField === 'defaultOutputFormat' || currentInstructionField === 'arrayHandling'"
+            class="w-full h-full instruction-textarea">
+        </textarea>
     </div>
     <ng-template pTemplate="footer">
         <div class="flex justify-content-end">
             <p-button
                 label="Close"
-                (onClick)="showFullScreenInstructions = false"
-                styleClass="p-button-text">
+                (onClick)="closeInstructionDialog()"
+                styleClass="p-button-text mr-2"
+                *ngIf="currentInstructionField === 'defaultOutputFormat' || currentInstructionField === 'arrayHandling'">
             </p-button>
+            <ng-container *ngIf="!(currentInstructionField === 'defaultOutputFormat' || currentInstructionField === 'arrayHandling')">
+                <p-button
+                    label="Cancel"
+                    (onClick)="closeInstructionDialog()"
+                    styleClass="p-button-text mr-2">
+                </p-button>
+                <p-button
+                    label="Apply"
+                    (onClick)="applyInstructionDialog()">
+                </p-button>
+            </ng-container>
         </div>
     </ng-template>
 </p-dialog>
