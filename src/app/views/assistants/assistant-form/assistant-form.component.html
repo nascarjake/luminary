@@ -44,9 +44,8 @@
                                 [options]="responseFormatOptions"
                                 formControlName="response_format_type"
                                 class="w-full"
-                                placeholder="Select response format"
                             ></p-dropdown>
-                            <small class="help-text">Specifies the format that the assistant should use when responding.</small>
+                            <small class="help-text">The format that the assistant should use for responses.</small>
                         </div>
         
                         <div class="col-12 md:col-6 parameter-group">
@@ -84,7 +83,8 @@
                         </div>
                         <div class="col-12 mt-3" style="padding-top:1.5rem">
                           <app-function-list
-                              [(functions)]="functions">
+                              [(functions)]="functions"
+                              (functionsChange)="onFunctionsChange($event)">
                           </app-function-list>
                       </div>
                     </div>

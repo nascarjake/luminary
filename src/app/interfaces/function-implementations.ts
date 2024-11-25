@@ -4,6 +4,7 @@ export interface FunctionImplementation {
   script: string;
   workingDir?: string;
   timeout?: number;
+  isOutput?: boolean;
 }
 
 export interface AssistantFunctionImplementations {

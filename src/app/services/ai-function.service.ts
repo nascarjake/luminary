@@ -427,6 +427,7 @@ export class AiFunctionService {
       
       // Initialize function result with args as fallback
       let functionResult = args;
+      let implementation;
       
       try {
         // Try to load and execute assistant function
@@ -436,58 +437,57 @@ export class AiFunctionService {
         // Get function implementation from assistant file
         const functions = assistant.functions?.functions ? 
           Object.fromEntries(assistant.functions.functions.map(func => [func.name, func])) : {};
-        const implementation = functions[functionName];
+        implementation = functions[functionName];
 
-        if (implementation) {
+        // Execute terminal command if present
+        if (implementation?.command && implementation?.script) {
           const { command, script, workingDir } = implementation;
           
-          if (command && script) {
-            // Process any paths in the arguments to be platform-independent
-            const processedArgs: Record<string, any> = {};
-            for (const [key, value] of Object.entries(args)) {
-              if (typeof value === 'string') {
-                try {
-                  // First try to parse as JSON
-                  processedArgs[key] = JSON.parse(value);
-                } catch {
-                  // If it's a path-like string (contains / or \), normalize it
-                  if (value.includes('/') || value.includes('\\')) {
-                    // If it's not absolute, make it relative to baseDir
-                    const isAbsolute = value.startsWith('/') || /^[A-Za-z]:/.test(value);
-                    processedArgs[key] = isAbsolute ? value : await window.electron.path.join(baseDir, value);
-                  } else {
-                    processedArgs[key] = value;
-                  }
+          // Process any paths in the arguments to be platform-independent
+          const processedArgs: Record<string, any> = {};
+          for (const [key, value] of Object.entries(args)) {
+            if (typeof value === 'string') {
+              try {
+                // First try to parse as JSON
+                processedArgs[key] = JSON.parse(value);
+              } catch {
+                // If it's a path-like string (contains / or \), normalize it
+                if (value.includes('/') || value.includes('\\')) {
+                  // If it's not absolute, make it relative to baseDir
+                  const isAbsolute = value.startsWith('/') || /^[A-Za-z]:/.test(value);
+                  processedArgs[key] = isAbsolute ? value : await window.electron.path.join(baseDir, value);
+                } else {
+                  processedArgs[key] = value;
                 }
-              } else {
-                processedArgs[key] = value;
               }
+            } else {
+              processedArgs[key] = value;
             }
+          }
 
-            // Normalize working directory path
-            const normalizedWorkingDir = workingDir ? (
-              workingDir.startsWith('/') || /^[A-Za-z]:/.test(workingDir)
-                ? workingDir 
-                : await window.electron.path.join(baseDir, workingDir)
-            ) : baseDir;
+          // Normalize working directory path
+          const normalizedWorkingDir = workingDir ? (
+            workingDir.startsWith('/') || /^[A-Za-z]:/.test(workingDir)
+              ? workingDir 
+              : await window.electron.path.join(baseDir, workingDir)
+          ) : baseDir;
 
-            // Execute the command with output handling
-            console.log('🖥️ Executing terminal command:', command);
-            const output = await window.electron.terminal.executeCommand({
-              command,
-              args: [script],
-              cwd: normalizedWorkingDir,
-              stdin: JSON.stringify(processedArgs)
-            });
+          // Execute the command with output handling
+          console.log('🖥️ Executing terminal command:', command);
+          const output = await window.electron.terminal.executeCommand({
+            command,
+            args: [script],
+            cwd: normalizedWorkingDir,
+            stdin: JSON.stringify(processedArgs)
+          });
 
-            try {
-              // Try to parse as JSON
-              const jsonData = JSON.parse(output);
-              functionResult = jsonData;
-            } catch {
-              // If not JSON, return as is
-              functionResult = { output };
-            }
+          try {
+            // Try to parse as JSON
+            const jsonData = JSON.parse(output);
+            functionResult = jsonData;
+          } catch {
+            // If not JSON, return as is
+            functionResult = { output };
           }
         }
       } catch (error) {
@@ -506,6 +506,7 @@ export class AiFunctionService {
       const results = [];
       const errors = [];
 
+      // Process nodes and connections only for output functions
       for (const sourceNode of sourceNodes) {
         console.log('🔄 Processing source node:', sourceNode.id);
         
@@ -573,7 +574,13 @@ export class AiFunctionService {
             }
           }
         }
-        
+
+        // Only check connections if this is an output function
+        if (!implementation?.isOutput) {
+          console.log('ℹ️ Not an output function, returning result directly');
+          return { output: JSON.stringify(functionResult) };
+        }
+          
         // Now handle connections for routing
         const connections = state.connections.filter(c => c.fromNode === sourceNode.id);
         if (connections.length === 0) {
@@ -600,36 +607,25 @@ export class AiFunctionService {
             ? functionResult[outputDot.name]
             : functionResult;
 
-          // Route to next assistants
-          console.log('🚀 Routing to next assistants');
-          const routingResult = await this.routeToNextAssistants(sourceNode.id, outputValue);
-          if (!routingResult.success) {
-            const errorMsg = `Routing failed: ${routingResult.errors?.join(', ')}`;
-            console.error('❌ Routing Error:', errorMsg);
-            errors.push(errorMsg);
-          } else {
-            console.log('✅ Routing successful');
+          try {
+            const routingResult = await this.routeToNextAssistants(connection.toNode, outputValue);
+            if (!routingResult.success) {
+              errors.push(...(routingResult.errors || []));
+            }
+          } catch (error) {
+            console.error('❌ Error routing to next assistant:', error);
+            errors.push(error.message);
           }
         }
       }
-      
-      // Log errors if any
+
       if (errors.length > 0) {
-        console.error('❌ Execution errors:', errors);
-        this.aiCommunicationService.emitSystemMessage(`⚠️ Warnings during execution: ${errors.join('; ')}`);
+        console.warn('⚠️ Function completed with errors:', errors);
       }
 
-      // Return results
-      const output = JSON.stringify(results.length === 1 ? results[0] : results);
-      console.log('✅ Function execution completed:', {
-        function: functionName,
-        resultsCount: results.length,
-        errorsCount: errors.length
-      });
-      
-      return { output };
+      return { output: JSON.stringify(functionResult) };
     } catch (error) {
-      console.error('❌ Fatal error in executeFunction:', error);
+      console.error('❌ Error executing function:', error);
       throw error;
     }
   }
