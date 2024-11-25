@@ -44,6 +44,10 @@ export class AssistantFormComponent implements OnInit {
   showFullScreenInstructions = false;
   fullScreenInstructions = '';
   loading = false;
+  fullScreenDialogVisible = false;
+  fullScreenDialogTitle = '';
+  fullScreenContent = '';
+  currentInstructionField: string | null = null;
 
   instructionParts: AssistantInstructions = {
     coreInstructions: {
@@ -77,7 +81,10 @@ export class AssistantFormComponent implements OnInit {
       response_format_type: ['text'],
       temperature: [0.7],
       top_p: [1],
-      metadata: [{}]
+      metadata: [{}],
+      instructions: [''],
+      input_schemas: [[]],
+      output_schemas: [[]]
     });
   }
 
@@ -85,69 +92,86 @@ export class AssistantFormComponent implements OnInit {
     this.loadModels();
     this.loadSchemas();
     this.loadFunctions();
+
+    // Subscribe to form value changes
+    this.form.valueChanges.subscribe(value => {
+      // Check if instructions are empty and system instructions exist
+      if (this.areInstructionsEmpty() && value.instructions) {
+        this.distributeSystemInstructions(value.instructions);
+        this.generateInstructions();
+      }
+    });
   }
 
   ngOnChanges(changes: SimpleChanges) {
-    if (changes['visible'] && changes['visible'].currentValue && !this.assistant) {
-      // Reset form when opening for a new assistant
-      this.form.reset({
-        name: '',
-        model: '',
-        description: '',
-        response_format_type: 'text',
-        temperature: 0.7,
-        top_p: 1,
-        metadata: {}
-      });
-      this.functions = [];
-      this.instructionParts = {
-        coreInstructions: {
-          inputSchemas: [],
-          outputSchemas: [],
-          defaultOutputFormat: '',
-          arrayHandling: ''
-        },
-        userInstructions: {
-          businessLogic: '',
-          processingSteps: '',
-          customFunctions: ''
-        }
-      };
-      return;
-    }
-
-    if (changes['assistant'] && this.assistant) {
-      // Load assistant data into form
-      this.form.patchValue({
-        name: this.assistant.name,
-        description: this.assistant.description || '',
-        model: this.assistant.model,
-        response_format_type: this.assistant.response_format?.type || 'text',
-        temperature: this.assistant.temperature || 0.7,
-        top_p: this.assistant.top_p || 1,
-        metadata: this.assistant.metadata || {}
-      });
-
-      // Load instruction parts
-      if (this.assistant.metadata?.instructionParts) {
-        this.instructionParts = this.assistant.metadata.instructionParts;
-      }
-
-      // Convert OpenAI tools format to our FunctionDefinition format
-      const functionDefs = (this.assistant.tools || [])
-        .filter(tool => tool.type === 'function' && tool.function)
-        .map(tool => ({
-          name: tool.function.name,
-          description: tool.function.description || '',
-          parameters: {
-            type: 'object',
-            properties: tool.function.parameters?.properties || {},
-            required: tool.function.parameters?.required || []
+    if (changes['visible'] && changes['visible'].currentValue) {
+      if (!this.assistant) {
+        // Reset form when opening for a new assistant
+        this.form.reset({
+          name: '',
+          model: '',
+          description: '',
+          response_format_type: 'text',
+          temperature: 0.7,
+          top_p: 1,
+          metadata: {},
+          input_schemas: [],
+          output_schemas: []
+        });
+        this.functions = [];
+        this.instructionParts = {
+          coreInstructions: {
+            inputSchemas: [],
+            outputSchemas: [],
+            defaultOutputFormat: '',
+            arrayHandling: ''
+          },
+          userInstructions: {
+            businessLogic: '',
+            processingSteps: '',
+            customFunctions: ''
           }
-        }));
+        };
+      } else {
+        // Load assistant data into form
+        this.form.patchValue({
+          name: this.assistant.name,
+          description: this.assistant.description || '',
+          model: this.assistant.model,
+          response_format_type: this.assistant.response_format?.type || 'text',
+          temperature: this.assistant.temperature || 0.7,
+          top_p: this.assistant.top_p || 1,
+          metadata: this.assistant.metadata || {},
+          instructions: this.assistant.instructions || ''
+        });
 
-      // Load function implementations
-      this.loadFunctionImplementations(functionDefs);
+        // Load instruction parts
+        if (this.assistant.metadata?.instructionParts) {
+          this.instructionParts = this.assistant.metadata.instructionParts;
+        }
+
+        // Convert OpenAI tools format to our FunctionDefinition format
+        const functionDefs = (this.assistant.tools || [])
+          .filter(tool => tool.type === 'function' && tool.function)
+          .map(tool => ({
+            name: tool.function.name,
+            description: tool.function.description || '',
+            parameters: {
+              type: 'object',
+              properties: tool.function.parameters?.properties || {},
+              required: tool.function.parameters?.required || []
+            }
+          }));
+
+        // Load function implementations
+        this.loadFunctionImplementations(functionDefs).then(() => {
+          // Update form with schema values after loading implementations
+          this.form.patchValue({
+            input_schemas: this.instructionParts.coreInstructions.inputSchemas,
+            output_schemas: this.instructionParts.coreInstructions.outputSchemas
+          });
+        });
+      }
     }
   }
 
@@ -280,6 +304,7 @@ export class AssistantFormComponent implements OnInit {
 
   async onFunctionsChange(functions: FunctionDefinition[]) {
     this.functions = functions;
+    this.generateInstructions();
     await this.saveImplementations();
   }
 
@@ -306,23 +331,68 @@ export class AssistantFormComponent implements OnInit {
   }
 
   async onInputSchemasChange() {
+    const selectedSchemas = this.form.get('input_schemas')?.value || [];
+    this.instructionParts.coreInstructions.inputSchemas = selectedSchemas;
+    this.generateInstructions();
     await this.saveImplementations();
   }
 
   async onOutputSchemasChange() {
+    const selectedSchemas = this.form.get('output_schemas')?.value || [];
+    this.instructionParts.coreInstructions.outputSchemas = selectedSchemas;
+    this.generateInstructions();
     await this.saveImplementations();
   }
 
-  showInstructionsDialog() {
-    this.fullScreenInstructions = this.combineInstructions();
-    this.showFullScreenInstructions = true;
+  openInstructionDialog(type: string) {
+    const titles: { [key: string]: string } = {
+      businessLogic: 'Business Logic',
+      processingSteps: 'Processing Steps',
+      customFunctions: 'Custom Functions',
+      defaultOutputFormat: 'Default Output Format',
+      arrayHandling: 'Array Handling'
+    };
+
+    this.fullScreenDialogTitle = titles[type] || type;
+    
+    // Handle both core and user instructions
+    if (type === 'defaultOutputFormat' || type === 'arrayHandling') {
+      this.fullScreenContent = this.instructionParts.coreInstructions[type];
+      this.currentInstructionField = type;
+      this.fullScreenDialogVisible = true;
+      return;
+    }
+
+    this.fullScreenContent = this.instructionParts.userInstructions[type];
+    this.currentInstructionField = type;
+    this.fullScreenDialogVisible = true;
   }
 
-  hideDialog() {
-    this.visible = false;
-    this.visibleChange.emit(false);
-    this.cancel.emit();
-    this.form.reset();
+  openDefaultOutputFormatDialog() {
+    this.openInstructionDialog('defaultOutputFormat');
+  }
+
+  openArrayHandlingDialog() {
+    this.openInstructionDialog('arrayHandling');
+  }
+
+  closeInstructionDialog() {
+    this.fullScreenDialogVisible = false;
+    this.currentInstructionField = null;
+  }
+
+  applyInstructionDialog() {
+    if (!this.currentInstructionField) return;
+
+    if (this.currentInstructionField === 'defaultOutputFormat' || this.currentInstructionField === 'arrayHandling') {
+      // For system instructions, we don't apply changes since they're read-only
+      this.closeInstructionDialog();
+      return;
+    }
+
+    // Only apply changes for user instructions
+    this.instructionParts.userInstructions[this.currentInstructionField] = this.fullScreenContent;
+    this.closeInstructionDialog();
   }
 
   combineInstructions(): string {
@@ -354,5 +424,193 @@ export class AssistantFormComponent implements OnInit {
     }
 
     return parts.join('\n\n');
+  }
+
+  private areInstructionsEmpty(): boolean {
+    const { coreInstructions, userInstructions } = this.instructionParts;
+    return !coreInstructions.defaultOutputFormat.trim() &&
+           !coreInstructions.arrayHandling.trim() &&
+           !userInstructions.businessLogic.trim() &&
+           !userInstructions.processingSteps.trim() &&
+           !userInstructions.customFunctions.trim();
+  }
+
+  private distributeSystemInstructions(systemInstructions: string) {
+    // Split the instructions into paragraphs while preserving newlines within paragraphs
+    // This regex matches double newlines (with optional spaces) but keeps single newlines intact
+    const paragraphs = systemInstructions
+      .split(/\n\s*\n/)
+      .filter(p => p.trim())
+      .map(p => p.trim());
+    
+    const businessLogicKeywords = [
+      'purpose', 'goal', 'objective', 'context', 'business', 'domain',
+      'rules', 'policy', 'policies', 'requirements', 'constraints',
+      'validation', 'verify', 'ensure', 'must', 'should', 'workflow'
+    ];
+
+    const processingStepsKeywords = [
+      'step', 'process', 'procedure', 'first', 'then', 'next', 'finally',
+      'analyze', 'parse', 'extract', 'transform', 'format', 'calculate',
+      'generate', 'create', 'produce', 'output'
+    ];
+
+    const customFunctionKeywords = [
+      'function', 'command', 'call', 'invoke', 'execute', 'run',
+      'api', 'endpoint', 'service', 'tool', 'utility'
+    ];
+
+    let businessLogic: string[] = [];
+    let processingSteps: string[] = [];
+    let customFunctions: string[] = [];
+
+    // Helper function to count keyword matches in a paragraph
+    const countKeywordMatches = (text: string, keywords: string[]): number => {
+      const lowerText = text.toLowerCase();
+      return keywords.reduce((count, keyword) => {
+        // Use regex to match whole words only
+        const regex = new RegExp(`\\b${keyword}\\b`, 'gi');
+        const matches = (text.match(regex) || []).length;
+        return count + matches;
+      }, 0);
+    };
+
+    // Classify each paragraph based on keyword matches
+    for (const paragraph of paragraphs) {
+      const businessScore = countKeywordMatches(paragraph, businessLogicKeywords);
+      const processingScore = countKeywordMatches(paragraph, processingStepsKeywords);
+      const functionScore = countKeywordMatches(paragraph, customFunctionKeywords);
+
+      // Find the highest scoring category
+      const scores = [
+        { type: 'business', score: businessScore },
+        { type: 'processing', score: processingScore },
+        { type: 'functions', score: functionScore }
+      ];
+
+      const highestScore = scores.reduce((prev, current) => 
+        current.score > prev.score ? current : prev
+      );
+
+      // If no significant matches found (score = 0), default to business logic
+      switch (highestScore.score > 0 ? highestScore.type : 'business') {
+        case 'business':
+          businessLogic.push(paragraph);
+          break;
+        case 'processing':
+          processingSteps.push(paragraph);
+          break;
+        case 'functions':
+          customFunctions.push(paragraph);
+          break;
+      }
+    }
+
+    // Join paragraphs with double newlines to maintain separation
+    if (businessLogic.length > 0) {
+      this.instructionParts.userInstructions.businessLogic = businessLogic.join('\n\n');
+    }
+    if (processingSteps.length > 0) {
+      this.instructionParts.userInstructions.processingSteps = processingSteps.join('\n\n');
+    }
+    if (customFunctions.length > 0) {
+      this.instructionParts.userInstructions.customFunctions = customFunctions.join('\n\n');
+    }
+  }
+
+  private generateDefaultOutputFormat(): string {
+    const hasOutputSchemas = this.instructionParts.coreInstructions.outputSchemas.length > 0;
+    const hasFunctions = this.functions.length > 0;
+    const hasTerminalCommand = this.functions.some(f => f.implementation?.command);
+
+    // Don't generate instructions if:
+    // 1. No outputs are selected, or
+    // 2. A function exists that has a terminal command
+    if (!hasOutputSchemas || hasTerminalCommand) {
+      return '';
+    }
+
+    let instructions = [];
+
+    if (hasFunctions) {
+      instructions.push(
+        "When you complete your task, call one of the provided functions to pass your output to the next stage.",
+        "Your output will be validated against the output schema if one is provided."
+      );
+    } else {
+      instructions.push(
+        "When you complete your task, format your response as a JSON object with a 'result' field containing your output.",
+        "Example: { \"result\": \"your output here\" }"
+      );
+    }
+
+    if (hasOutputSchemas) {
+      instructions.push(
+        "Your output must conform to one of the provided output schemas.",
+        "Ensure all required fields are present and properly formatted."
+      );
+    }
+
+    return instructions.join("\n\n");
+  }
+
+  private generateArrayHandling(): string {
+    const hasOutputSchemas = this.instructionParts.coreInstructions.outputSchemas.length > 0;
+    
+    let instructions = [
+      "When processing arrays or lists of data:",
+      "",
+      "1. If you receive an array of inputs, process each item individually and return an array of results.",
+      "2. Maintain the order of items in the output array to match the input array.",
+      "3. If an item fails processing, include an error message in its place.",
+      ""
+    ];
+
+    if (hasOutputSchemas) {
+      instructions.push(
+        "4. Each item in the output array must conform to the specified output schema.",
+        "5. For array fields within the schema, maintain nested array structures as specified."
+      );
+    }
+
+    return instructions.join("\n");
+  }
+
+  private updateCustomFunctionInstructions() {
+    const hasTerminalCommand = this.functions.some(f => f.implementation?.command);
+    const hasCustomFunctions = !!this.instructionParts.userInstructions.customFunctions.trim();
+
+    if (hasTerminalCommand && !hasCustomFunctions) {
+      const functionNames = this.functions
+        .filter(f => f.implementation?.command)
+        .map(f => f.name)
+        .join(', ');
+
+      this.instructionParts.userInstructions.customFunctions = 
+        `When you have completed processing the input, call the ${functionNames} function with your results. ` +
+        `This function will handle passing your output to the next stage of processing.`;
+    }
+  }
+
+  generateInstructions() {
+    // Always generate array handling instructions if not present
+    if (!this.instructionParts.coreInstructions.arrayHandling) {
+      this.instructionParts.coreInstructions.arrayHandling = this.generateArrayHandling();
+    }
+
+    // Only generate default output format if needed
+    this.instructionParts.coreInstructions.defaultOutputFormat = this.generateDefaultOutputFormat();
+
+    // Update custom functions instructions if needed
+    this.updateCustomFunctionInstructions();
+  }
+
+  hideDialog() {
+    this.visible = false;
+    this.visibleChange.emit(false);
+    this.cancel.emit();
+    
+    // Don't reset the form here as it will be handled by ngOnChanges
+    // when the dialog is reopened
   }
 }
