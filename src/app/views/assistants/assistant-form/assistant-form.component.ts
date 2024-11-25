@@ -98,8 +98,8 @@ export class AssistantFormComponent implements OnInit {
       required: ['result']
     },
     implementation: {
-      command: 'node',
-      script: 'console.log(JSON.stringify(result));',
+      command: '',
+      script: '',
       workingDir: '',
       timeout: 30000,
       isOutput: true
@@ -798,5 +798,13 @@ export class AssistantFormComponent implements OnInit {
     
     // Don't reset the form here as it will be handled by ngOnChanges
     // when the dialog is reopened
+  }
+
+  get visibleFunctions(): FunctionDefinition[] {
+    return this.functions.filter(f => f.name !== this.DEFAULT_OUTPUT_DEFINITION.name);
+  }
+
+  set visibleFunctions(value: FunctionDefinition[]) {
+    this.functions = [...value, this.DEFAULT_OUTPUT_DEFINITION];
   }
 }
