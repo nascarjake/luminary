@@ -63,6 +63,8 @@ export class AssistantFormComponent implements OnInit {
     }
   };
 
+  activeTabIndex = 0;
+
   constructor(
     private formBuilder: FormBuilder,
     private openAiService: OpenAiApiService,
@@ -436,86 +438,75 @@ export class AssistantFormComponent implements OnInit {
   }
 
   private distributeSystemInstructions(systemInstructions: string) {
-    // Split the instructions into paragraphs while preserving newlines within paragraphs
-    // This regex matches double newlines (with optional spaces) but keeps single newlines intact
-    const paragraphs = systemInstructions
-      .split(/\n\s*\n/)
-      .filter(p => p.trim())
-      .map(p => p.trim());
+    // For now, put all system instructions in processing steps
+    this.instructionParts.userInstructions.processingSteps = systemInstructions;
+    this.instructionParts.userInstructions.businessLogic = '';
+    this.instructionParts.userInstructions.customFunctions = '';
+
+    /* Original distribution logic kept for future use
+    const paragraphs = systemInstructions.split('\n\n').filter(p => p.trim());
     
-    const businessLogicKeywords = [
-      'purpose', 'goal', 'objective', 'context', 'business', 'domain',
-      'rules', 'policy', 'policies', 'requirements', 'constraints',
-      'validation', 'verify', 'ensure', 'must', 'should', 'workflow'
-    ];
-
-    const processingStepsKeywords = [
-      'step', 'process', 'procedure', 'first', 'then', 'next', 'finally',
-      'analyze', 'parse', 'extract', 'transform', 'format', 'calculate',
-      'generate', 'create', 'produce', 'output'
-    ];
-
-    const customFunctionKeywords = [
-      'function', 'command', 'call', 'invoke', 'execute', 'run',
-      'api', 'endpoint', 'service', 'tool', 'utility'
-    ];
-
-    let businessLogic: string[] = [];
-    let processingSteps: string[] = [];
-    let customFunctions: string[] = [];
-
-    // Helper function to count keyword matches in a paragraph
-    const countKeywordMatches = (text: string, keywords: string[]): number => {
-      const lowerText = text.toLowerCase();
-      return keywords.reduce((count, keyword) => {
-        // Use regex to match whole words only
-        const regex = new RegExp(`\\b${keyword}\\b`, 'gi');
-        const matches = (text.match(regex) || []).length;
-        return count + matches;
-      }, 0);
-    };
-
-    // Classify each paragraph based on keyword matches
-    for (const paragraph of paragraphs) {
-      const businessScore = countKeywordMatches(paragraph, businessLogicKeywords);
-      const processingScore = countKeywordMatches(paragraph, processingStepsKeywords);
-      const functionScore = countKeywordMatches(paragraph, customFunctionKeywords);
-
+    // Keywords for each category
+    const businessKeywords = ['business', 'rule', 'policy', 'requirement', 'constraint', 'validate', 'check'];
+    const processingKeywords = ['process', 'step', 'procedure', 'workflow', 'handle', 'transform', 'format'];
+    const functionKeywords = ['function', 'tool', 'command', 'operation', 'action', 'execute'];
+    
+    // Reset instruction parts
+    this.instructionParts.userInstructions.businessLogic = '';
+    this.instructionParts.userInstructions.processingSteps = '';
+    this.instructionParts.userInstructions.customFunctions = '';
+    
+    // Distribute each paragraph to the most relevant section
+    paragraphs.forEach(paragraph => {
+      const businessScore = this.countKeywordMatches(paragraph.toLowerCase(), businessKeywords);
+      const processingScore = this.countKeywordMatches(paragraph.toLowerCase(), processingKeywords);
+      const functionScore = this.countKeywordMatches(paragraph.toLowerCase(), functionKeywords);
+      
       // Find the highest scoring category
-      const scores = [
-        { type: 'business', score: businessScore },
-        { type: 'processing', score: processingScore },
-        { type: 'functions', score: functionScore }
-      ];
-
-      const highestScore = scores.reduce((prev, current) => 
-        current.score > prev.score ? current : prev
-      );
-
-      // If no significant matches found (score = 0), default to business logic
-      switch (highestScore.score > 0 ? highestScore.type : 'business') {
-        case 'business':
-          businessLogic.push(paragraph);
-          break;
-        case 'processing':
-          processingSteps.push(paragraph);
-          break;
-        case 'functions':
-          customFunctions.push(paragraph);
-          break;
+      const maxScore = Math.max(businessScore, processingScore, functionScore);
+      
+      // Add paragraph to the appropriate section
+      if (maxScore === 0 || maxScore === processingScore) {
+        this.instructionParts.userInstructions.processingSteps += 
+          (this.instructionParts.userInstructions.processingSteps ? '\n\n' : '') + paragraph;
+      } else if (maxScore === businessScore) {
+        this.instructionParts.userInstructions.businessLogic += 
+          (this.instructionParts.userInstructions.businessLogic ? '\n\n' : '') + paragraph;
+      } else {
+        this.instructionParts.userInstructions.customFunctions += 
+          (this.instructionParts.userInstructions.customFunctions ? '\n\n' : '') + paragraph;
       }
+    });
+    */
+  }
+
+  private updateCustomFunctionInstructions() {
+    const hasTerminalCommand = this.functions.some(f => f.implementation?.command);
+    const hasCustomFunctions = !!this.instructionParts.userInstructions.customFunctions.trim();
+
+    if (hasTerminalCommand && !hasCustomFunctions) {
+      const functionNames = this.functions
+        .filter(f => f.implementation?.command)
+        .map(f => f.name)
+        .join(', ');
+
+      this.instructionParts.userInstructions.customFunctions = 
+        `When you have completed processing the input, call the ${functionNames} function with your results. ` +
+        `This function will handle passing your output to the next stage of processing.`;
+    }
+  }
+
+  generateInstructions() {
+    // Always generate array handling instructions if not present
+    if (!this.instructionParts.coreInstructions.arrayHandling) {
+      this.instructionParts.coreInstructions.arrayHandling = this.generateArrayHandling();
     }
 
-    // Join paragraphs with double newlines to maintain separation
-    if (businessLogic.length > 0) {
-      this.instructionParts.userInstructions.businessLogic = businessLogic.join('\n\n');
-    }
-    if (processingSteps.length > 0) {
-      this.instructionParts.userInstructions.processingSteps = processingSteps.join('\n\n');
-    }
-    if (customFunctions.length > 0) {
-      this.instructionParts.userInstructions.customFunctions = customFunctions.join('\n\n');
-    }
+    // Only generate default output format if needed
+    this.instructionParts.coreInstructions.defaultOutputFormat = this.generateDefaultOutputFormat();
+
+    // Update custom functions instructions if needed
+    this.updateCustomFunctionInstructions();
   }
 
   private generateDefaultOutputFormat(): string {
@@ -574,35 +565,6 @@ export class AssistantFormComponent implements OnInit {
     }
 
     return instructions.join("\n");
-  }
-
-  private updateCustomFunctionInstructions() {
-    const hasTerminalCommand = this.functions.some(f => f.implementation?.command);
-    const hasCustomFunctions = !!this.instructionParts.userInstructions.customFunctions.trim();
-
-    if (hasTerminalCommand && !hasCustomFunctions) {
-      const functionNames = this.functions
-        .filter(f => f.implementation?.command)
-        .map(f => f.name)
-        .join(', ');
-
-      this.instructionParts.userInstructions.customFunctions = 
-        `When you have completed processing the input, call the ${functionNames} function with your results. ` +
-        `This function will handle passing your output to the next stage of processing.`;
-    }
-  }
-
-  generateInstructions() {
-    // Always generate array handling instructions if not present
-    if (!this.instructionParts.coreInstructions.arrayHandling) {
-      this.instructionParts.coreInstructions.arrayHandling = this.generateArrayHandling();
-    }
-
-    // Only generate default output format if needed
-    this.instructionParts.coreInstructions.defaultOutputFormat = this.generateDefaultOutputFormat();
-
-    // Update custom functions instructions if needed
-    this.updateCustomFunctionInstructions();
   }
 
   hideDialog() {
