@@ -28,7 +28,7 @@
                                 [rows]="3" class="w-full"></textarea>
                             <small class="help-text">A detailed description of what this assistant does and how it should be used.</small>
                         </div>
-        
+
                         <div class="col-12 md:col-6 form-group">
                             <label for="model">Model</label>
                             <p-dropdown id="model" [options]="availableModels" formControlName="model" 
@@ -82,6 +82,11 @@
                             ></p-inputNumber><br>
                             <small class="help-text">Controls diversity of model outputs. Lower values make output more focused, higher values more creative.</small>
                         </div>
+                        <div class="col-12 mt-3" style="padding-top:1.5rem">
+                          <app-function-list
+                              [(functions)]="functions">
+                          </app-function-list>
+                      </div>
                     </div>
                 </div>
             </p-tabPanel>
