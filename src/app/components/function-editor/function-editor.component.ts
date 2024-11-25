@@ -11,6 +11,7 @@ import { DialogModule } from 'primeng/dialog';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputNumberModule } from 'primeng/inputnumber';
+import { CheckboxModule } from 'primeng/checkbox';
 
 export interface FunctionDefinition {
   name: string;
@@ -25,6 +26,7 @@ export interface FunctionDefinition {
     script: string;
     workingDir?: string;
     timeout?: number;
+    isOutput?: boolean;
   };
 }
 
@@ -53,7 +55,8 @@ const DEFAULT_FUNCTION: FunctionDefinition = {
     DialogModule,
     ButtonModule,
     InputTextModule,
-    InputNumberModule
+    InputNumberModule,
+    CheckboxModule
   ],
   template: `
     <p-dialog 
@@ -116,6 +119,14 @@ const DEFAULT_FUNCTION: FunctionDefinition = {
                              placeholder="30000">
                 </p-inputNumber>
                 <small>Maximum execution time in milliseconds (1000-300000)</small>
+              </div>
+
+              <div class="form-field">
+                <div class="p-field-checkbox">
+                  <p-checkbox [(ngModel)]="functionImpl.isOutput" [binary]="true" inputId="isOutput"></p-checkbox>
+                  <label for="isOutput" class="p-checkbox-label">Is Output Function</label>
+                </div>
+                <small>Mark this function as responsible for output formatting</small>
               </div>
             </div>
           </div>

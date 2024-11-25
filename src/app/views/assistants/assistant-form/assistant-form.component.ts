@@ -65,6 +65,11 @@ export class AssistantFormComponent implements OnInit {
 
   activeTabIndex = 0;
 
+  get showDefaultOutput(): boolean {
+    if (!this.functions) return false;
+    return !this.functions.some(f => f.implementation?.isOutput);
+  }
+
   constructor(
     private formBuilder: FormBuilder,
     private openAiService: OpenAiApiService,
@@ -86,7 +91,8 @@ export class AssistantFormComponent implements OnInit {
       metadata: [{}],
       instructions: [''],
       input_schemas: [[]],
-      output_schemas: [[]]
+      output_schemas: [[]],
+      defaultOutputFormat: ['']
     });
   }
 
@@ -98,9 +104,10 @@ export class AssistantFormComponent implements OnInit {
     // Subscribe to form value changes
     this.form.valueChanges.subscribe(value => {
       // Check if instructions are empty and system instructions exist
+      this.generateInstructions();
       if (this.areInstructionsEmpty() && value.instructions) {
         this.distributeSystemInstructions(value.instructions);
-        this.generateInstructions();
+        
       }
     });
   }
@@ -118,7 +125,8 @@ export class AssistantFormComponent implements OnInit {
           top_p: 1,
           metadata: {},
           input_schemas: [],
-          output_schemas: []
+          output_schemas: [],
+          defaultOutputFormat: ''
         });
         this.functions = [];
         this.instructionParts = {
@@ -144,7 +152,8 @@ export class AssistantFormComponent implements OnInit {
           temperature: this.assistant.temperature || 0.7,
           top_p: this.assistant.top_p || 1,
           metadata: this.assistant.metadata || {},
-          instructions: this.assistant.instructions || ''
+          instructions: this.assistant.instructions || '',
+          defaultOutputFormat: this.assistant.metadata?.instructionParts?.coreInstructions?.defaultOutputFormat || ''
         });
 
         // Load instruction parts
@@ -262,17 +271,46 @@ export class AssistantFormComponent implements OnInit {
         top_p: formValue.top_p,
         response_format: { type: formValue.response_format_type },
         tools: this.functions.map(func => ({
-          type: 'function',
-          function: {
-            name: func.name,
-            description: func.description,
-            parameters: func.parameters
-          }
+        type: 'function',
+        function: {
+          name: func.name,
+          description: func.description,
+          parameters: func.parameters
+        }
         })),
         metadata: {
-          ...formValue.metadata,
-          instructionParts: this.instructionParts
+        ...formValue.metadata,
+        instructionParts: this.instructionParts
         }
+      };
+
+      // Update instructions
+      if (!assistantData.metadata) {
+        assistantData.metadata = {};
+      }
+      if (!assistantData.metadata.instructionParts) {
+        assistantData.metadata.instructionParts = {
+          coreInstructions: {
+            inputSchemas: [],
+            outputSchemas: [],
+            defaultOutputFormat: '',
+            arrayHandling: ''
+          },
+          userInstructions: {
+            businessLogic: '',
+            processingSteps: '',
+            customFunctions: ''
+          }
+        };
+      }
+      
+      // Update core instructions while preserving existing values
+      assistantData.metadata.instructionParts.coreInstructions = {
+        ...assistantData.metadata.instructionParts.coreInstructions,
+        defaultOutputFormat: formValue.defaultOutputFormat || '',
+        inputSchemas: formValue.input_schemas || [],
+        outputSchemas: formValue.output_schemas || [],
+        arrayHandling: assistantData.metadata.instructionParts.coreInstructions?.arrayHandling || ''
       };
 
       // Include the ID if we're editing an existing assistant
@@ -538,9 +576,7 @@ export class AssistantFormComponent implements OnInit {
 
   private areInstructionsEmpty(): boolean {
     const { coreInstructions, userInstructions } = this.instructionParts;
-    return !coreInstructions.defaultOutputFormat.trim() &&
-           !coreInstructions.arrayHandling.trim() &&
-           !userInstructions.businessLogic.trim() &&
+    return !userInstructions.businessLogic.trim() &&
            !userInstructions.processingSteps.trim() &&
            !userInstructions.customFunctions.trim();
   }
@@ -619,29 +655,23 @@ export class AssistantFormComponent implements OnInit {
 
   private generateDefaultOutputFormat(): string {
     const hasOutputSchemas = this.instructionParts.coreInstructions.outputSchemas.length > 0;
-    const hasFunctions = this.functions.length > 0;
-    const hasTerminalCommand = this.functions.some(f => f.implementation?.command);
+    const hasOutputFunctions = this.functions.some(f => f.implementation?.isOutput);
 
     // Don't generate instructions if:
     // 1. No outputs are selected, or
     // 2. A function exists that has a terminal command
-    if (!hasOutputSchemas || hasTerminalCommand) {
+    if (hasOutputFunctions) {
       return '';
     }
 
     let instructions = [];
 
-    if (hasFunctions) {
-      instructions.push(
-        "When you complete your task, call one of the provided functions to pass your output to the next stage.",
-        "Your output will be validated against the output schema if one is provided."
-      );
-    } else {
-      instructions.push(
-        "When you complete your task, format your response as a JSON object with a 'result' field containing your output.",
-        "Example: { \"result\": \"your output here\" }"
-      );
-    }
+
+    instructions.push(
+      "When you complete your task, format your response as a JSON object with a 'result' field containing your output.",
+      "Example: { \"result\": \"your output here\" }"
+    );
+    
 
     if (hasOutputSchemas) {
       instructions.push(
