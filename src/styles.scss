@@ -3,6 +3,9 @@
 @import 'primeng/resources/themes/arya-blue/theme.css';
 @import 'primeng/resources/primeng.css';
 @import "primeicons/primeicons.css";
+@import 'quill/dist/quill.core.css';
+@import 'quill/dist/quill.snow.css';
+
 :root {
   font-size: 15px;
 }
@@ -17,4 +20,27 @@ html, body {
 
 *, *::before, *::after {
   box-sizing: border-box;
+}
+
+// PrimeNG Editor customizations
+.p-editor-container {
+  .p-editor-toolbar {
+    background: var(--surface-ground);
+    border-color: var(--surface-border);
+  }
+
+  .p-editor-content {
+    background: var(--surface-ground);
+    border-color: var(--surface-border);
+    
+    .ql-editor {
+      background: var(--surface-ground);
+      color: var(--text-color);
+      font-family: var(--font-family);
+      
+      &::placeholder {
+        color: var(--text-color-secondary);
+      }
+    }
+  }
 }

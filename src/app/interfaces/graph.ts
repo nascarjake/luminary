@@ -1,4 +1,5 @@
 import { ObjectSchema } from './object-system';
+import { AssistantInstructions } from '../../lib/entities/OAAssistant';
 
 export interface IGraphNodeIO {
   name: string;
@@ -16,6 +17,12 @@ export interface IAssistantNode {
     x: number;
     y: number;
   };
+  instructions?: AssistantInstructions;
+  metadata?: {
+    inputSchemas?: string[];
+    outputSchemas?: string[];
+    [key: string]: any;
+  };
 }
 
 export interface IGraphState {
@@ -25,6 +32,10 @@ export interface IGraphState {
     fromOutput: string;
     toNode: string;
     toInput: string;
+    schema?: {
+      id: string;
+      type: string;
+    };
   }[];
 }
 

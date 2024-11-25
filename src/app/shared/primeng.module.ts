@@ -20,6 +20,10 @@ import { DialogService } from 'primeng/dynamicdialog';
 import { CommonModule } from '@angular/common';
 import { CardModule } from 'primeng/card';
 import { TooltipModule } from 'primeng/tooltip';
+import { TabViewModule } from 'primeng/tabview';
+import { DividerModule } from 'primeng/divider';
+import { MultiSelectModule } from 'primeng/multiselect';
+import { EditorModule } from 'primeng/editor';
 
 const MODULES = [
   CommonModule,
@@ -40,7 +44,11 @@ const MODULES = [
   CalendarModule,
   ConfirmDialogModule,
   CardModule,
-  TooltipModule
+  TooltipModule,
+  TabViewModule,
+  DividerModule,
+  MultiSelectModule,
+  EditorModule
 ];
 
 @NgModule({

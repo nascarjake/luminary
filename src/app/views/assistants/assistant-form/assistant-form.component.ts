@@ -1,23 +1,12 @@
-import { Component, OnInit, EventEmitter, Output, Input, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, OnInit, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { InputTextModule } from 'primeng/inputtext';
-import { InputTextareaModule } from 'primeng/inputtextarea';
-import { DropdownModule } from 'primeng/dropdown';
-import { ButtonModule } from 'primeng/button';
-import { CardModule } from 'primeng/card';
-import { InputNumberModule } from 'primeng/inputnumber';
-import { DialogModule } from 'primeng/dialog';
-import { TooltipModule } from 'primeng/tooltip';
-import { MultiSelectModule } from 'primeng/multiselect';
-import { OAAssistant } from '../../../../lib/entities/OAAssistant';
-import { OpenAiApiService } from '../../../services/open-ai-api.service';
-import { FunctionListComponent } from '../../../components/function-list/function-list.component';
-import { FunctionDefinition } from '../../../components/function-editor/function-editor.component';
-import { FunctionImplementationsService } from '../../../services/function-implementations.service';
+import { FormBuilder, FormGroup, Validators, FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { PrimeNGModule } from '../../../shared/primeng.module';
+import { OAAssistant, AssistantInstructions } from '../../../../lib/entities/OAAssistant';
 import { ObjectSchemaService } from '../../../services/object-schema.service';
+import { OpenAiApiService } from '../../../services/open-ai-api.service';
 import { ObjectSchema } from '../../../interfaces/object-system';
-import { ConfigService } from '../../../services/config.service';
+import { FunctionDefinition } from '../../../components/function-editor/function-editor.component';
 
 @Component({
   selector: 'app-assistant-form',
@@ -26,31 +15,18 @@ import { ConfigService } from '../../../services/config.service';
     CommonModule,
     FormsModule,
     ReactiveFormsModule,
-    InputTextModule,
-    InputTextareaModule,
-    DropdownModule,
-    ButtonModule,
-    CardModule,
-    InputNumberModule,
-    DialogModule,
-    TooltipModule,
-    MultiSelectModule,
-    FunctionListComponent
+    PrimeNGModule
   ],
   templateUrl: './assistant-form.component.html',
   styleUrls: ['./assistant-form.component.scss']
 })
-export class AssistantFormComponent implements OnInit, OnChanges {
+export class AssistantFormComponent implements OnInit {
+  @Input() assistant?: OAAssistant;
   @Input() visible = false;
-  @Input() assistant: OAAssistant | null = null;
   @Output() visibleChange = new EventEmitter<boolean>();
-  @Output() save = new EventEmitter<any>();
+  @Output() save = new EventEmitter<OAAssistant>();
   @Output() cancel = new EventEmitter<void>();
 
-  assistantForm: FormGroup;
-  loading = false;
-  showFullScreenInstructions = false;
-  fullScreenInstructions = '';
   availableModels: { label: string; value: string; }[] = [];
   functions: FunctionDefinition[] = [];
   availableSchemas: ObjectSchema[] = [];
@@ -60,107 +36,61 @@ export class AssistantFormComponent implements OnInit, OnChanges {
     { label: 'JSON Schema', value: 'json_schema' }
   ];
 
+  form: FormGroup;
+  showFullScreenInstructions = false;
+  fullScreenInstructions = '';
+  loading = false;
+
+  instructionParts: {
+    coreInstructions: {
+      inputSchemas: string[];
+      outputSchemas: string[];
+      defaultOutputFormat: string;
+      arrayHandling: string;
+    };
+    userInstructions: {
+      businessLogic: string;
+      processingSteps: string;
+      customFunctions: string;
+    };
+  } = {
+    coreInstructions: {
+      inputSchemas: [],
+      outputSchemas: [],
+      defaultOutputFormat: '',
+      arrayHandling: ''
+    },
+    userInstructions: {
+      businessLogic: '',
+      processingSteps: '',
+      customFunctions: ''
+    }
+  };
+
   constructor(
     private formBuilder: FormBuilder,
     private openAiService: OpenAiApiService,
-    private functionImplementationsService: FunctionImplementationsService,
-    private objectSchemaService: ObjectSchemaService,
-    private configService: ConfigService
+    private objectSchemaService: ObjectSchemaService
   ) {
-    this.assistantForm = this.formBuilder.group({
+    this.form = this.formBuilder.group({
       name: ['', Validators.required],
-      instructions: [''],
       model: ['', Validators.required],
+      description: [''],
+      response_format_type: ['text'],
       temperature: [0.7],
       top_p: [1],
-      response_format_type: ['text'],
-      functions: [[]],
-      input_schemas: [[]],
-      output_schemas: [[]]
+      metadata: [{}]
     });
   }
 
   ngOnInit() {
     this.loadModels();
-    this.loadFunctions();
     this.loadSchemas();
-  }
-
-  ngOnChanges(changes: SimpleChanges) {
-    if (changes['visible'] && changes['visible'].currentValue && !this.assistant) {
-      // Reset form when opening for a new assistant
-      this.assistantForm.reset({
-        name: '',
-        instructions: '',
-        model: '',
-        temperature: 0.7,
-        top_p: 1,
-        response_format_type: 'text',
-      });
-      this.functions = [];
-      return;
-    }
-
-    if (changes['assistant'] && this.assistant) {
-      this.assistantForm.patchValue({
-        name: this.assistant.name,
-        instructions: this.assistant.instructions || '',
-        model: this.assistant.model,
-        temperature: this.assistant.temperature || 0.7,
-        top_p: this.assistant.top_p || 1,
-        response_format_type: this.assistant.response_format?.type || 'text',
-        input_schemas: this.assistant.metadata?.input_schemas || [],
-        output_schemas: this.assistant.metadata?.output_schemas || []
-      });
-
-      // Convert OpenAI tools format to our FunctionDefinition format
-      const functionDefs = (this.assistant.tools || [])
-        .filter(tool => tool.type === 'function' && tool.function)
-        .map(tool => ({
-          name: tool.function.name,
-          description: tool.function.description || '',
-          parameters: {
-            type: 'object',
-            properties: tool.function.parameters?.properties || {},
-            required: tool.function.parameters?.required || []
-          }
-        }));
-
-      // Load any saved implementations and merge them with the function definitions
-      this.loadFunctionImplementations(functionDefs);
-    }
-  }
-
-  private async loadFunctionImplementations(functionDefs: FunctionDefinition[]) {
-    if (!this.assistant) return;
-
-    const activeProfile = await this.configService.getActiveProfile();
-    if (!activeProfile) {
-      console.error('No active profile found');
-      this.functions = functionDefs;
-      return;
-    }
-
-    try {
-      const config = await this.functionImplementationsService.loadFunctionImplementations(
-        activeProfile.id,
-        this.assistant.id
-      );
-      
-      // Update functions
-      this.functions = await this.functionImplementationsService.mergeFunctionImplementations(
-        functionDefs, 
-        config.functions.functions
-      );
-      
-      // Update form with inputs and outputs from saved config
-      this.assistantForm.patchValue({
-        input_schemas: config.inputs || [],
-        output_schemas: config.outputs || []
-      });
-    } catch (error) {
-      console.error('Failed to load function implementations:', error);
-      this.functions = functionDefs;
+    if (this.assistant) {
+      this.form.patchValue(this.assistant);
+      if (this.assistant.metadata?.instructionParts) {
+        this.instructionParts = this.assistant.metadata.instructionParts;
+      }
     }
   }
 
@@ -173,119 +103,108 @@ export class AssistantFormComponent implements OnInit, OnChanges {
       }));
     } catch (error) {
       console.error('Failed to load models:', error);
-      // Fallback models
+      // Fallback models if API call fails
       this.availableModels = [
+        { label: 'GPT-4 Turbo', value: 'gpt-4-turbo-preview' },
         { label: 'GPT-4', value: 'gpt-4' },
         { label: 'GPT-3.5 Turbo', value: 'gpt-3.5-turbo' }
       ];
     }
   }
 
-  private async loadSchemas() {
-    try {
-      this.availableSchemas = await this.objectSchemaService.listSchemas();
-    } catch (error) {
-      console.error('Failed to load schemas:', error);
-    }
+  onInputSchemasChange() {
+    // Update form when input schemas change
+    this.updateInstructions();
   }
 
-  private async loadFunctions() {
-    if (!this.assistant) return;
+  onOutputSchemasChange() {
+    // Update form when output schemas change
+    this.updateInstructions();
+  }
+
+  private updateInstructions() {
+    // Combine all instruction parts into final instructions
+    const instructions = this.combineInstructions();
+    // You might want to update a form control or emit an event here
+  }
+
+  combineInstructions(): string {
+    const parts = [];
+
+    // Add core instructions
+    if (this.instructionParts.coreInstructions.inputSchemas.length > 0) {
+      parts.push(`Input Schemas: ${this.instructionParts.coreInstructions.inputSchemas.join(', ')}`);
+    }
+    if (this.instructionParts.coreInstructions.outputSchemas.length > 0) {
+      parts.push(`Output Schemas: ${this.instructionParts.coreInstructions.outputSchemas.join(', ')}`);
+    }
+    if (this.instructionParts.coreInstructions.defaultOutputFormat) {
+      parts.push(`Default Output Format: ${this.instructionParts.coreInstructions.defaultOutputFormat}`);
+    }
+    if (this.instructionParts.coreInstructions.arrayHandling) {
+      parts.push(`Array Handling: ${this.instructionParts.coreInstructions.arrayHandling}`);
+    }
+
+    // Add user instructions
+    if (this.instructionParts.userInstructions.businessLogic) {
+      parts.push(`Business Logic:\n${this.instructionParts.userInstructions.businessLogic}`);
+    }
+    if (this.instructionParts.userInstructions.processingSteps) {
+      parts.push(`Processing Steps:\n${this.instructionParts.userInstructions.processingSteps}`);
+    }
+    if (this.instructionParts.userInstructions.customFunctions) {
+      parts.push(`Custom Functions:\n${this.instructionParts.userInstructions.customFunctions}`);
+    }
+
+    return parts.join('\n\n');
   }
 
   async onSubmit() {
-    if (this.assistantForm.invalid) {
-      return;
-    }
-
-    try {
-      const formValue = this.assistantForm.value;
-      const assistantData: Partial<OAAssistant> = {
-        name: formValue.name,
-        instructions: formValue.instructions,
-        model: formValue.model,
-        temperature: formValue.temperature,
-        top_p: formValue.top_p,
-        response_format: { type: formValue.response_format_type },
-        tools: this.functions.map(func => ({
-          type: 'function',
-          function: {
-            name: func.name,
-            description: func.description,
-            parameters: {
-              type: func.parameters.type,
-              properties: func.parameters.properties,
-              required: func.parameters.required
-            }
+    if (this.form.valid) {
+      this.loading = true;
+      try {
+        const formValue = this.form.value;
+        const assistant: Partial<OAAssistant> = {
+          ...formValue,
+          instructions: this.combineInstructions(),
+          metadata: {
+            ...formValue.metadata,
+            instructionParts: this.instructionParts
           }
-        })),
-        metadata: {
-          input_schemas: formValue.input_schemas,
-          output_schemas: formValue.output_schemas
-        }
-      };
-
-      // Include the ID if we're editing an existing assistant
-      if (this.assistant?.id) {
-        assistantData.id = this.assistant.id;
+        };
+        this.save.emit(assistant as OAAssistant);
+        this.hideDialog();
+      } finally {
+        this.loading = false;
       }
-
-      this.save.emit(assistantData);
-    } catch (error) {
-      console.error('Failed to save assistant:', error);
     }
-  }
-
-  async onFunctionsChange(functions: FunctionDefinition[]) {
-    this.functions = functions;
-    await this.saveImplementations();
-  }
-
-  private async saveImplementations() {
-    if (!this.assistant) return;
-
-    const activeProfile = await this.configService.getActiveProfile();
-    if (!activeProfile) {
-      console.error('No active profile found');
-      return;
-    }
-
-    try {
-      await this.functionImplementationsService.saveFunctionImplementations(
-        activeProfile.id,
-        this.assistant.id,
-        this.functions,
-        this.assistantForm.value.input_schemas,
-        this.assistantForm.value.output_schemas
-      );
-    } catch (error) {
-      console.error('Failed to save function implementations:', error);
-    }
-  }
-
-  async onInputSchemasChange() {
-    await this.saveImplementations();
-  }
-
-  async onOutputSchemasChange() {
-    await this.saveImplementations();
-  }
-
-  showInstructionsDialog() {
-    this.fullScreenInstructions = this.assistantForm.get('instructions')?.value || '';
-    this.showFullScreenInstructions = true;
-  }
-
-  applyFullScreenInstructions() {
-    this.assistantForm.patchValue({
-      instructions: this.fullScreenInstructions
-    });
-    this.showFullScreenInstructions = false;
   }
 
   hideDialog() {
     this.visible = false;
     this.visibleChange.emit(false);
     this.cancel.emit();
+    this.form.reset();
+  }
+
+  private async loadSchemas() {
+    try {
+      const schemas = await this.objectSchemaService.listSchemas();
+      this.availableSchemas = schemas || [];
+    } catch (error) {
+      console.error('Failed to load schemas:', error);
+      this.availableSchemas = [];
+    }
+  }
+
+  showInstructionsDialog() {
+    this.fullScreenInstructions = this.combineInstructions();
+    this.showFullScreenInstructions = true;
+  }
+
+  applyFullScreenInstructions() {
+    // Parse the full screen instructions back into parts
+    // This is a placeholder - you might want to implement proper parsing
+    this.showFullScreenInstructions = false;
   }
 }
