@@ -1,4 +1,4 @@
-import { Component, OnInit, Input, Output, EventEmitter } from '@angular/core';
+import { Component, OnInit, Input, Output, EventEmitter, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { PrimeNGModule } from '../../../shared/primeng.module';
@@ -7,6 +7,9 @@ import { ObjectSchemaService } from '../../../services/object-schema.service';
 import { OpenAiApiService } from '../../../services/open-ai-api.service';
 import { ObjectSchema } from '../../../interfaces/object-system';
 import { FunctionDefinition } from '../../../components/function-editor/function-editor.component';
+import { FunctionImplementationsService } from '../../../services/function-implementations.service';
+import { ConfigService } from '../../../services/config.service';
+import { FunctionListComponent } from '../../../components/function-list/function-list.component';
 
 @Component({
   selector: 'app-assistant-form',
@@ -15,13 +18,14 @@ import { FunctionDefinition } from '../../../components/function-editor/function
     CommonModule,
     FormsModule,
     ReactiveFormsModule,
-    PrimeNGModule
+    PrimeNGModule,
+    FunctionListComponent
   ],
   templateUrl: './assistant-form.component.html',
   styleUrls: ['./assistant-form.component.scss']
 })
 export class AssistantFormComponent implements OnInit {
-  @Input() assistant?: OAAssistant;
+  @Input() assistant: OAAssistant | null = null;
   @Input() visible = false;
   @Output() visibleChange = new EventEmitter<boolean>();
   @Output() save = new EventEmitter<OAAssistant>();
@@ -41,19 +45,7 @@ export class AssistantFormComponent implements OnInit {
   fullScreenInstructions = '';
   loading = false;
 
-  instructionParts: {
-    coreInstructions: {
-      inputSchemas: string[];
-      outputSchemas: string[];
-      defaultOutputFormat: string;
-      arrayHandling: string;
-    };
-    userInstructions: {
-      businessLogic: string;
-      processingSteps: string;
-      customFunctions: string;
-    };
-  } = {
+  instructionParts: AssistantInstructions = {
     coreInstructions: {
       inputSchemas: [],
       outputSchemas: [],
@@ -70,8 +62,14 @@ export class AssistantFormComponent implements OnInit {
   constructor(
     private formBuilder: FormBuilder,
     private openAiService: OpenAiApiService,
-    private objectSchemaService: ObjectSchemaService
+    private functionImplementationsService: FunctionImplementationsService,
+    private objectSchemaService: ObjectSchemaService,
+    private configService: ConfigService
   ) {
+    this.initForm();
+  }
+
+  private initForm() {
     this.form = this.formBuilder.group({
       name: ['', Validators.required],
       model: ['', Validators.required],
@@ -86,11 +84,109 @@ export class AssistantFormComponent implements OnInit {
   ngOnInit() {
     this.loadModels();
     this.loadSchemas();
-    if (this.assistant) {
-      this.form.patchValue(this.assistant);
+    this.loadFunctions();
+  }
+
+  ngOnChanges(changes: SimpleChanges) {
+    if (changes['visible'] && changes['visible'].currentValue && !this.assistant) {
+      // Reset form when opening for a new assistant
+      this.form.reset({
+        name: '',
+        model: '',
+        description: '',
+        response_format_type: 'text',
+        temperature: 0.7,
+        top_p: 1,
+        metadata: {}
+      });
+      this.functions = [];
+      this.instructionParts = {
+        coreInstructions: {
+          inputSchemas: [],
+          outputSchemas: [],
+          defaultOutputFormat: '',
+          arrayHandling: ''
+        },
+        userInstructions: {
+          businessLogic: '',
+          processingSteps: '',
+          customFunctions: ''
+        }
+      };
+      return;
+    }
+
+    if (changes['assistant'] && this.assistant) {
+      // Load assistant data into form
+      this.form.patchValue({
+        name: this.assistant.name,
+        description: this.assistant.description || '',
+        model: this.assistant.model,
+        response_format_type: this.assistant.response_format?.type || 'text',
+        temperature: this.assistant.temperature || 0.7,
+        top_p: this.assistant.top_p || 1,
+        metadata: this.assistant.metadata || {}
+      });
+
+      // Load instruction parts
       if (this.assistant.metadata?.instructionParts) {
         this.instructionParts = this.assistant.metadata.instructionParts;
       }
+
+      // Convert OpenAI tools format to our FunctionDefinition format
+      const functionDefs = (this.assistant.tools || [])
+        .filter(tool => tool.type === 'function' && tool.function)
+        .map(tool => ({
+          name: tool.function.name,
+          description: tool.function.description || '',
+          parameters: {
+            type: 'object',
+            properties: tool.function.parameters?.properties || {},
+            required: tool.function.parameters?.required || []
+          }
+        }));
+
+      // Load function implementations
+      this.loadFunctionImplementations(functionDefs);
+    }
+  }
+
+  private async loadFunctionImplementations(functionDefs: Array<{
+    name: string;
+    description: string;
+    parameters: {
+      type: string;
+      properties: Record<string, any>;
+      required: string[];
+    };
+  }>) {
+    if (!this.assistant) return;
+
+    const activeProfile = await this.configService.getActiveProfile();
+    if (!activeProfile) {
+      console.error('No active profile found');
+      this.functions = functionDefs;
+      return;
+    }
+
+    try {
+      const config = await this.functionImplementationsService.loadFunctionImplementations(
+        activeProfile.id,
+        this.assistant.id
+      );
+      
+      // Update functions
+      this.functions = await this.functionImplementationsService.mergeFunctionImplementations(
+        functionDefs, 
+        config.functions.functions
+      );
+      
+      // Update instruction parts with inputs and outputs
+      this.instructionParts.coreInstructions.inputSchemas = config.inputs || [];
+      this.instructionParts.coreInstructions.outputSchemas = config.outputs || [];
+    } catch (error) {
+      console.error('Failed to load function implementations:', error);
+      this.functions = functionDefs;
     }
   }
 
@@ -112,20 +208,121 @@ export class AssistantFormComponent implements OnInit {
     }
   }
 
-  onInputSchemasChange() {
-    // Update form when input schemas change
-    this.updateInstructions();
+  private async loadSchemas() {
+    try {
+      const schemas = await this.objectSchemaService.listSchemas();
+      this.availableSchemas = schemas || [];
+    } catch (error) {
+      console.error('Failed to load schemas:', error);
+      this.availableSchemas = [];
+    }
   }
 
-  onOutputSchemasChange() {
-    // Update form when output schemas change
-    this.updateInstructions();
+  private async loadFunctions() {
+    if (!this.assistant) return;
   }
 
-  private updateInstructions() {
-    // Combine all instruction parts into final instructions
-    const instructions = this.combineInstructions();
-    // You might want to update a form control or emit an event here
+  async onSubmit() {
+    if (this.form.invalid) return;
+
+    this.loading = true;
+    try {
+      const formValue = this.form.value;
+      const assistantData: Partial<OAAssistant> = {
+        name: formValue.name,
+        description: formValue.description,
+        model: formValue.model,
+        temperature: formValue.temperature,
+        top_p: formValue.top_p,
+        response_format: { type: formValue.response_format_type },
+        tools: this.functions.map(func => ({
+          type: 'function',
+          function: {
+            name: func.name,
+            description: func.description,
+            parameters: func.parameters
+          }
+        })),
+        metadata: {
+          ...formValue.metadata,
+          instructionParts: this.instructionParts
+        }
+      };
+
+      // Include the ID if we're editing an existing assistant
+      if (this.assistant?.id) {
+        assistantData.id = this.assistant.id;
+      }
+
+      // Save function implementations
+      if (this.assistant?.id) {
+        const activeProfile = await this.configService.getActiveProfile();
+        if (activeProfile) {
+          await this.functionImplementationsService.saveFunctionImplementations(
+            activeProfile.id,
+            this.assistant.id,
+            this.functions,
+            this.instructionParts.coreInstructions.inputSchemas,
+            this.instructionParts.coreInstructions.outputSchemas
+          );
+        }
+      }
+
+      this.save.emit(assistantData as OAAssistant);
+      this.visible = false;
+      this.visibleChange.emit(false);
+    } catch (error) {
+      console.error('Failed to save assistant:', error);
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  async onFunctionsChange(functions: FunctionDefinition[]) {
+    this.functions = functions;
+    await this.saveImplementations();
+  }
+
+  private async saveImplementations() {
+    if (!this.assistant) return;
+
+    const activeProfile = await this.configService.getActiveProfile();
+    if (!activeProfile) {
+      console.error('No active profile found');
+      return;
+    }
+
+    try {
+      await this.functionImplementationsService.saveFunctionImplementations(
+        activeProfile.id,
+        this.assistant.id,
+        this.functions,
+        this.instructionParts.coreInstructions.inputSchemas,
+        this.instructionParts.coreInstructions.outputSchemas
+      );
+    } catch (error) {
+      console.error('Failed to save function implementations:', error);
+    }
+  }
+
+  async onInputSchemasChange() {
+    await this.saveImplementations();
+  }
+
+  async onOutputSchemasChange() {
+    await this.saveImplementations();
+  }
+
+  showInstructionsDialog() {
+    this.fullScreenInstructions = this.combineInstructions();
+    this.showFullScreenInstructions = true;
+  }
+
+  hideDialog() {
+    this.visible = false;
+    this.visibleChange.emit(false);
+    this.cancel.emit();
+    this.form.reset();
   }
 
   combineInstructions(): string {
@@ -157,54 +354,5 @@ export class AssistantFormComponent implements OnInit {
     }
 
     return parts.join('\n\n');
-  }
-
-  async onSubmit() {
-    if (this.form.valid) {
-      this.loading = true;
-      try {
-        const formValue = this.form.value;
-        const assistant: Partial<OAAssistant> = {
-          ...formValue,
-          instructions: this.combineInstructions(),
-          metadata: {
-            ...formValue.metadata,
-            instructionParts: this.instructionParts
-          }
-        };
-        this.save.emit(assistant as OAAssistant);
-        this.hideDialog();
-      } finally {
-        this.loading = false;
-      }
-    }
-  }
-
-  hideDialog() {
-    this.visible = false;
-    this.visibleChange.emit(false);
-    this.cancel.emit();
-    this.form.reset();
-  }
-
-  private async loadSchemas() {
-    try {
-      const schemas = await this.objectSchemaService.listSchemas();
-      this.availableSchemas = schemas || [];
-    } catch (error) {
-      console.error('Failed to load schemas:', error);
-      this.availableSchemas = [];
-    }
-  }
-
-  showInstructionsDialog() {
-    this.fullScreenInstructions = this.combineInstructions();
-    this.showFullScreenInstructions = true;
-  }
-
-  applyFullScreenInstructions() {
-    // Parse the full screen instructions back into parts
-    // This is a placeholder - you might want to implement proper parsing
-    this.showFullScreenInstructions = false;
   }
 }
