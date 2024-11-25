@@ -10,6 +10,7 @@ import { FunctionDefinition } from '../../../components/function-editor/function
 import { FunctionImplementationsService } from '../../../services/function-implementations.service';
 import { ConfigService } from '../../../services/config.service';
 import { FunctionListComponent } from '../../../components/function-list/function-list.component';
+import { FunctionImplementation } from '../../../interfaces/function-implementations';
 
 @Component({
   selector: 'app-assistant-form',
@@ -65,10 +66,45 @@ export class AssistantFormComponent implements OnInit {
 
   activeTabIndex = 0;
 
-  get showDefaultOutput(): boolean {
-    if (!this.functions) return false;
-    return !this.functions.some(f => f.implementation?.isOutput);
-  }
+  private readonly DEFAULT_OUTPUT_TOOL = {
+    type: 'function',
+    function: {
+      name: 'sendOutput',
+      description: 'Send the output to the next stage',
+      parameters: {
+        type: 'object',
+        properties: {
+          result: {
+            type: 'string',
+            description: 'The output result as a JSON string'
+          }
+        },
+        required: ['result']
+      }
+    }
+  };
+
+  private readonly DEFAULT_OUTPUT_DEFINITION: FunctionDefinition = {
+    name: 'sendOutput',
+    description: 'Send the output to the next stage',
+    parameters: {
+      type: 'object',
+      properties: {
+        result: {
+          type: 'string',
+          description: 'The output result as a JSON string'
+        }
+      },
+      required: ['result']
+    },
+    implementation: {
+      command: 'node',
+      script: 'console.log(JSON.stringify(result));',
+      workingDir: '',
+      timeout: 30000,
+      isOutput: true
+    }
+  };
 
   constructor(
     private formBuilder: FormBuilder,
@@ -255,6 +291,27 @@ export class AssistantFormComponent implements OnInit {
 
   private async loadFunctions() {
     if (!this.assistant) return;
+
+    try {
+      const assistantTools = this.assistant.tools || [];
+
+      // Filter out the default output function from display
+      this.functions = assistantTools
+        .filter(t => t.function.name !== this.DEFAULT_OUTPUT_TOOL.function.name)
+        .map(t => ({
+          name: t.function.name,
+          description: t.function.description || '',
+          parameters: {
+            type: 'object',
+            properties: t.function.parameters?.properties || {},
+            required: t.function.parameters?.required || []
+          }
+        } as FunctionDefinition));
+
+    } catch (error) {
+      console.error('Failed to load functions:', error);
+      this.functions = [];
+    }
   }
 
   async onSubmit() {
@@ -262,6 +319,9 @@ export class AssistantFormComponent implements OnInit {
 
     this.loading = true;
     try {
+      // Ensure default output function if needed
+      this.ensureDefaultOutputFunction();
+
       const formValue = this.form.value;
       const assistantData: Partial<OAAssistant> = {
         name: formValue.name,
@@ -703,6 +763,32 @@ export class AssistantFormComponent implements OnInit {
     }
 
     return instructions.join("\n");
+  }
+
+  private hasOutputFunction(): boolean {
+    if (!this.assistant?.tools) return false;
+    return this.functions.some(f => f.implementation?.isOutput);
+  }
+
+  private ensureDefaultOutputFunction() {
+    if (!this.hasOutputFunction()) {
+      // Add default output tool to assistant
+      if (!this.assistant) {
+        this.assistant = {} as OAAssistant;
+      }
+      if (!this.assistant.tools) {
+        this.assistant.tools = [];
+      }
+
+      // Check if default output function already exists
+      const existingDefault = this.assistant.tools.find(t => t.function.name === this.DEFAULT_OUTPUT_TOOL.function.name);
+      if (!existingDefault) {
+        this.assistant.tools.push(this.DEFAULT_OUTPUT_TOOL);
+        
+        // Add to functions list but don't display
+        this.functions.push(this.DEFAULT_OUTPUT_DEFINITION);
+      }
+    }
   }
 
   hideDialog() {
