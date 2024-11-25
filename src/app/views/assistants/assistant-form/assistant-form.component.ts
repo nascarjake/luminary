@@ -5,7 +5,7 @@ import { PrimeNGModule } from '../../../shared/primeng.module';
 import { OAAssistant, AssistantInstructions } from '../../../../lib/entities/OAAssistant';
 import { ObjectSchemaService } from '../../../services/object-schema.service';
 import { OpenAiApiService } from '../../../services/open-ai-api.service';
-import { ObjectSchema } from '../../../interfaces/object-system';
+import { ObjectSchema, ObjectField } from '../../../interfaces/object-system';
 import { FunctionDefinition } from '../../../components/function-editor/function-editor.component';
 import { FunctionImplementationsService } from '../../../services/function-implementations.service';
 import { ConfigService } from '../../../services/config.service';
@@ -333,17 +333,110 @@ export class AssistantFormComponent implements OnInit {
   }
 
   async onInputSchemasChange() {
-    const selectedSchemas = this.form.get('input_schemas')?.value || [];
-    this.instructionParts.coreInstructions.inputSchemas = selectedSchemas;
-    this.generateInstructions();
-    await this.saveImplementations();
+    if (!this.instructionParts.coreInstructions.inputSchemas) return;
+
+    const selectedSchemas = this.availableSchemas.filter(
+      schema => this.instructionParts.coreInstructions.inputSchemas.includes(schema.id)
+    );
+
+    const schemasWithComments = selectedSchemas.map(schema => this.generateSchemaWithComments(schema));
+    
+    // Update the form control with the full schema JSON
+    this.form.patchValue({
+      input_schemas: schemasWithComments
+    });
   }
 
   async onOutputSchemasChange() {
-    const selectedSchemas = this.form.get('output_schemas')?.value || [];
-    this.instructionParts.coreInstructions.outputSchemas = selectedSchemas;
-    this.generateInstructions();
-    await this.saveImplementations();
+    if (!this.instructionParts.coreInstructions.outputSchemas) return;
+
+    const selectedSchemas = this.availableSchemas.filter(
+      schema => this.instructionParts.coreInstructions.outputSchemas.includes(schema.id)
+    );
+
+    const schemasWithComments = selectedSchemas.map(schema => this.generateSchemaWithComments(schema));
+    
+    // Update the form control with the full schema JSON
+    this.form.patchValue({
+      output_schemas: schemasWithComments
+    });
+  }
+
+  private generateSchemaWithComments(schema: ObjectSchema): string {
+    const schemaJson: any = {
+      type: 'object',
+      properties: {},
+      required: []
+    };
+
+    // Add description if present
+    if (schema.description) {
+      schemaJson.description = schema.description;
+    }
+
+    // Process each field
+    for (const field of schema.fields) {
+      schemaJson.properties[field.name] = {
+        type: field.type,
+        description: field.description || ''
+      };
+
+      // Add validation rules if present
+      if (field.validation) {
+        if (field.validation.minLength !== undefined) {
+          schemaJson.properties[field.name].minLength = field.validation.minLength;
+        }
+        if (field.validation.maxLength !== undefined) {
+          schemaJson.properties[field.name].maxLength = field.validation.maxLength;
+        }
+        if (field.validation.pattern) {
+          schemaJson.properties[field.name].pattern = field.validation.pattern;
+        }
+        if (field.validation.min !== undefined) {
+          schemaJson.properties[field.name].minimum = field.validation.min;
+        }
+        if (field.validation.max !== undefined) {
+          schemaJson.properties[field.name].maximum = field.validation.max;
+        }
+        if (field.validation.enum) {
+          schemaJson.properties[field.name].enum = field.validation.enum;
+        }
+        if (field.type === 'array' && field.validation.items) {
+          schemaJson.properties[field.name].items = this.generateFieldSchema(field.validation.items);
+        }
+        if (field.type === 'object' && field.validation.properties) {
+          schemaJson.properties[field.name].properties = {};
+          for (const prop of field.validation.properties) {
+            schemaJson.properties[field.name].properties[prop.name] = this.generateFieldSchema(prop);
+          }
+        }
+      }
+
+      // Add to required array if field is required
+      if (field.required) {
+        schemaJson.required.push(field.name);
+      }
+    }
+
+    return JSON.stringify(schemaJson, null, 2);
+  }
+
+  private generateFieldSchema(field: ObjectField): any {
+    const fieldSchema: any = {
+      type: field.type,
+      description: field.description || ''
+    };
+
+    if (field.validation) {
+      // Add all validation rules
+      Object.entries(field.validation).forEach(([key, value]) => {
+        if (value !== undefined && key !== 'items' && key !== 'properties') {
+          fieldSchema[key] = value;
+        }
+      });
+    }
+
+    return fieldSchema;
   }
 
   openInstructionDialog(type: string) {
@@ -402,25 +495,40 @@ export class AssistantFormComponent implements OnInit {
 
     // Add core instructions
     if (this.instructionParts.coreInstructions.inputSchemas.length > 0) {
-      parts.push(`Input Schemas: ${this.instructionParts.coreInstructions.inputSchemas.join(', ')}`);
+      const selectedSchemas = this.availableSchemas.filter(
+        schema => this.instructionParts.coreInstructions.inputSchemas.includes(schema.id)
+      );
+      const schemasWithComments = selectedSchemas.map(schema => this.generateSchemaWithComments(schema));
+      parts.push(`Input Schemas:\n${schemasWithComments.join('\n\n')}`);
     }
+
     if (this.instructionParts.coreInstructions.outputSchemas.length > 0) {
-      parts.push(`Output Schemas: ${this.instructionParts.coreInstructions.outputSchemas.join(', ')}`);
+      const selectedSchemas = this.availableSchemas.filter(
+        schema => this.instructionParts.coreInstructions.outputSchemas.includes(schema.id)
+      );
+      const schemasWithComments = selectedSchemas.map(schema => this.generateSchemaWithComments(schema));
+      parts.push(`Output Schemas:\n${schemasWithComments.join('\n\n')}`);
     }
+
+    // Add default output format if specified
     if (this.instructionParts.coreInstructions.defaultOutputFormat) {
-      parts.push(`Default Output Format: ${this.instructionParts.coreInstructions.defaultOutputFormat}`);
+      parts.push(`Default Output Format:\n${this.instructionParts.coreInstructions.defaultOutputFormat}`);
     }
+
+    // Add array handling if specified
     if (this.instructionParts.coreInstructions.arrayHandling) {
-      parts.push(`Array Handling: ${this.instructionParts.coreInstructions.arrayHandling}`);
+      parts.push(`Array Handling:\n${this.instructionParts.coreInstructions.arrayHandling}`);
     }
 
     // Add user instructions
     if (this.instructionParts.userInstructions.businessLogic) {
       parts.push(`Business Logic:\n${this.instructionParts.userInstructions.businessLogic}`);
     }
+
     if (this.instructionParts.userInstructions.processingSteps) {
       parts.push(`Processing Steps:\n${this.instructionParts.userInstructions.processingSteps}`);
     }
+
     if (this.instructionParts.userInstructions.customFunctions) {
       parts.push(`Custom Functions:\n${this.instructionParts.userInstructions.customFunctions}`);
     }
