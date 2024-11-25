@@ -373,6 +373,9 @@ export class AssistantFormComponent implements OnInit {
         arrayHandling: assistantData.metadata.instructionParts.coreInstructions?.arrayHandling || ''
       };
 
+      // Combine all instructions and add to assistant data
+      assistantData.instructions = this.combineInstructions();
+
       // Include the ID if we're editing an existing assistant
       if (this.assistant?.id) {
         assistantData.id = this.assistant.id;

@@ -81,12 +81,50 @@
                             ></p-inputNumber><br>
                             <small class="help-text">Controls diversity of model outputs. Lower values make output more focused, higher values more creative.</small>
                         </div>
+                    </div>
+                </div>
+            </p-tabPanel>
+
+            <!-- Assistant Functionality Tab -->
+            <p-tabPanel header="Assistant Functionality">
+                <div class="scrollable-content">
+                    <div class="grid">
+                        <div class="col-12 md:col-6 instruction-section">
+                            <h4>Input Schemas</h4>
+                            <p-multiSelect
+                                formControlName="input_schemas"
+                                [options]="availableSchemas"
+                                optionLabel="name"
+                                optionValue="id"
+                                class="w-full"
+                                placeholder="Select input schemas"
+                                display="chip"
+                                (onChange)="onInputSchemasChange()">
+                            </p-multiSelect>
+                            <small class="help-text">Define the structure of data this assistant can process.</small>
+                        </div>
+        
+                        <div class="col-12 md:col-6 instruction-section">
+                            <h4>Output Schemas</h4>
+                            <p-multiSelect
+                                formControlName="output_schemas"
+                                [options]="availableSchemas"
+                                optionLabel="name"
+                                optionValue="id"
+                                class="w-full"
+                                placeholder="Select output schemas"
+                                display="chip"
+                                (onChange)="onOutputSchemasChange()">
+                            </p-multiSelect>
+                            <small class="help-text">Define the structure of data this assistant will produce.</small>
+                        </div>
+
                         <div class="col-12 mt-3" style="padding-top:1.5rem">
-                          <app-function-list
-                              [(functions)]="visibleFunctions"
-                              (functionsChange)="onFunctionsChange($event)">
-                          </app-function-list>
-                      </div>
+                            <app-function-list
+                                [(functions)]="visibleFunctions"
+                                (functionsChange)="onFunctionsChange($event)">
+                            </app-function-list>
+                        </div>
                     </div>
                 </div>
             </p-tabPanel>
@@ -177,36 +215,6 @@
             <p-tabPanel header="System Instructions">
                 <div class="scrollable-content">
                     <div class="grid">
-                        <div class="col-12 md:col-6 instruction-section">
-                            <h4>Input Schemas</h4>
-                            <p-multiSelect
-                                formControlName="input_schemas"
-                                [options]="availableSchemas"
-                                optionLabel="name"
-                                optionValue="id"
-                                class="w-full"
-                                placeholder="Select input schemas"
-                                display="chip"
-                                (onChange)="onInputSchemasChange()">
-                            </p-multiSelect>
-                            <small class="help-text">Define the structure of data this assistant can process.</small>
-                        </div>
-        
-                        <div class="col-12 md:col-6 instruction-section">
-                            <h4>Output Schemas</h4>
-                            <p-multiSelect
-                                formControlName="output_schemas"
-                                [options]="availableSchemas"
-                                optionLabel="name"
-                                optionValue="id"
-                                class="w-full"
-                                placeholder="Select output schemas"
-                                display="chip"
-                                (onChange)="onOutputSchemasChange()">
-                            </p-multiSelect>
-                            <small class="help-text">Define the structure of data this assistant will produce.</small>
-                        </div>
-        
                         <div class="col-12 md:col-6 instruction-section" *ngIf="instructionParts.coreInstructions.defaultOutputFormat">
                             <h4>Default Output Format</h4>
                             <div class="instruction-field">
