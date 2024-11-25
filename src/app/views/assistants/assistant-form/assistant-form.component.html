@@ -181,22 +181,17 @@
                         </p-inputNumber>
                         <small class="help-text">Controls response diversity. Lower values (0.1) make output more focused, higher values (0.9) allow more variety.</small>
                     </div>
+
+                    <div class="col-12 mt-4" style="margin-top:20px">
+                        <app-function-list
+                            [functions]="functions"
+                            (functionsChange)="onFunctionsChange($event)"
+                        ></app-function-list>
+                    </div>
                 </div>
             </p-tabPanel>
         </p-tabView>
 
-        <div class="flex justify-content-end mt-3">
-            <p-button
-                label="Cancel"
-                (onClick)="hideDialog()"
-                styleClass="p-button-text mr-2">
-            </p-button>
-            <p-button
-                label="Save"
-                type="submit"
-                [loading]="loading">
-            </p-button>
-        </div>
     </form>
 
     <ng-template pTemplate="footer">
@@ -211,17 +206,21 @@
 <p-dialog [(visible)]="showFullScreenInstructions" 
     [modal]="true" 
     [style]="{width: '90vw', height: '90vh'}"
-    header="Edit Instructions">
-    <div class="h-full">
-        <p-editor [(ngModel)]="fullScreenInstructions" 
-            [style]="{'height':'calc(100% - 50px)'}"
-            [ngModelOptions]="{standalone: true}">
-        </p-editor>
+    [draggable]="false"
+    [resizable]="false">
+    <ng-template pTemplate="header">
+        <h3>Full Instructions Preview</h3>
+    </ng-template>
+    <div class="p-3">
+        <pre class="whitespace-pre-wrap">{{combineInstructions()}}</pre>
     </div>
     <ng-template pTemplate="footer">
-        <button pButton label="Cancel" icon="pi pi-times" class="p-button-text" 
-            (click)="showFullScreenInstructions = false"></button>
-        <button pButton label="Apply" icon="pi pi-check" class="p-button-text" 
-            (click)="applyFullScreenInstructions()"></button>
+        <div class="flex justify-content-end">
+            <p-button
+                label="Close"
+                (onClick)="showFullScreenInstructions = false"
+                styleClass="p-button-text">
+            </p-button>
+        </div>
     </ng-template>
 </p-dialog>
