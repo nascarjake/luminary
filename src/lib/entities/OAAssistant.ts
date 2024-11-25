@@ -16,13 +16,29 @@ export interface OAAssistant {
   }>;
   file_ids?: string[];
   metadata?: {
-    input_schemas?: string[];  // Array of schema IDs that this assistant accepts as input
-    output_schemas?: string[]; // Array of schema IDs that this assistant produces as output
+    instructionParts?: AssistantInstructions;
     [key: string]: any;
   };
   temperature?: number;
   top_p?: number;
   response_format?: {
     type: 'text' | 'json_object' | 'json_schema';
+  };
+}
+
+export interface AssistantInstructions {
+  // System-managed parts
+  coreInstructions: {
+    inputSchemas: string[];
+    outputSchemas: string[];
+    defaultOutputFormat: string;
+    arrayHandling: string;
+  };
+  
+  // User-managed parts
+  userInstructions: {
+    businessLogic: string;
+    processingSteps: string;
+    customFunctions: string;
   };
 }

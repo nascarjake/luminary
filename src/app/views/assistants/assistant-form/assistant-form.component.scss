@@ -86,4 +86,50 @@
     line-height: 1.5;
     font-size: .8em;
   }
+
+  .p-editor-container {
+    margin-bottom: 1rem;
+  }
+
+  // Make dropdowns and multiselect full width
+  .p-dropdown {
+    width: 100%;
+  }
+
+  .p-multiselect {
+    width: 100%;
+  }
+
+  // Fix dropdown panel width
+  .p-dropdown-panel {
+    width: 100%;
+    min-width: 100%;
+  }
+
+  // Fix multiselect panel width
+  .p-multiselect-panel {
+    width: 100%;
+    min-width: 100%;
+  }
+
+  // Ensure input numbers are full width
+  .p-inputnumber {
+    width: 100%;
+
+    .p-inputnumber-input {
+      width: 100%;
+    }
+  }
+}
+
+.help-text {
+  color: var(--text-color-secondary);
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.4;
+}
+
+.field-container {
+  margin-bottom: 1rem;
 }

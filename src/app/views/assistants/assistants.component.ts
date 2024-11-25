@@ -1,9 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ButtonModule } from 'primeng/button';
-import { CardModule } from 'primeng/card';
-import { TableModule } from 'primeng/table';
-import { TooltipModule } from 'primeng/tooltip';
+import { PrimeNGModule } from '../../shared/primeng.module';
 import { OpenAiApiService } from '../../services/open-ai-api.service';
 import { OAAssistant } from '../../../lib/entities/OAAssistant';
 import { AssistantFormComponent } from './assistant-form/assistant-form.component';
@@ -13,10 +10,7 @@ import { AssistantFormComponent } from './assistant-form/assistant-form.componen
   standalone: true,
   imports: [
     CommonModule,
-    ButtonModule,
-    CardModule,
-    TableModule,
-    TooltipModule,
+    PrimeNGModule,
     AssistantFormComponent
   ],
   templateUrl: './assistants.component.html',

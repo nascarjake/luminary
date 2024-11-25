@@ -1,175 +1,227 @@
-<p-dialog 
-  [(visible)]="visible" 
-  [modal]="true" 
-  [style]="{width: '600px'}" 
-  [header]="assistant ? 'Edit Assistant' : 'Create Assistant'"
-  (onHide)="hideDialog()"
-  [draggable]="false"
->
-  <form [formGroup]="assistantForm" (ngSubmit)="onSubmit()">
-    <div class="form-field">
-      <label for="name">Name</label>
-      <input id="name" type="text" pInputText formControlName="name" />
-    </div>
+<p-dialog
+    [(visible)]="visible"
+    [modal]="true"
+    [style]="{width: '80vw'}"
+    [draggable]="false"
+    [resizable]="false"
+    (onHide)="hideDialog()">
+    
+    <ng-template pTemplate="header">
+        <h3>{{ assistant ? 'Edit Assistant' : 'New Assistant' }}</h3>
+    </ng-template>
 
-    <div class="form-field">
-      <div class="instructions-header">
-        <label for="instructions">Instructions</label>
-        <p-button 
-          icon="pi pi-window-maximize" 
-          (onClick)="showInstructionsDialog()"
-          [text]="true"
-          [rounded]="true"
-          styleClass="p-button-sm p-button-secondary"
-          pTooltip="Edit in full screen"
-        ></p-button>
-      </div>
-      <textarea
-        id="instructions"
-        pInputTextarea
-        formControlName="instructions"
-        [rows]="5"
-        [autoResize]="true"
-        placeholder="You are a helpful assistant..."
-        class="instructions-textarea"
-      ></textarea>
-    </div>
+    <form [formGroup]="form" (ngSubmit)="onSubmit()">
+        <div class="grid">
+            <div class="col-12 md:col-6">
+                <label for="name">Name</label>
+                <input id="name" type="text" pInputText formControlName="name" class="w-full">
+                <small class="help-text">A descriptive name that identifies this assistant's purpose in the workflow.</small>
+            </div>
 
-    <div class="form-field">
-      <label for="model">Model</label>
-      <p-dropdown
-        id="model"
-        formControlName="model"
-        [options]="availableModels"
-        optionLabel="label"
-        optionValue="value"
-        placeholder="Select a model"
-        [style]="{ width: '100%' }"
-      ></p-dropdown>
-    </div>
+            <div class="col-12 md:col-6">
+                <label for="model">Model</label>
+                <p-dropdown id="model" [options]="availableModels" formControlName="model" 
+                    optionLabel="label" optionValue="value" [filter]="true" class="w-full">
+                </p-dropdown>
+                <small class="help-text">The OpenAI model to use. More capable models can better handle complex instructions.</small>
+            </div>
 
-    <div class="form-field">
-      <label for="temperature">Temperature</label>
-      <p-inputNumber
-        id="temperature"
-        formControlName="temperature"
-        [min]="0"
-        [max]="2"
-        [step]="0.1"
-        [showButtons]="true"
-        buttonLayout="horizontal"
-        spinnerMode="horizontal"
-        [style]="{ width: '100%' }"
-        decrementButtonClass="p-button-secondary"
-        incrementButtonClass="p-button-secondary"
-      ></p-inputNumber>
-      <small class="helper-text">Controls randomness in responses. Lower values make output more focused and deterministic, higher values make output more creative and varied.</small>
-    </div>
+            <div class="col-12 md:col-6">
+                <label for="response_format">Response Format</label>
+                <p-dropdown
+                    id="response_format"
+                    [options]="responseFormatOptions"
+                    formControlName="response_format_type"
+                    class="w-full"
+                    placeholder="Select response format"
+                ></p-dropdown>
+                <small class="help-text">Specifies the format that the assistant should use when responding.</small>
+            </div>
+        </div>
 
-    <div class="form-field">
-      <label for="top_p">Top P</label>
-      <p-inputNumber
-        id="top_p"
-        formControlName="top_p"
-        [min]="0"
-        [max]="1"
-        [step]="0.1"
-        [showButtons]="true"
-        buttonLayout="horizontal"
-        spinnerMode="horizontal"
-        [style]="{ width: '100%' }"
-        decrementButtonClass="p-button-secondary"
-        incrementButtonClass="p-button-secondary"
-      ></p-inputNumber>
-      <small class="helper-text">Controls diversity of model outputs. Lower values make output more focused, higher values more creative.</small>
-    </div>
+        <div class="grid mt-3">
+            <div class="col-12">
+                <label for="description">Description</label>
+                <textarea id="description" pInputTextarea formControlName="description" 
+                    [rows]="3" class="w-full"></textarea>
+                <small class="help-text">A detailed description of what this assistant does and how it should be used.</small>
+            </div>
+        </div>
 
-    <div class="form-field">
-      <label for="response_format">Response Format</label>
-      <p-dropdown
-        id="response_format"
-        [options]="responseFormatOptions"
-        formControlName="response_format_type"
-        [style]="{ width: '100%' }"
-        placeholder="Select response format"
-      ></p-dropdown>
-      <small class="helper-text">Specifies the format that the assistant should use when responding.</small>
-    </div>
+        <p-tabView class="mt-3">
+            <!-- System Instructions Tab -->
+            <p-tabPanel header="System Instructions">
+                <div class="grid">
+                    <div class="col-12 md:col-6">
+                        <h4>Input Schemas</h4>
+                        <p-multiSelect 
+                            [options]="availableSchemas"
+                            [(ngModel)]="instructionParts.coreInstructions.inputSchemas"
+                            [ngModelOptions]="{standalone: true}"
+                            optionLabel="name"
+                            optionValue="id"
+                            [filter]="true"
+                            class="w-full"
+                            (onChange)="onInputSchemasChange()">
+                        </p-multiSelect>
+                        <small class="help-text">Define the structure of data this assistant expects to receive.</small>
+                    </div>
 
-    <div class="form-field">
-      <label>Input Schemas</label>
-      <p-multiSelect
-        formControlName="input_schemas"
-        [options]="availableSchemas"
-        optionLabel="name"
-        optionValue="id"
-        [style]="{ width: '100%' }"
-        placeholder="Select input schemas"
-        display="chip"
-        (onChange)="onInputSchemasChange()"
-      ></p-multiSelect>
-      <small class="helper-text">Objects this assistant can accept as input</small>
-    </div>
+                    <div class="col-12 md:col-6">
+                        <h4>Output Schemas</h4>
+                        <p-multiSelect 
+                            [options]="availableSchemas"
+                            [(ngModel)]="instructionParts.coreInstructions.outputSchemas"
+                            [ngModelOptions]="{standalone: true}"
+                            optionLabel="name"
+                            optionValue="id"
+                            [filter]="true"
+                            class="w-full"
+                            (onChange)="onOutputSchemasChange()">
+                        </p-multiSelect>
+                        <small class="help-text">Define the structure of data this assistant will produce.</small>
+                    </div>
 
-    <div class="form-field">
-      <label>Output Schemas</label>
-      <p-multiSelect
-        formControlName="output_schemas"
-        [options]="availableSchemas"
-        optionLabel="name"
-        optionValue="id"
-        [style]="{ width: '100%' }"
-        placeholder="Select output schemas"
-        display="chip"
-        (onChange)="onOutputSchemasChange()"
-      ></p-multiSelect>
-      <small class="helper-text">Objects this assistant can produce as output</small>
-    </div>
+                    <div class="col-12 md:col-6 mt-3">
+                        <h4>Default Output Format</h4>
+                        <input type="text" pInputText 
+                            [(ngModel)]="instructionParts.coreInstructions.defaultOutputFormat"
+                            [ngModelOptions]="{standalone: true}"
+                            class="w-full">
+                        <small class="help-text">Specify how the assistant should format its responses by default.</small>
+                    </div>
 
-    <div class="form-field">
-      <app-function-list
-        [functions]="functions"
-        (functionsChange)="onFunctionsChange($event)"
-      ></app-function-list>
-    </div>
+                    <div class="col-12 md:col-6 mt-3">
+                        <h4>Array Handling</h4>
+                        <input type="text" pInputText 
+                            [(ngModel)]="instructionParts.coreInstructions.arrayHandling"
+                            [ngModelOptions]="{standalone: true}"
+                            class="w-full">
+                        <small class="help-text">Define how the assistant should process lists or arrays of data.</small>
+                    </div>
+                </div>
+            </p-tabPanel>
 
-    <div class="dialog-footer">
-      <p-button
-        label="Cancel"
-        (onClick)="hideDialog()"
-        styleClass="p-button-text"
-      ></p-button>
-      <p-button
-        label="Save"
-        type="submit"
-        [loading]="loading"
-      ></p-button>
-    </div>
-  </form>
+            <!-- User Instructions Tab -->
+            <p-tabPanel header="User Instructions">
+                <div class="grid">
+                    <div class="col-12">
+                        <h4>Business Logic</h4>
+                        <p-editor 
+                            [(ngModel)]="instructionParts.userInstructions.businessLogic"
+                            [ngModelOptions]="{standalone: true}"
+                            [style]="{'height':'200px'}"
+                            class="w-full">
+                        </p-editor>
+                        <small class="help-text">Define the core rules and logic that guide how the assistant processes information.</small>
+                    </div>
+
+                    <div class="col-12 mt-3">
+                        <h4>Processing Steps</h4>
+                        <p-editor 
+                            [(ngModel)]="instructionParts.userInstructions.processingSteps"
+                            [ngModelOptions]="{standalone: true}"
+                            [style]="{'height':'200px'}"
+                            class="w-full">
+                        </p-editor>
+                        <small class="help-text">Outline the specific steps the assistant should follow when processing input.</small>
+                    </div>
+
+                    <div class="col-12 mt-3">
+                        <h4>Custom Functions</h4>
+                        <p-editor 
+                            [(ngModel)]="instructionParts.userInstructions.customFunctions"
+                            [ngModelOptions]="{standalone: true}"
+                            [style]="{'height':'200px'}"
+                            class="w-full">
+                        </p-editor>
+                        <small class="help-text">Define any special functions or capabilities the assistant should have access to.</small>
+                    </div>
+                </div>
+            </p-tabPanel>
+
+            <!-- Preview Tab -->
+            <p-tabPanel header="Preview">
+                <p-card>
+                    <pre class="whitespace-pre-wrap">{{combineInstructions()}}</pre>
+                </p-card>
+            </p-tabPanel>
+
+            <!-- Model Parameters Tab -->
+            <p-tabPanel header="Model Parameters">
+                <div class="grid">
+                    <div class="col-12 md:col-6">
+                        <h4>Temperature</h4>
+                        <p-inputNumber 
+                            formControlName="temperature"
+                            [min]="0"
+                            [max]="2"
+                            [step]="0.1"
+                            buttonLayout="horizontal"
+                            spinnerMode="horizontal"
+                            class="w-full"
+                            decrementButtonClass="p-button-secondary"
+                            incrementButtonClass="p-button-secondary">
+                        </p-inputNumber>
+                        <small class="help-text">Controls randomness in responses. Higher values (0.8) make output more creative, lower values (0.2) make it more focused.</small>
+                    </div>
+
+                    <div class="col-12 md:col-6">
+                        <h4>Top P</h4>
+                        <p-inputNumber 
+                            formControlName="top_p"
+                            [min]="0"
+                            [max]="1"
+                            [step]="0.1"
+                            buttonLayout="horizontal"
+                            spinnerMode="horizontal"
+                            class="w-full"
+                            decrementButtonClass="p-button-secondary"
+                            incrementButtonClass="p-button-secondary">
+                        </p-inputNumber>
+                        <small class="help-text">Controls response diversity. Lower values (0.1) make output more focused, higher values (0.9) allow more variety.</small>
+                    </div>
+                </div>
+            </p-tabPanel>
+        </p-tabView>
+
+        <div class="flex justify-content-end mt-3">
+            <p-button
+                label="Cancel"
+                (onClick)="hideDialog()"
+                styleClass="p-button-text mr-2">
+            </p-button>
+            <p-button
+                label="Save"
+                type="submit"
+                [loading]="loading">
+            </p-button>
+        </div>
+    </form>
+
+    <ng-template pTemplate="footer">
+        <div class="flex justify-content-end">
+            <button pButton label="Cancel" icon="pi pi-times" class="p-button-text" (click)="hideDialog()"></button>
+            <button pButton label="Save" icon="pi pi-check" class="p-button-text" (click)="onSubmit()"></button>
+        </div>
+    </ng-template>
 </p-dialog>
 
-<p-dialog
-  [(visible)]="showFullScreenInstructions"
-  [modal]="true"
-  [style]="{width: '90vw', height: '90vh'}"
-  header="Edit Instructions"
->
-  <textarea
-    pInputTextarea
-    [(ngModel)]="fullScreenInstructions"
-    [rows]="20"
-    [autoResize]="true"
-    class="full-screen-instructions"
-  ></textarea>
-  <div class="dialog-footer">
-    <p-button
-      label="Cancel"
-      (onClick)="showFullScreenInstructions = false"
-      styleClass="p-button-text"
-    ></p-button>
-    <p-button
-      label="Apply"
-      (onClick)="applyFullScreenInstructions()"
-    ></p-button>
-  </div>
+<!-- Full Screen Instructions Dialog -->
+<p-dialog [(visible)]="showFullScreenInstructions" 
+    [modal]="true" 
+    [style]="{width: '90vw', height: '90vh'}"
+    header="Edit Instructions">
+    <div class="h-full">
+        <p-editor [(ngModel)]="fullScreenInstructions" 
+            [style]="{'height':'calc(100% - 50px)'}"
+            [ngModelOptions]="{standalone: true}">
+        </p-editor>
+    </div>
+    <ng-template pTemplate="footer">
+        <button pButton label="Cancel" icon="pi pi-times" class="p-button-text" 
+            (click)="showFullScreenInstructions = false"></button>
+        <button pButton label="Apply" icon="pi pi-check" class="p-button-text" 
+            (click)="applyFullScreenInstructions()"></button>
+    </ng-template>
 </p-dialog>
