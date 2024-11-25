@@ -414,11 +414,18 @@ export class AiFunctionService {
     assistantId: string
   ): Promise<{ output: string }> {
     try {
+      console.log('🛠️ Executing Function:', {
+        function: functionName,
+        assistant: assistantId,
+        arguments: args
+      });
+
       // Find nodes for this assistant
       const state = this.graphService.currentState;
       const sourceNodes = state.nodes.filter(n => n.assistantId === assistantId);
       
       if (sourceNodes.length === 0) {
+        console.log('ℹ️ No source nodes found, returning args directly');
         return { output: JSON.stringify(args) }; // No routing needed
       }
 
@@ -426,30 +433,51 @@ export class AiFunctionService {
       const errors = [];
 
       for (const sourceNode of sourceNodes) {
+        console.log('🔄 Processing source node:', sourceNode.id);
+        
         // Get output connections
         const connections = state.connections.filter(c => c.fromNode === sourceNode.id);
         
         if (connections.length === 0) {
+          console.log('ℹ️ No connections found for node:', sourceNode.id);
           results.push(args); // No connections, just pass through
           continue;
         }
 
         for (const connection of connections) {
+          console.log('🔗 Processing connection:', {
+            from: connection.fromNode,
+            to: connection.toNode,
+            output: connection.fromOutput
+          });
+
           // Get schemas for validation
           const outputDot = sourceNode.outputs.find(o => o.name === connection.fromOutput);
-          if (!outputDot?.schemaId) continue;
-
-          // Validate and save instance
-          const validationResult = await this.validateAndSaveInstance(args, outputDot.schemaId);
-          if (!validationResult.valid) {
-            errors.push(`Validation failed for ${outputDot.name}: ${validationResult.errors?.join(', ')}`);
+          if (!outputDot?.schemaId) {
+            console.log('⚠️ No schema found for output:', connection.fromOutput);
             continue;
           }
 
+          // Validate and save instance
+          console.log('✨ Validating instance against schema:', outputDot.schemaId);
+          const validationResult = await this.validateAndSaveInstance(args, outputDot.schemaId);
+          if (!validationResult.valid) {
+            const errorMsg = `Validation failed for ${outputDot.name}: ${validationResult.errors?.join(', ')}`;
+            console.error('❌ Validation Error:', errorMsg);
+            errors.push(errorMsg);
+            continue;
+          }
+          console.log('✅ Validation successful');
+
           // Route to next assistants
+          console.log('🚀 Routing to next assistants');
           const routingResult = await this.routeToNextAssistants(sourceNode.id, validationResult.instance);
           if (!routingResult.success) {
-            errors.push(`Routing failed: ${routingResult.errors?.join(', ')}`);
+            const errorMsg = `Routing failed: ${routingResult.errors?.join(', ')}`;
+            console.error('❌ Routing Error:', errorMsg);
+            errors.push(errorMsg);
+          } else {
+            console.log('✅ Routing successful');
           }
 
           results.push(validationResult.instance);
@@ -458,16 +486,21 @@ export class AiFunctionService {
 
       // Log errors if any
       if (errors.length > 0) {
-        console.error('Execution errors:', errors);
+        console.error('❌ Execution errors:', errors);
         this.aiCommunicationService.emitSystemMessage(`⚠️ Warnings during execution: ${errors.join('; ')}`);
       }
 
       // Return results
-      return {
-        output: JSON.stringify(results.length === 1 ? results[0] : results)
-      };
+      const output = JSON.stringify(results.length === 1 ? results[0] : results);
+      console.log('✅ Function execution completed:', {
+        function: functionName,
+        resultsCount: results.length,
+        errorsCount: errors.length
+      });
+      
+      return { output };
     } catch (error) {
-      console.error('Error in executeFunction:', error);
+      console.error('❌ Fatal error in executeFunction:', error);
       throw error;
     }
   }
