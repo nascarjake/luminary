@@ -506,6 +506,16 @@ export class AiFunctionService {
         throw error;
       }
 
+      // For default function (sendOutput), try to parse result field
+      if (functionName === 'sendOutput' && typeof functionResult === 'object' && 'result' in functionResult) {
+        try {
+          const parsedResult = JSON.parse(functionResult.result);
+          functionResult = parsedResult;
+        } catch {
+          // If parsing fails, keep original functionResult
+        }
+      }
+
       // Find nodes for this assistant
       const state = this.graphService.currentState;
       const sourceNodes = state.nodes.filter(n => n.assistantId === assistantId);
@@ -542,16 +552,36 @@ export class AiFunctionService {
               ? functionResult[output.name]
               : functionResult;
 
-            console.log('✨ Validating single output against schema:', output.schemaId);
-            const validationResult = await this.validateAndSaveInstance(outputValue, output.schemaId);
-            if (!validationResult.valid) {
-              const errorMsg = `Validation failed for ${output.name}: ${validationResult.errors?.join(', ')}`;
-              this.emitSystemMessage(`❌ Validation Error: ${errorMsg}`);
-              console.error('❌ Validation Error:', errorMsg);
-              errors.push(errorMsg);
+            // Handle array of objects
+            if (Array.isArray(outputValue)) {
+              console.log('📦 Processing array of objects:', outputValue.length);
+              for (const item of outputValue) {
+                console.log('✨ Validating array item against schema:', output.schemaId);
+                const validationResult = await this.validateAndSaveInstance(item, output.schemaId);
+                if (!validationResult.valid) {
+                  const errorMsg = `Validation failed for ${output.name}: ${validationResult.errors?.join(', ')}`;
+                  this.emitSystemMessage(`❌ Validation Error: ${errorMsg}`);
+                  console.error('❌ Validation Error:', errorMsg);
+                  errors.push(errorMsg);
+                } else {
+                  console.log('✅ Validation successful for array item');
+                  results.push(validationResult.instance);
+                  await this.routeToNextAssistants(sourceNode.id, validationResult.instance);
+                }
+              }
             } else {
-              console.log('✅ Validation successful for single output');
-              results.push(validationResult.instance);
+              console.log('✨ Validating single output against schema:', output.schemaId);
+              const validationResult = await this.validateAndSaveInstance(outputValue, output.schemaId);
+              if (!validationResult.valid) {
+                const errorMsg = `Validation failed for ${output.name}: ${validationResult.errors?.join(', ')}`;
+                this.emitSystemMessage(`❌ Validation Error: ${errorMsg}`);
+                console.error('❌ Validation Error:', errorMsg);
+                errors.push(errorMsg);
+              } else {
+                console.log('✅ Validation successful for single output');
+                results.push(validationResult.instance);
+                await this.routeToNextAssistants(sourceNode.id, validationResult.instance);
+              }
             }
           } else {
             // Multiple outputs case - expect object with keys matching output names
