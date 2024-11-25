@@ -14,9 +14,7 @@ interface StoredSchemas {
   schemas: ObjectSchema[];
 }
 
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable()
 export class ObjectSchemaService implements IObjectSchemaService {
   private schemas$ = new BehaviorSubject<ObjectSchema[]>([]);
   readonly schemas = this.schemas$.asObservable();

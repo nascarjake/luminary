@@ -28,11 +28,7 @@ import { firstValueFrom } from 'rxjs';
   ],
   providers: [
     MessageService,
-    AuthService,
-    ObjectSchemaService,
-    ObjectInstanceService,
-    ObjectMigrationService,
-    GeneratedObjectsService
+    AuthService
   ],
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss'],
