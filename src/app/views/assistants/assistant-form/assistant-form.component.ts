@@ -240,7 +240,7 @@ export class AssistantFormComponent implements OnInit {
     }
   }
 
-  private async loadFunctionImplementations(functionDefs: Array<{
+  async loadFunctionImplementations(functionDefs: Array<{
     name: string;
     description: string;
     parameters: {
@@ -270,9 +270,15 @@ export class AssistantFormComponent implements OnInit {
         config.functions.functions
       );
       
-      // Update instruction parts with inputs and outputs
+      // Update instruction parts with schema IDs
       this.instructionParts.coreInstructions.inputSchemas = config.inputs || [];
       this.instructionParts.coreInstructions.outputSchemas = config.outputs || [];
+
+      // Update form controls with schema IDs
+      this.form.patchValue({
+        input_schemas: config.inputs || [],
+        output_schemas: config.outputs || []
+      });
     } catch (error) {
       console.error('Failed to load function implementations:', error);
       this.functions = functionDefs;
@@ -420,93 +426,42 @@ export class AssistantFormComponent implements OnInit {
     }
   }
 
-  async onInputSchemasChange() {
-    if (!this.instructionParts.coreInstructions.inputSchemas) return;
-
-    const selectedSchemas = this.availableSchemas.filter(
-      schema => this.instructionParts.coreInstructions.inputSchemas.includes(schema.id)
-    );
-
-    const schemasWithComments = selectedSchemas.map(schema => this.generateSchemaWithComments(schema));
+  onInputSchemasChange() {
+    // Get selected schema IDs from form
+    const selectedSchemaIds = this.form.get('input_schemas')?.value || [];
     
-    // Update the form control with the full schema JSON
-    this.form.patchValue({
-      input_schemas: schemasWithComments
-    });
+    // Update instructionParts with the IDs
+    this.instructionParts.coreInstructions.inputSchemas = selectedSchemaIds;
+    
+    // Regenerate instructions
+    this.generateInstructions();
   }
 
-  async onOutputSchemasChange() {
-    if (!this.instructionParts.coreInstructions.outputSchemas) return;
-
-    const selectedSchemas = this.availableSchemas.filter(
-      schema => this.instructionParts.coreInstructions.outputSchemas.includes(schema.id)
-    );
-
-    const schemasWithComments = selectedSchemas.map(schema => this.generateSchemaWithComments(schema));
+  onOutputSchemasChange() {
+    // Get selected schema IDs from form
+    const selectedSchemaIds = this.form.get('output_schemas')?.value || [];
     
-    // Update the form control with the full schema JSON
-    this.form.patchValue({
-      output_schemas: schemasWithComments
-    });
+    // Update instructionParts with the IDs
+    this.instructionParts.coreInstructions.outputSchemas = selectedSchemaIds;
+    
+    // Regenerate instructions
+    this.generateInstructions();
   }
 
-  private generateSchemaWithComments(schema: ObjectSchema): string {
-    const schemaJson: any = {
+  private generateSchemaWithComments(schemaId: string): string {
+    const schema = this.availableSchemas.find(s => s.id === schemaId);
+    if (!schema) return '';
+
+    const result: any = {
       type: 'object',
-      properties: {},
-      required: []
+      properties: {}
     };
 
-    // Add description if present
-    if (schema.description) {
-      schemaJson.description = schema.description;
-    }
-
-    // Process each field
     for (const field of schema.fields) {
-      schemaJson.properties[field.name] = {
-        type: field.type,
-        description: field.description || ''
-      };
-
-      // Add validation rules if present
-      if (field.validation) {
-        if (field.validation.minLength !== undefined) {
-          schemaJson.properties[field.name].minLength = field.validation.minLength;
-        }
-        if (field.validation.maxLength !== undefined) {
-          schemaJson.properties[field.name].maxLength = field.validation.maxLength;
-        }
-        if (field.validation.pattern) {
-          schemaJson.properties[field.name].pattern = field.validation.pattern;
-        }
-        if (field.validation.min !== undefined) {
-          schemaJson.properties[field.name].minimum = field.validation.min;
-        }
-        if (field.validation.max !== undefined) {
-          schemaJson.properties[field.name].maximum = field.validation.max;
-        }
-        if (field.validation.enum) {
-          schemaJson.properties[field.name].enum = field.validation.enum;
-        }
-        if (field.type === 'array' && field.validation.items) {
-          schemaJson.properties[field.name].items = this.generateFieldSchema(field.validation.items);
-        }
-        if (field.type === 'object' && field.validation.properties) {
-          schemaJson.properties[field.name].properties = {};
-          for (const prop of field.validation.properties) {
-            schemaJson.properties[field.name].properties[prop.name] = this.generateFieldSchema(prop);
-          }
-        }
-      }
-
-      // Add to required array if field is required
-      if (field.required) {
-        schemaJson.required.push(field.name);
-      }
+      result.properties[field.name] = this.generateFieldSchema(field);
     }
 
-    return JSON.stringify(schemaJson, null, 2);
+    return JSON.stringify(result, null, 2);
   }
 
   private generateFieldSchema(field: ObjectField): any {
@@ -586,7 +541,7 @@ export class AssistantFormComponent implements OnInit {
       const selectedSchemas = this.availableSchemas.filter(
         schema => this.instructionParts.coreInstructions.inputSchemas.includes(schema.id)
       );
-      const schemasWithComments = selectedSchemas.map(schema => this.generateSchemaWithComments(schema));
+      const schemasWithComments = selectedSchemas.map(schema => this.generateSchemaWithComments(schema.id));
       parts.push(`Input Schemas:\n${schemasWithComments.join('\n\n')}`);
     }
 
@@ -594,7 +549,7 @@ export class AssistantFormComponent implements OnInit {
       const selectedSchemas = this.availableSchemas.filter(
         schema => this.instructionParts.coreInstructions.outputSchemas.includes(schema.id)
       );
-      const schemasWithComments = selectedSchemas.map(schema => this.generateSchemaWithComments(schema));
+      const schemasWithComments = selectedSchemas.map(schema => this.generateSchemaWithComments(schema.id));
       parts.push(`Output Schemas:\n${schemasWithComments.join('\n\n')}`);
     }
 
