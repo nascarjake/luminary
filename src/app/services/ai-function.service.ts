@@ -60,7 +60,7 @@ export class AiFunctionService {
     private aiCommunicationService: AiCommunicationService,
     private objectSchemaService: ObjectSchemaService,
     private objectInstanceService: ObjectInstanceService,
-    private graphService: GraphService // Inject GraphService
+    private graphService: GraphService 
   ) {
     this.pictoryUtils = new PictoryUtils(http);
   }
@@ -391,13 +391,15 @@ export class AiFunctionService {
         
         for (const item of dataItems) {
           try {
-            // Create new message for target assistant
-            await this.openAiApiService.createMessage(
-              targetNode.assistantId,
-              JSON.stringify(item)
-            );
+            // Route message through communication service
+            this.aiCommunicationService.routeMessage({
+              message: JSON.stringify(item),
+              assistantId: targetNode.assistantId
+            });
+            this.emitSystemMessage(`🔄 Starting next assistant: ${targetNode.name}`);
           } catch (error) {
             console.error(`Error routing to assistant ${targetNode.assistantId}:`, error);
+            this.emitSystemMessage(`❌ Error routing to next assistant (${targetNode.name}): ${error}`);
           }
         }
       }
@@ -428,11 +430,14 @@ export class AiFunctionService {
       // Initialize function result with args as fallback
       let functionResult = args;
       let implementation;
+      let assistant;
       
       try {
         // Try to load and execute assistant function
         const assistantContent = await window.electron.fs.readTextFile(assistantPath);
-        const assistant = JSON.parse(assistantContent);
+        assistant = JSON.parse(assistantContent);
+
+        this.emitSystemMessage(`📤 ${assistant.name} called function ${functionName}`);
         
         // Get function implementation from assistant file
         const functions = assistant.functions?.functions ? 
@@ -523,8 +528,10 @@ export class AiFunctionService {
           } else {
             functionResult = functionResult.result;
           }
-        } catch {
+        } catch (e) {
           // If parsing fails, keep original functionResult
+          console.log('parsing failure', e);
+          this.emitSystemMessage('⚠️ Parsing Error: Failed to parse result for ' + assistant.name);
         }
       }
 
@@ -577,6 +584,7 @@ export class AiFunctionService {
                   errors.push(errorMsg);
                 } else {
                   console.log('✅ Validation successful for array item');
+                  this.emitSystemMessage(`✅ Validation successful for ${item.name || item.title || item.label || item.key || item.text || item.id}`);
                   results.push(validationResult.instance);
                   await this.routeToNextAssistants(sourceNode.id, validationResult.instance);
                 }
@@ -591,6 +599,7 @@ export class AiFunctionService {
                 errors.push(errorMsg);
               } else {
                 console.log('✅ Validation successful for single output');
+                this.emitSystemMessage(`✅ Validation successful for ${outputValue.name || outputValue.title || outputValue.label || outputValue.key || outputValue.text || outputValue.id}`);
                 results.push(validationResult.instance);
                 await this.routeToNextAssistants(sourceNode.id, validationResult.instance);
               }
@@ -600,6 +609,7 @@ export class AiFunctionService {
             if (typeof functionResult !== 'object') {
               const errorMsg = 'Multiple outputs require object result with keys matching output names';
               console.error('❌ Error:', errorMsg);
+              this.emitSystemMessage(`❌ Error: ${errorMsg}`);
               errors.push(errorMsg);
               continue;
             }
@@ -607,6 +617,7 @@ export class AiFunctionService {
             for (const output of outputs) {
               if (!output.schemaId) {
                 console.warn('⚠️ No schema found for output:', output.name);
+                this.emitSystemMessage(`⚠️ No schema found for output: ${output.name}`);
                 continue;
               }
 
@@ -614,6 +625,7 @@ export class AiFunctionService {
               if (outputValue === undefined) {
                 const errorMsg = `No value found for output ${output.name}`;
                 console.error('❌ Error:', errorMsg);
+                this.emitSystemMessage(`❌ Error: ${errorMsg}`);
                 errors.push(errorMsg);
                 continue;
               }
@@ -627,6 +639,7 @@ export class AiFunctionService {
                 errors.push(errorMsg);
               } else {
                 console.log('✅ Validation successful for:', output.name);
+                this.emitSystemMessage(`✅ Validation successful for ${output.name}`);
                 results.push(validationResult.instance);
               }
             }
@@ -680,6 +693,8 @@ export class AiFunctionService {
       if (errors.length > 0) {
         console.warn('⚠️ Function completed with errors:', errors);
       }
+
+      this.emitSystemMessage(`✅ Successfully executed function: ${functionName} for ${assistant.name}`);
 
       return { output: JSON.stringify(functionResult) };
     } catch (error) {

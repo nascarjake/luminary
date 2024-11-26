@@ -42,7 +42,7 @@ export class FunctionImplementationsService {
     return this.baseDir;
   }
 
-  async saveFunctionImplementations(profileId: string, assistantId: string, functions: FunctionDefinition[], inputSchemas: string[] = [], outputSchemas: string[] = [], instructionParts?: AssistantConfig['instructionParts']): Promise<void> {
+  async saveFunctionImplementations(profileId: string, assistantId: string, assistantName: string, functions: FunctionDefinition[], inputSchemas: string[] = [], outputSchemas: string[] = [], instructionParts?: AssistantConfig['instructionParts']): Promise<void> {
     try {
       const baseDir = await this.ensureBaseDir();
 
@@ -69,7 +69,8 @@ export class FunctionImplementationsService {
         functions: implementations,
         inputs: inputSchemas,
         outputs: outputSchemas,
-        instructionParts
+        instructionParts,
+        name: assistantName
       });
     } catch (error) {
       console.error('Failed to save assistant configuration:', error);
