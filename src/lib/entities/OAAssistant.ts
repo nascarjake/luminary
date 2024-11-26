@@ -11,6 +11,8 @@ export interface OAAssistant {
     function: {
       name: string;
       description?: string;
+      strict?: boolean;
+      additionalProperties?: boolean;
       parameters?: Record<string, any>;
     };
   }>;

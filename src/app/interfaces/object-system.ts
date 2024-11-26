@@ -93,33 +93,38 @@ export function createZodSchema(schema: ObjectSchema): z.ZodObject<any> {
     let zodField: z.ZodTypeAny;
 
     switch (field.type) {
-      case 'string':
-        zodField = z.string();
+      case 'string': {
         if (field.validation?.enum) {
           zodField = z.enum(field.validation.enum.map(String) as [string, ...string[]]);
-        }
-        if (field.isMedia) {
-          zodField = z.string().url();
-        }
-        if (field.validation?.minLength !== undefined) {
-          zodField = (zodField as z.ZodString).min(field.validation.minLength);
-        }
-        if (field.validation?.maxLength !== undefined) {
-          zodField = (zodField as z.ZodString).max(field.validation.maxLength);
-        }
-        if (field.validation?.pattern) {
-          zodField = (zodField as z.ZodString).regex(new RegExp(field.validation.pattern));
+        } else {
+          let stringField = z.string();
+          if (field.isMedia) {
+            stringField = stringField.url();
+          }
+          if (field.validation?.minLength !== undefined && field.validation.minLength > 0) {
+            stringField = stringField.min(field.validation.minLength);
+          }
+          if (field.validation?.maxLength !== undefined && field.validation.maxLength > 0) {
+            stringField = stringField.max(field.validation.maxLength);
+          }
+          if (field.validation?.pattern) {
+            stringField = stringField.regex(new RegExp(field.validation.pattern));
+          }
+          zodField = stringField;
         }
         break;
-      case 'number':
-        zodField = z.number();
+      }
+      case 'number': {
+        let numberField = z.number();
         if (field.validation?.min !== undefined) {
-          zodField = (zodField as z.ZodNumber).min(field.validation.min);
+          numberField = numberField.min(field.validation.min);
         }
         if (field.validation?.max !== undefined) {
-          zodField = (zodField as z.ZodNumber).max(field.validation.max);
+          numberField = numberField.max(field.validation.max);
         }
+        zodField = numberField;
         break;
+      }
       case 'boolean':
         zodField = z.boolean();
         break;
@@ -155,11 +160,12 @@ export function createZodSchema(schema: ObjectSchema): z.ZodObject<any> {
         zodField = z.any();
     }
 
-    if (field.required) {
-      shape[field.name] = zodField;
-    } else {
-      shape[field.name] = zodField.optional();
+    // Make field optional if not required
+    if (!field.validation?.required) {
+      zodField = zodField.optional();
     }
+
+    shape[field.name] = zodField;
   }
 
   return z.object(shape);

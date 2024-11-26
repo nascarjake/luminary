@@ -101,7 +101,7 @@
                                 display="chip"
                                 (onChange)="onInputSchemasChange()">
                             </p-multiSelect>
-                            <small class="help-text">Define the structure of data this assistant can process.</small>
+                            <small class="help-text">Select schemas that this assistant should use to process input.</small>
                         </div>
         
                         <div class="col-12 md:col-6 instruction-section">
@@ -116,7 +116,7 @@
                                 display="chip"
                                 (onChange)="onOutputSchemasChange()">
                             </p-multiSelect>
-                            <small class="help-text">Define the structure of data this assistant will produce.</small>
+                            <small class="help-text">Select schemas that this assistant should use to generate output.</small>
                         </div>
 
                         <div class="col-12 mt-3" style="padding-top:1.5rem">
@@ -134,7 +134,7 @@
                 <div class="scrollable-content">
                     <div class="grid">
                         <div class="col-12 instruction-section">
-                            <h4>Business Logic</h4>
+                            <h4>Identity & Business Logic</h4>
                             <div class="instruction-field">
                                 <div class="instructions-header">
                                     <p-button 
@@ -154,7 +154,7 @@
                                     [ngModelOptions]="{standalone: true}"
                                     class="w-full instruction-textarea">
                                 </textarea>
-                                <small class="help-text">Define the core rules and logic that guide how the assistant processes information and makes decisions.</small>
+                                <small class="help-text">Tell the assistant who it is and what its purpose is. Give an overview of the task and knowledge required.</small>
                             </div>
                         </div>
         
@@ -184,7 +184,7 @@
                         </div>
         
                         <div class="col-12 instruction-section">
-                            <h4>Custom Functions</h4>
+                            <h4>Functions & Output Instructions</h4>
                             <div class="instruction-field">
                                 <div class="instructions-header">
                                     <p-button 
@@ -204,7 +204,7 @@
                                     [ngModelOptions]="{standalone: true}"
                                     class="w-full instruction-textarea">
                                 </textarea>
-                                <small class="help-text">Define any special functions, capabilities, or tools the assistant should use while processing requests.</small>
+                                <small class="help-text">Describe how functions provided should be used and how the output should be formatted.</small>
                             </div>
                         </div>
                     </div>
