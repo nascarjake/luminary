@@ -99,6 +99,40 @@ export class SchemaEditorComponent implements OnInit {
     });
   }
 
+  private removeEmpty(obj: any): any {
+    if (obj === null || obj === undefined) {
+      return undefined;
+    }
+
+    if (Array.isArray(obj)) {
+      const filtered = obj.map(item => this.removeEmpty(item)).filter(item => item !== undefined);
+      return filtered.length ? filtered : undefined;
+    }
+
+    if (typeof obj === 'object') {
+      const cleaned: any = {};
+      for (const [key, value] of Object.entries(obj)) {
+        // Special case for boolean values - keep false
+        if (typeof value === 'boolean') {
+          cleaned[key] = value;
+          continue;
+        }
+        
+        const cleanedValue = this.removeEmpty(value);
+        if (cleanedValue !== undefined) {
+          cleaned[key] = cleanedValue;
+        }
+      }
+      return Object.keys(cleaned).length ? cleaned : undefined;
+    }
+
+    // Keep non-empty strings, numbers, and booleans
+    if (obj === '' || obj === 0) {
+      return undefined;
+    }
+    return obj;
+  }
+
   async save() {
     if (this.schemaForm.invalid) {
       this.messageService.add({
@@ -117,14 +151,10 @@ export class SchemaEditorComponent implements OnInit {
       const schemaData = {
         ...formValue,
         fields: formValue.fields.map((field: any) => {
-          // Move mediaType into validation object if field is marked as media
-          const validation = {
-            ...field.validation
-          };
-          
-          if (field.isMedia && field.mediaType) {
-            validation.mediaType = field.mediaType;
-          }
+          // Move mediaType into validation if field is media
+          const validation = field.isMedia && field.mediaType 
+            ? { ...field.validation, mediaType: field.mediaType }
+            : field.validation;
 
           return {
             name: field.name,
@@ -137,11 +167,10 @@ export class SchemaEditorComponent implements OnInit {
         })
       };
 
-      if (this.isEdit) {
-        await this.ref.close(schemaData);
-      } else {
-        await this.ref.close(schemaData);
-      }
+      // Clean up the schema data by removing empty values
+      const cleanedData = this.removeEmpty(schemaData);
+
+      await this.ref.close(cleanedData);
     } catch (error) {
       this.messageService.add({
         severity: 'error',
