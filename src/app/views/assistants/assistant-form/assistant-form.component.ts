@@ -384,6 +384,7 @@ export class AssistantFormComponent implements OnInit {
           await this.functionImplementationsService.saveFunctionImplementations(
             activeProfile.id,
             this.assistant.id,
+            this.assistant.name,
             this.functions,
             this.instructionParts.coreInstructions.inputSchemas,
             this.instructionParts.coreInstructions.outputSchemas,
@@ -421,6 +422,7 @@ export class AssistantFormComponent implements OnInit {
       await this.functionImplementationsService.saveFunctionImplementations(
         activeProfile.id,
         this.assistant.id,
+        this.assistant.name,
         this.functions,
         this.instructionParts.coreInstructions.inputSchemas,
         this.instructionParts.coreInstructions.outputSchemas,
@@ -708,7 +710,8 @@ export class AssistantFormComponent implements OnInit {
 
 
     instructions.push(
-      "When you complete your task, format your response as a JSON object with a 'result' field containing your output.",
+      "When you complete your task, send the output using the sendOutput() function.",
+      "Please format your response as a JSON object with a 'result' field containing your output.",
       "If the output is JSON, you can include it directly in the 'result' field.",
       "Example: { \"result\": \"your output here\" }"
     );

@@ -83,6 +83,8 @@ export class SystemMessageOverlayService {
 
   async addSystemMessage(threadId: string, content: string, insertAfterMessageId: string): Promise<void> {
     await this.withLock(async () => {
+      if(content == 'Generating...' || content == 'Your request is queued and will be processed shortly.')
+        return;
       const overlays = await this.getOverlays();
       
       if (!overlays[threadId]) {

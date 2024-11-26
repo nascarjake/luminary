@@ -10,6 +10,8 @@ import { MessageService } from 'primeng/api';
 import { AiCommunicationService } from './ai-communication.service';
 import { Subject } from 'rxjs';
 
+const timers = {};
+
 @Injectable({
   providedIn: 'root'
 })
@@ -27,6 +29,17 @@ export class AiMessageService {
     this.aiCommunicationService.systemMessage$.subscribe(message => {
       this.emitSystemMessage(message);
     });
+
+    // Subscribe to message routing
+    this.aiCommunicationService.routeMessage$.subscribe(async params => {
+      try {
+        await this.generateAIResponse(params);
+      } catch (error) {
+        console.error('Error generating AI response:', error);
+        this.emitSystemMessage(`Error generating AI response: ${error.message}`);
+      }
+    });
+
     // Subscribe to API key changes
     this.openAiApiService.apiKey$.subscribe(apiKey => {
       if (apiKey) {
@@ -247,8 +260,13 @@ export class AiMessageService {
         } else if (event.event === 'thread.run.expired') {
           await this.cleanupFailedRun(thread_id, run_id, 'Operation timed out');
           throw new Error('Thread run expired');
+        } else if (event.event === 'thread.run.in_progress') {
+          clearTimeout(timers[thread_id]);
+          this.emitSystemMessage('Generating...');
         } else if (event.event === 'thread.run.queued') {
-          this.showToastAndSystemMessage('info', 'Processing', 'Your request is queued and will be processed shortly.');
+          timers[thread_id] = setTimeout(() => {
+            this.showToastAndSystemMessage('info', 'Processing', 'Your request is queued and will be processed shortly.');
+          }, 5000)
         }
       }
       return output as OAThreadMessage;
