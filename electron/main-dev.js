@@ -6,6 +6,10 @@ const https = require('https');
 const url = require('url');
 const { spawn } = require('child_process');
 
+// Load package.json for version
+const packageJson = require('../package.json');
+app.setVersion(packageJson.version);
+
 console.log('Starting Electron app (DEV)');
 console.log('Current directory:', __dirname);
 
@@ -15,6 +19,12 @@ protocol.registerSchemesAsPrivileged([
 ]);
 
 // IPC Handlers
+ipcMain.handle('app:getVersion', () => {
+  const version = app.getVersion();
+  console.log('Getting app version:', version);
+  return version;
+});
+
 ipcMain.handle('fs:exists', async (_, path) => {
   console.log('Checking exists:', path);
   return fs.existsSync(path);

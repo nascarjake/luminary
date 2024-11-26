@@ -26,10 +26,11 @@
     padding-right: 300px; // Account for right sidebar width
   }
 
+
   app-object-sidebar {
     position: absolute;
     right: 0;
-    top: 44px; // Account for header height
+    top: 98px; // Account for header height
     bottom: 0;
     width: 300px;
     z-index: 1;
