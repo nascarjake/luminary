@@ -58,7 +58,22 @@ export class SchemaListComponent implements OnInit {
 
     this.dialogRef.onClose.subscribe(async (result) => {
       if (result) {
-        await this.loadSchemas();
+        try {
+          await this.schemaService.createSchema(result);
+          this.messageService.add({
+            severity: 'success',
+            summary: 'Success',
+            detail: 'Schema created successfully'
+          });
+          await this.loadSchemas();
+        } catch (error) {
+          console.error('Failed to create schema:', error);
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'Failed to create schema'
+          });
+        }
       }
     });
   }
@@ -75,7 +90,22 @@ export class SchemaListComponent implements OnInit {
 
     this.dialogRef.onClose.subscribe(async (result) => {
       if (result) {
-        await this.loadSchemas();
+        try {
+          await this.schemaService.updateSchema(schema.id, result);
+          this.messageService.add({
+            severity: 'success',
+            summary: 'Success',
+            detail: 'Schema updated successfully'
+          });
+          await this.loadSchemas();
+        } catch (error) {
+          console.error('Failed to update schema:', error);
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'Failed to update schema'
+          });
+        }
       }
     });
   }
