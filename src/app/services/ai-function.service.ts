@@ -584,7 +584,7 @@ export class AiFunctionService {
                   errors.push(errorMsg);
                 } else {
                   console.log('✅ Validation successful for array item');
-                  this.emitSystemMessage(`✅ Validation successful for ${item.name || item.title || item.label || item.key || item.text || item.id}`);
+                  this.emitSystemMessage(`✅ Saved ${output.name} ${item.name || item.title || item.label || item.key || item.text || item.id}`);
                   results.push(validationResult.instance);
                   await this.routeToNextAssistants(sourceNode.id, validationResult.instance);
                 }
@@ -599,7 +599,7 @@ export class AiFunctionService {
                 errors.push(errorMsg);
               } else {
                 console.log('✅ Validation successful for single output');
-                this.emitSystemMessage(`✅ Validation successful for ${outputValue.name || outputValue.title || outputValue.label || outputValue.key || outputValue.text || outputValue.id}`);
+                this.emitSystemMessage(`✅ Saved ${output.name} ${outputValue.name || outputValue.title || outputValue.label || outputValue.key || outputValue.text || outputValue.id}`);
                 results.push(validationResult.instance);
                 await this.routeToNextAssistants(sourceNode.id, validationResult.instance);
               }
@@ -639,7 +639,7 @@ export class AiFunctionService {
                 errors.push(errorMsg);
               } else {
                 console.log('✅ Validation successful for:', output.name);
-                this.emitSystemMessage(`✅ Validation successful for ${output.name}`);
+                this.emitSystemMessage(`✅ Saved ${output.name}`);
                 results.push(validationResult.instance);
               }
             }
