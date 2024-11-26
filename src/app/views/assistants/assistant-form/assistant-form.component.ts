@@ -705,7 +705,7 @@ export class AssistantFormComponent implements OnInit {
 
   private generateDefaultOutputFormat(): string {
     const hasOutputSchemas = this.instructionParts.coreInstructions.outputSchemas.length > 0;
-    const hasOutputFunctions = this.functions.some(f => f.implementation?.isOutput);
+    const hasOutputFunctions = this.functions.some(f => f.name != this.DEFAULT_OUTPUT_DEFINITION.name && f.implementation?.isOutput);
 
     // Don't generate instructions if:
     // 1. No outputs are selected, or
