@@ -71,6 +71,7 @@ export class AssistantFormComponent implements OnInit {
     function: {
       name: 'sendOutput',
       description: 'Send the output to the next stage',
+      strict: false,
       parameters: {
         type: 'object',
         properties: {
@@ -79,6 +80,7 @@ export class AssistantFormComponent implements OnInit {
             description: 'The output result as a JSON string'
           }
         },
+        additionalProperties: false,
         required: ['result']
       }
     }
@@ -87,6 +89,7 @@ export class AssistantFormComponent implements OnInit {
   private readonly DEFAULT_OUTPUT_DEFINITION: FunctionDefinition = {
     name: 'sendOutput',
     description: 'Send the output to the next stage',
+    strict: false,
     parameters: {
       type: 'object',
       properties: {
@@ -95,6 +98,7 @@ export class AssistantFormComponent implements OnInit {
           description: 'The output result as a JSON string'
         }
       },
+      additionalProperties: false,
       required: ['result']
     },
     implementation: {
@@ -358,6 +362,7 @@ export class AssistantFormComponent implements OnInit {
         type: 'function',
         function: {
           name: func.name,
+          strict: func.strict,
           description: func.description,
           parameters: func.parameters
         }
@@ -448,6 +453,38 @@ export class AssistantFormComponent implements OnInit {
     this.generateInstructions();
   }
 
+  private generateFieldSchema(field: ObjectField): any {
+    const fieldSchema: any = {
+      type: field.type
+    };
+
+    // Only add description if it's not empty
+    if (field.description?.trim()) {
+      fieldSchema.description = field.description;
+    }
+
+    if (field.validation) {
+      // Only add non-null, non-empty validation rules
+      Object.entries(field.validation).forEach(([key, value]) => {
+        if (value !== undefined && 
+            value !== null && 
+            value !== '' && 
+            key !== 'items' && 
+            key !== 'properties' &&
+            !(Array.isArray(value) && value.length === 0)) {
+          fieldSchema[key] = value;
+        }
+      });
+    }
+
+    // Only add required if it's true
+    if (field.required) {
+      fieldSchema.required = true;
+    }
+
+    return fieldSchema;
+  }
+
   private generateSchemaWithComments(schemaId: string): string {
     const schema = this.availableSchemas.find(s => s.id === schemaId);
     if (!schema) return '';
@@ -457,29 +494,24 @@ export class AssistantFormComponent implements OnInit {
       properties: {}
     };
 
+    // Only add fields that have at least type defined
     for (const field of schema.fields) {
-      result.properties[field.name] = this.generateFieldSchema(field);
+      const fieldSchema = this.generateFieldSchema(field);
+      if (Object.keys(fieldSchema).length > 1) { // Must have more than just type
+        result.properties[field.name] = fieldSchema;
+      }
+    }
+
+    // Only add required array if there are required fields
+    const requiredFields = schema.fields
+      .filter(f => f.required)
+      .map(f => f.name);
+    
+    if (requiredFields.length > 0) {
+      result.required = requiredFields;
     }
 
     return JSON.stringify(result, null, 2);
-  }
-
-  private generateFieldSchema(field: ObjectField): any {
-    const fieldSchema: any = {
-      type: field.type,
-      description: field.description || ''
-    };
-
-    if (field.validation) {
-      // Add all validation rules
-      Object.entries(field.validation).forEach(([key, value]) => {
-        if (value !== undefined && key !== 'items' && key !== 'properties') {
-          fieldSchema[key] = value;
-        }
-      });
-    }
-
-    return fieldSchema;
   }
 
   openInstructionDialog(type: string) {
@@ -533,8 +565,35 @@ export class AssistantFormComponent implements OnInit {
     this.closeInstructionDialog();
   }
 
+  getProcessingStepsIntro() {
+    return 'Your task is divided into several steps to ensure complete and thorough outlining. Follow these steps before finalizing the output and ensure that accurate, verified information is collected.';
+  }
+
   combineInstructions(): string {
     const parts = [];
+
+    // Add user instructions
+    if (this.instructionParts.userInstructions.businessLogic) {
+      parts.push(`${this.instructionParts.userInstructions.businessLogic}`);
+    }
+
+    if (this.instructionParts.userInstructions.processingSteps) {
+      parts.push(`${this.getProcessingStepsIntro()}\n\nProcessing Steps:\n${this.instructionParts.userInstructions.processingSteps}`);
+    }
+
+    if (this.instructionParts.userInstructions.customFunctions) {
+      parts.push(`Custom Functions:\n${this.instructionParts.userInstructions.customFunctions}`);
+    }
+
+    // Add default output format if specified
+    if (this.instructionParts.coreInstructions.defaultOutputFormat) {
+      parts.push(`Default Output Format:\n${this.instructionParts.coreInstructions.defaultOutputFormat}`);
+    }
+
+    // Add array handling if specified
+    if (this.instructionParts.coreInstructions.arrayHandling) {
+      parts.push(`Array Handling:\n${this.instructionParts.coreInstructions.arrayHandling}`);
+    }
 
     // Add core instructions
     if (this.instructionParts.coreInstructions.inputSchemas.length > 0) {
@@ -553,28 +612,6 @@ export class AssistantFormComponent implements OnInit {
       parts.push(`Output Schemas:\n${schemasWithComments.join('\n\n')}`);
     }
 
-    // Add default output format if specified
-    if (this.instructionParts.coreInstructions.defaultOutputFormat) {
-      parts.push(`Default Output Format:\n${this.instructionParts.coreInstructions.defaultOutputFormat}`);
-    }
-
-    // Add array handling if specified
-    if (this.instructionParts.coreInstructions.arrayHandling) {
-      parts.push(`Array Handling:\n${this.instructionParts.coreInstructions.arrayHandling}`);
-    }
-
-    // Add user instructions
-    if (this.instructionParts.userInstructions.businessLogic) {
-      parts.push(`Business Logic:\n${this.instructionParts.userInstructions.businessLogic}`);
-    }
-
-    if (this.instructionParts.userInstructions.processingSteps) {
-      parts.push(`Processing Steps:\n${this.instructionParts.userInstructions.processingSteps}`);
-    }
-
-    if (this.instructionParts.userInstructions.customFunctions) {
-      parts.push(`Custom Functions:\n${this.instructionParts.userInstructions.customFunctions}`);
-    }
 
     return parts.join('\n\n');
   }
@@ -646,10 +683,8 @@ export class AssistantFormComponent implements OnInit {
   }
 
   generateInstructions() {
-    // Always generate array handling instructions if not present
-    if (!this.instructionParts.coreInstructions.arrayHandling) {
-      this.instructionParts.coreInstructions.arrayHandling = this.generateArrayHandling();
-    }
+    // Always generate array handling instructions
+   this.instructionParts.coreInstructions.arrayHandling = this.generateArrayHandling();
 
     // Only generate default output format if needed
     this.instructionParts.coreInstructions.defaultOutputFormat = this.generateDefaultOutputFormat();
@@ -674,6 +709,7 @@ export class AssistantFormComponent implements OnInit {
 
     instructions.push(
       "When you complete your task, format your response as a JSON object with a 'result' field containing your output.",
+      "If the output is JSON, you can include it directly in the 'result' field.",
       "Example: { \"result\": \"your output here\" }"
     );
     
@@ -685,7 +721,7 @@ export class AssistantFormComponent implements OnInit {
       );
     }
 
-    return instructions.join("\n\n");
+    return instructions.join("\n");
   }
 
   private generateArrayHandling(): string {
@@ -693,17 +729,18 @@ export class AssistantFormComponent implements OnInit {
     
     let instructions = [
       "When processing arrays or lists of data:",
-      "",
-      "1. If you receive an array of inputs, process each item individually and return an array of results.",
-      "2. Maintain the order of items in the output array to match the input array.",
-      "3. If an item fails processing, include an error message in its place.",
-      ""
+      "(This does not always apply, only when instructed to output multiple items)",
+      "1. Arrays must be formatted in pure json",
+      "2. Arrays must be complete",
+      "3. If you receive an array of inputs, process each item individually and return an array of results.",
+      "4. Maintain the order of items in the output array to match the input array.",
+      "5. If an item fails processing, include an error message in its place.",
     ];
 
     if (hasOutputSchemas) {
       instructions.push(
-        "4. Each item in the output array must conform to the specified output schema.",
-        "5. For array fields within the schema, maintain nested array structures as specified."
+        "6. Each item in the output array must conform to the specified output schema.",
+        "7. For array fields within the schema, maintain nested array structures as specified."
       );
     }
 

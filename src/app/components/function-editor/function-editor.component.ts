@@ -16,10 +16,12 @@ import { CheckboxModule } from 'primeng/checkbox';
 export interface FunctionDefinition {
   name: string;
   description: string;
+  strict?: boolean;
   parameters: {
     type: string;
     properties: Record<string, any>;
     required: string[];
+    additionalProperties?: boolean;
   };
   implementation?: {
     command: string;
@@ -33,10 +35,12 @@ export interface FunctionDefinition {
 const DEFAULT_FUNCTION: FunctionDefinition = {
   name: '',
   description: '',
+  strict: false,
   parameters: {
     type: 'object',
     properties: {},
-    required: []
+    required: [],
+    additionalProperties: false,
   },
   implementation: {
     command: '',

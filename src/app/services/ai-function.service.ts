@@ -506,11 +506,23 @@ export class AiFunctionService {
         throw error;
       }
 
+      if (functionName === 'sendOutput' && typeof functionResult === 'object' && !('result' in functionResult) && 'results' in functionResult){
+        functionResult.result = functionResult.results;
+      }
+
       // For default function (sendOutput), try to parse result field
       if (functionName === 'sendOutput' && typeof functionResult === 'object' && 'result' in functionResult) {
         try {
-          const parsedResult = JSON.parse(functionResult.result);
-          functionResult = parsedResult;
+          if(typeof functionResult.result === 'string') {
+            const parsedResult = JSON.parse(functionResult.result);
+            functionResult = parsedResult;
+            if(functionResult.result && typeof functionResult.result === 'string'){
+              const parsedResult2 = JSON.parse(functionResult.result);
+              functionResult = parsedResult2;
+            }
+          } else {
+            functionResult = functionResult.result;
+          }
         } catch {
           // If parsing fails, keep original functionResult
         }
