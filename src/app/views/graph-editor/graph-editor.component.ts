@@ -27,7 +27,7 @@ declare global {
   imports: [CommonModule, AssistantLibraryComponent],
   template: `
     <div class="graph-editor-container">
-      <app-assistant-library></app-assistant-library>
+      <app-assistant-library style="z-index: 3; background: rgb(24 24 24);"></app-assistant-library>
       <canvas 
         class="graph-canvas" 
         #graphCanvas
@@ -35,7 +35,7 @@ declare global {
         (drop)="onDrop($event)"
       >
       </canvas>
-      <div class="toolbar">
+      <div class="toolbar" style="z-index:0">
         <button class="save-button" (click)="saveGraph()">Save Graph</button>
       </div>
     </div>
