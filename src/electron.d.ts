@@ -107,6 +107,9 @@ declare module 'electron-api' {
     graph: ElectronGraph;
     dialog: ElectronDialog;
     ipcRenderer: IpcRenderer;
+    app: {
+      getVersion(): Promise<string>;
+    };
   }
 
   global {

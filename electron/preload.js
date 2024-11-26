@@ -3,6 +3,11 @@ const { contextBridge, ipcRenderer } = require('electron');
 console.log('=== PRELOAD SCRIPT STARTING ===');
 
 contextBridge.exposeInMainWorld('electron', {
+  app: {
+    getVersion() {
+      return ipcRenderer.invoke('app:getVersion');
+    }
+  },
   fs: {
     async exists(path) {
       return ipcRenderer.invoke('fs:exists', path);
