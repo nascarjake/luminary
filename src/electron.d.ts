@@ -24,11 +24,37 @@ declare module 'electron-api' {
       functions: any;
       inputs: string[];
       outputs: string[];
+      instructionParts?: {
+        coreInstructions: {
+          inputSchemas: string[];
+          outputSchemas: string[];
+          defaultOutputFormat: string;
+          arrayHandling: string;
+        };
+        userInstructions: {
+          businessLogic: string;
+          processingSteps: string;
+          customFunctions: string;
+        };
+      };
     }): Promise<boolean>;
     load(baseDir: string, profileId: string, assistantId: string): Promise<{
       functions: any;
       inputs: string[];
       outputs: string[];
+      instructionParts?: {
+        coreInstructions: {
+          inputSchemas: string[];
+          outputSchemas: string[];
+          defaultOutputFormat: string;
+          arrayHandling: string;
+        };
+        userInstructions: {
+          businessLogic: string;
+          processingSteps: string;
+          customFunctions: string;
+        };
+      };
     } | null>;
   }
 

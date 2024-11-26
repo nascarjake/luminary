@@ -7,6 +7,19 @@ interface AssistantConfig {
   functions: AssistantFunctionImplementations;
   inputs: string[];
   outputs: string[];
+  instructionParts?: {
+    coreInstructions: {
+      inputSchemas: string[];
+      outputSchemas: string[];
+      defaultOutputFormat: string;
+      arrayHandling: string;
+    };
+    userInstructions: {
+      businessLogic: string;
+      processingSteps: string;
+      customFunctions: string;
+    };
+  };
 }
 
 @Injectable({
@@ -29,7 +42,7 @@ export class FunctionImplementationsService {
     return this.baseDir;
   }
 
-  async saveFunctionImplementations(profileId: string, assistantId: string, functions: FunctionDefinition[], inputSchemas: string[] = [], outputSchemas: string[] = []): Promise<void> {
+  async saveFunctionImplementations(profileId: string, assistantId: string, functions: FunctionDefinition[], inputSchemas: string[] = [], outputSchemas: string[] = [], instructionParts?: AssistantConfig['instructionParts']): Promise<void> {
     try {
       const baseDir = await this.ensureBaseDir();
 
@@ -55,7 +68,8 @@ export class FunctionImplementationsService {
       await window.electron.assistant.save(baseDir, profileId, assistantId, {
         functions: implementations,
         inputs: inputSchemas,
-        outputs: outputSchemas
+        outputs: outputSchemas,
+        instructionParts
       });
     } catch (error) {
       console.error('Failed to save assistant configuration:', error);

@@ -148,7 +148,7 @@ export class AssistantFormComponent implements OnInit {
     });
   }
 
-  ngOnChanges(changes: SimpleChanges) {
+  async ngOnChanges(changes: SimpleChanges) {
     if (changes['visible'] && changes['visible'].currentValue) {
       if (!this.assistant) {
         // Reset form when opening for a new assistant
@@ -179,45 +179,63 @@ export class AssistantFormComponent implements OnInit {
           }
         };
       } else {
-        // Load assistant data into form
-        this.form.patchValue({
-          name: this.assistant.name,
-          description: this.assistant.description || '',
-          model: this.assistant.model,
-          response_format_type: this.assistant.response_format?.type || 'text',
-          temperature: this.assistant.temperature || 0.7,
-          top_p: this.assistant.top_p || 1,
-          metadata: this.assistant.metadata || {},
-          instructions: this.assistant.instructions || '',
-          defaultOutputFormat: this.assistant.metadata?.instructionParts?.coreInstructions?.defaultOutputFormat || ''
-        });
-
-        // Load instruction parts
-        if (this.assistant.metadata?.instructionParts) {
-          this.instructionParts = this.assistant.metadata.instructionParts;
-        }
-
-        // Convert OpenAI tools format to our FunctionDefinition format
-        const functionDefs = (this.assistant.tools || [])
-          .filter(tool => tool.type === 'function' && tool.function)
-          .map(tool => ({
-            name: tool.function.name,
-            description: tool.function.description || '',
-            parameters: {
-              type: 'object',
-              properties: tool.function.parameters?.properties || {},
-              required: tool.function.parameters?.required || []
-            }
-          }));
-
-        // Load function implementations
-        this.loadFunctionImplementations(functionDefs).then(() => {
-          // Update form with schema values after loading implementations
+        try {
+          // Load assistant data into form
           this.form.patchValue({
-            input_schemas: this.instructionParts.coreInstructions.inputSchemas,
-            output_schemas: this.instructionParts.coreInstructions.outputSchemas
+            name: this.assistant.name,
+            description: this.assistant.description || '',
+            model: this.assistant.model,
+            response_format_type: this.assistant.response_format?.type || 'text',
+            temperature: this.assistant.temperature || 0.7,
+            top_p: this.assistant.top_p || 1,
+            defaultOutputFormat: ''
           });
-        });
+
+          // Load instruction parts and functions from local storage
+          const activeProfile = await this.configService.getActiveProfile();
+          if (activeProfile && this.assistant.id) {
+            const config = await this.functionImplementationsService.loadFunctionImplementations(
+              activeProfile.id,
+              this.assistant.id
+            );
+            
+            if (config.instructionParts) {
+              this.instructionParts = config.instructionParts;
+              this.form.patchValue({
+                input_schemas: this.instructionParts.coreInstructions.inputSchemas,
+                output_schemas: this.instructionParts.coreInstructions.outputSchemas,
+                defaultOutputFormat: this.instructionParts.coreInstructions.defaultOutputFormat
+              });
+            }
+
+            // If no instruction parts are set but we have OpenAI instructions, distribute them
+            const hasNoInstructions = !this.instructionParts.userInstructions.businessLogic &&
+              !this.instructionParts.userInstructions.processingSteps &&
+              !this.instructionParts.userInstructions.customFunctions;
+
+            if (hasNoInstructions && this.assistant.instructions) {
+              this.distributeSystemInstructions(this.assistant.instructions);
+            }
+
+            // Convert OpenAI tools format to our FunctionDefinition format
+            const functionDefs = (this.assistant.tools || [])
+              .filter(tool => tool.type === 'function' && tool.function)
+              .map(tool => ({
+                name: tool.function.name,
+                description: tool.function.description || '',
+                parameters: {
+                  type: 'object',
+                  properties: tool.function.parameters?.properties || {},
+                  required: tool.function.parameters?.required || []
+                }
+              }));
+
+            // Load function implementations
+            await this.loadFunctionImplementations(functionDefs);
+          }
+        } catch (error) {
+          console.error('Failed to load assistant data:', error);
+        }
       }
     }
   }
@@ -337,43 +355,10 @@ export class AssistantFormComponent implements OnInit {
           description: func.description,
           parameters: func.parameters
         }
-        })),
-        metadata: {
-        ...formValue.metadata,
-        instructionParts: this.instructionParts
-        }
+        }))
       };
 
-      // Update instructions
-      if (!assistantData.metadata) {
-        assistantData.metadata = {};
-      }
-      if (!assistantData.metadata.instructionParts) {
-        assistantData.metadata.instructionParts = {
-          coreInstructions: {
-            inputSchemas: [],
-            outputSchemas: [],
-            defaultOutputFormat: '',
-            arrayHandling: ''
-          },
-          userInstructions: {
-            businessLogic: '',
-            processingSteps: '',
-            customFunctions: ''
-          }
-        };
-      }
-      
-      // Update core instructions while preserving existing values
-      assistantData.metadata.instructionParts.coreInstructions = {
-        ...assistantData.metadata.instructionParts.coreInstructions,
-        defaultOutputFormat: formValue.defaultOutputFormat || '',
-        inputSchemas: formValue.input_schemas || [],
-        outputSchemas: formValue.output_schemas || [],
-        arrayHandling: assistantData.metadata.instructionParts.coreInstructions?.arrayHandling || ''
-      };
-
-      // Combine all instructions and add to assistant data
+      // Only send the combined instructions to OpenAI
       assistantData.instructions = this.combineInstructions();
 
       // Include the ID if we're editing an existing assistant
@@ -381,7 +366,7 @@ export class AssistantFormComponent implements OnInit {
         assistantData.id = this.assistant.id;
       }
 
-      // Save function implementations
+      // Save function implementations and instruction parts locally
       if (this.assistant?.id) {
         const activeProfile = await this.configService.getActiveProfile();
         if (activeProfile) {
@@ -390,7 +375,8 @@ export class AssistantFormComponent implements OnInit {
             this.assistant.id,
             this.functions,
             this.instructionParts.coreInstructions.inputSchemas,
-            this.instructionParts.coreInstructions.outputSchemas
+            this.instructionParts.coreInstructions.outputSchemas,
+            this.instructionParts
           );
         }
       }
@@ -426,7 +412,8 @@ export class AssistantFormComponent implements OnInit {
         this.assistant.id,
         this.functions,
         this.instructionParts.coreInstructions.inputSchemas,
-        this.instructionParts.coreInstructions.outputSchemas
+        this.instructionParts.coreInstructions.outputSchemas,
+        this.instructionParts
       );
     } catch (error) {
       console.error('Failed to save function implementations:', error);
