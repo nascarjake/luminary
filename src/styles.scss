@@ -22,6 +22,10 @@ html, body {
   box-sizing: border-box;
 }
 
+app-header .p-tabmenu-nav-content {
+  padding-left: 17px;
+}
+
 // PrimeNG Editor customizations
 .p-editor-container {
   .p-editor-toolbar {
