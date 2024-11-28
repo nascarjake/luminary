@@ -4,6 +4,8 @@ import { PrimeNGModule } from '../../shared/primeng.module';
 import { OpenAiApiService } from '../../services/open-ai-api.service';
 import { OAAssistant } from '../../../lib/entities/OAAssistant';
 import { AssistantFormComponent } from './assistant-form/assistant-form.component';
+import { FunctionImplementationsService } from '../../services/function-implementations.service';
+import { ConfigService } from '../../services/config.service';
 
 @Component({
   selector: 'app-assistants',
@@ -22,7 +24,11 @@ export class AssistantsComponent implements OnInit {
   selectedAssistant: OAAssistant | null = null;
   loading = false;
 
-  constructor(private openAiService: OpenAiApiService) {}
+  constructor(
+    private openAiService: OpenAiApiService,
+    private functionImplementationsService: FunctionImplementationsService,
+    private configService: ConfigService
+  ) {}
 
   ngOnInit() {
     this.loadAssistants();
@@ -57,6 +63,73 @@ export class AssistantsComponent implements OnInit {
     } catch (error) {
       console.error('Error deleting assistant:', error);
     }
+  }
+
+  async cloneAssistant(assistant: OAAssistant) {
+    try {
+      this.loading = true;
+
+      // First create a new assistant via OpenAI API
+      const clonePayload = {
+        name: `${assistant.name} (Copy)`,
+        instructions: assistant.instructions,
+        model: assistant.model,
+        tools: assistant.tools,
+        temperature: assistant.temperature
+      };
+      
+      // Create new assistant to get the ID
+      const newAssistant = await this.openAiService.createAssistant(clonePayload);
+
+      // Get the profile ID
+      const activeProfile = this.configService.getActiveProfile();
+      if (!activeProfile) {
+        throw new Error('No active profile');
+      }
+
+      // Get the original assistant's local data
+      const originalLocalData = await this.functionImplementationsService.loadFunctionImplementations(activeProfile.id, assistant.id);
+      if (originalLocalData) {
+        // Save the cloned implementation details with the new assistant ID
+        await this.functionImplementationsService.saveFunctionImplementations(
+          activeProfile.id,
+          newAssistant.id,
+          clonePayload.name,
+          originalLocalData.functions.functions.map(f => ({
+            name: f.name,
+            description: 'Cloned function',
+            parameters: {
+              type: 'object',
+              properties: {},
+              required: [],
+              additionalProperties: false
+            },
+            implementation: {
+              command: f.command,
+              script: f.script,
+              workingDir: f.workingDir,
+              timeout: f.timeout,
+              isOutput: f.isOutput
+            }
+          })),
+          originalLocalData.inputs,
+          originalLocalData.outputs,
+          originalLocalData.instructionParts,
+          originalLocalData.arraySchemas
+        );
+      }
+      
+      // Add the new assistant to the list
+      this.assistants.push(newAssistant);
+    } catch (error) {
+      console.error('Error cloning assistant:', error);
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  async refreshAssistants() {
+    await this.loadAssistants();
   }
 
   async onSave(formData: any) {
