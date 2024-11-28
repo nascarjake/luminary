@@ -1109,9 +1109,5 @@ export class AssistantFormComponent implements OnInit {
     const selectedIds = this.form.get(formControlName)?.value || [];
     return this.availableSchemas
         .filter(schema => selectedIds.includes(schema.id))
-        .map(schema => ({
-            id: schema.id,
-            name: schema.name
-        }));
   }
 }

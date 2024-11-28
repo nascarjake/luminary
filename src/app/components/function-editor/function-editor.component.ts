@@ -96,6 +96,7 @@ const DEFAULT_FUNCTION: FunctionDefinition = {
                 optionValue="id"
                 placeholder="Select an output schema"
                 [style]="{'width': '100%'}"
+                (onChange)="onOutputSchemaChange()"
               ></p-dropdown>
               <small>Select the schema this function will output</small>
             </div>
@@ -319,14 +320,18 @@ export class FunctionEditorComponent implements AfterViewInit, OnDestroy {
       this.isEditing = !!this.function;
       if (this.isEditing) {
         this.functionImpl = { ...this.function.implementation };
+        // If this is an output function, find and select the matching schema
+        if (this.functionImpl?.isOutput && this.functionImpl?.outputSchema) {
+          const selectedSchema = this.outputSchemas.find(s => s.id === this.functionImpl?.outputSchema);
+          if (selectedSchema) {
+            this.functionImpl.outputSchema = selectedSchema.id;
+          }
+        }
       } else {
         this.functionImpl = { ...DEFAULT_FUNCTION.implementation };
       }
       // Update available schemas when dialog opens
-      this.availableSchemas = this.outputSchemas.map(schema => ({
-        id: schema.id,
-        name: schema.name
-      }));
+      this.availableSchemas = this.outputSchemas;
     }
   }
   get visible(): boolean {
@@ -410,6 +415,94 @@ export class FunctionEditorComponent implements AfterViewInit, OnDestroy {
     } catch (e) {
       this.error = e.message;
       return false;
+    }
+  }
+
+  // Add method to generate JSON for output schema
+  private generateOutputParameters(schema: ObjectSchema): any {
+    const schemaFields = this.generateFieldsBySchema(schema);
+    
+    return {
+      type: 'object',
+      properties: {
+        result: {
+          type: 'object',
+          ...schemaFields,
+          description: `${schema.name} object`
+        }
+      },
+      required: ['result']
+    };
+  }
+
+  // Helper method to generate fields from schema
+  private generateFieldsBySchema(schema: ObjectSchema): any {
+    const properties: any = {};
+    const required: string[] = [];
+
+    if (schema.fields) {
+      schema.fields.forEach(field => {
+        properties[field.name] = {
+          type: field.type.toLowerCase(),
+          description: field.description || `${field.name} field`
+        };
+        if (field.required) {
+          required.push(field.name);
+        }
+      });
+    }
+
+    return {
+      type: 'object',
+      properties,
+      required,
+      additionalProperties: false
+    };
+  }
+
+  // Watch for changes to output schema selection
+  onOutputSchemaChange() {
+    if (this.functionImpl?.isOutput && this.functionImpl?.outputSchema && this.editor) {
+      const selectedSchema = this.outputSchemas.find(s => s.id === this.functionImpl?.outputSchema);
+      if (selectedSchema) {
+        // Get current function definition
+        let currentDef;
+        try {
+          currentDef = JSON.parse(this.editor.state.doc.toString() || '{}');
+        } catch (e) {
+          currentDef = {};
+        }
+
+        // Generate new parameters for the selected schema
+        const parameters = this.generateOutputParameters(selectedSchema);
+        
+        // Update the function definition with new parameters
+        const updatedDef = {
+          ...currentDef,
+          parameters,
+        };
+
+        if(!updatedDef.description) {
+          updatedDef.description = `Send ${selectedSchema.name} output to the next stage`;
+        }
+
+        if(!updatedDef.name) {
+          updatedDef.name = `myFunction`;
+        }
+
+        // Create a new transaction to update the editor content
+        const newContent = JSON.stringify(updatedDef, null, 2);
+        const transaction = this.editor.state.update({
+          changes: {
+            from: 0,
+            to: this.editor.state.doc.length,
+            insert: newContent
+          }
+        });
+
+        // Apply the transaction
+        this.editor.update([transaction]);
+      }
     }
   }
 
