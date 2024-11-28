@@ -25,6 +25,7 @@ declare module 'electron-api' {
       inputs: string[];
       outputs: string[];
       name: string;
+      arraySchemas: any;
       instructionParts?: {
         coreInstructions: {
           inputSchemas: string[];
@@ -44,6 +45,7 @@ declare module 'electron-api' {
       inputs: string[];
       outputs: string[];
       name: string;
+      arraySchemas: any;
       instructionParts?: {
         coreInstructions: {
           inputSchemas: string[];

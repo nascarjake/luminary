@@ -224,6 +224,21 @@ export class AssistantFormComponent implements OnInit {
               activeProfile.id,
               this.assistant.id
             );
+
+            // Load array schemas if they exist
+            if (config.arraySchemas) {
+              this.arraySchemas = {
+                inputs: [...config.arraySchemas.inputs],
+                outputs: [...config.arraySchemas.outputs]
+              };
+              this.showInputArrays = this.arraySchemas.inputs.length > 0;
+              this.showOutputArrays = this.arraySchemas.outputs.length > 0;
+            } else {
+              // Reset array schemas
+              this.arraySchemas = { inputs: [], outputs: [] };
+              this.showInputArrays = false;
+              this.showOutputArrays = false;
+            }
             
             if (config.instructionParts) {
               this.instructionParts = config.instructionParts;
@@ -402,7 +417,8 @@ export class AssistantFormComponent implements OnInit {
         this.functions,
         this.instructionParts.coreInstructions.inputSchemas,
         this.instructionParts.coreInstructions.outputSchemas,
-        this.instructionParts
+        this.instructionParts,
+        this.arraySchemas
       );
     } catch (error) {
       console.error('Failed to save function implementations:', error);
@@ -954,7 +970,11 @@ export class AssistantFormComponent implements OnInit {
             description: func.description,
             parameters: func.parameters
           }
-        }))
+        })),
+        arraySchemas: {
+          inputs: [...this.arraySchemas.inputs],
+          outputs: [...this.arraySchemas.outputs]
+        }
       };
 
       // Only send the combined instructions to OpenAI
@@ -976,16 +996,19 @@ export class AssistantFormComponent implements OnInit {
             this.functions,
             this.instructionParts.coreInstructions.inputSchemas,
             this.instructionParts.coreInstructions.outputSchemas,
-            this.instructionParts
+            this.instructionParts,
+            this.arraySchemas
           );
         }
       }
 
-      // Add arraySchemas to the assistant
-      this.assistant.arraySchemas = {
-        inputs: [...this.arraySchemas.inputs],
-        outputs: [...this.arraySchemas.outputs]
-      };
+      // Add arraySchemas to the assistant instance
+      if (this.assistant) {
+        this.assistant.arraySchemas = {
+          inputs: [...this.arraySchemas.inputs],
+          outputs: [...this.arraySchemas.outputs]
+        };
+      }
 
       // Emit save event
       this.save.emit(assistantData as OAAssistant);
