@@ -1,11 +1,27 @@
 .assistants-page {
-  padding: 2rem;
+  padding: 1rem;
   max-width: 1200px;
   margin: 0 auto;
 }
 
 .card-header {
   margin-bottom: 1rem;
+}
+
+.flex {
+  display: flex;
+}
+
+.gap-1 {
+  gap: 0.5rem;
+}
+
+.gap-2 {
+  gap: 1rem;
+}
+
+.align-items-center {
+  align-items: center;
 }
 
 .form-field {

@@ -1,12 +1,21 @@
 <div class="assistants-page">
   <p-card header="Assistants">
     <div class="card-header">
-      <p-button
-        label="New Assistant"
-        icon="pi pi-plus"
-        (onClick)="createAssistant()"
-        [style]="{ marginBottom: '1rem' }"
-      ></p-button>
+      <div class="flex align-items-center gap-2">
+        <p-button
+          label="New Assistant"
+          icon="pi pi-plus"
+          (onClick)="createAssistant()"
+          [style]="{ marginBottom: '1rem' }"
+        ></p-button>
+        <p-button
+          icon="pi pi-refresh"
+          (onClick)="refreshAssistants()"
+          [rounded]="true"
+          [text]="true"
+          pTooltip="Refresh"
+        ></p-button>
+      </div>
     </div>
     
     <p-table [value]="assistants" [tableStyle]="{ 'min-width': '50rem' }" [loading]="loading">
@@ -24,21 +33,30 @@
           <td>{{ assistant.model }}</td>
           <td>{{ assistant.created_at * 1000 | date:'medium' }}</td>
           <td>
-            <p-button
-              icon="pi pi-pencil"
-              (onClick)="editAssistant(assistant)"
-              [rounded]="true"
-              [text]="true"
-              pTooltip="Edit"
-            ></p-button>
-            <p-button
-              icon="pi pi-trash"
-              (onClick)="deleteAssistant(assistant)"
-              [rounded]="true"
-              [text]="true"
-              severity="danger"
-              pTooltip="Delete"
-            ></p-button>
+            <div class="flex gap-1">
+              <p-button
+                icon="pi pi-pencil"
+                (onClick)="editAssistant(assistant)"
+                [rounded]="true"
+                [text]="true"
+                pTooltip="Edit"
+              ></p-button>
+              <p-button
+                icon="pi pi-copy"
+                (onClick)="cloneAssistant(assistant)"
+                [rounded]="true"
+                [text]="true"
+                pTooltip="Clone"
+              ></p-button>
+              <p-button
+                icon="pi pi-trash"
+                (onClick)="deleteAssistant(assistant)"
+                [rounded]="true"
+                [text]="true"
+                severity="danger"
+                pTooltip="Delete"
+              ></p-button>
+            </div>
           </td>
         </tr>
       </ng-template>
