@@ -763,10 +763,43 @@ export class AssistantFormComponent implements OnInit {
   }
 
   private createOutputFunction(schema: ObjectSchema | null, functionName: string = 'sendOutput'): { tool: any, definition: FunctionDefinition } {
-    const parameters = schema ? {
-      type: 'object',
-      ...this.generateFieldsBySchema(schema)
-    } : this.DEFAULT_OUTPUT_TOOL.function.parameters;
+    let parameters;
+    
+    if (schema) {
+      const schemaFields = this.generateFieldsBySchema(schema);
+      const isArray = this.isSchemaArray(schema.id, false); // false for output schemas
+      
+      if (isArray) {
+        parameters = {
+          type: 'object',
+          properties: {
+            result: {
+              type: 'array',
+              items: {
+                type: 'object',
+                ...schemaFields
+              },
+              description: `Array of ${schema.name} objects`
+            }
+          },
+          required: ['result']
+        };
+      } else {
+        parameters = {
+          type: 'object',
+          properties: {
+            result: {
+              type: 'object',
+              ...schemaFields,
+              description: `${schema.name} object`
+            }
+          },
+          required: ['result']
+        };
+      }
+    } else {
+      parameters = this.DEFAULT_OUTPUT_TOOL.function.parameters;
+    }
 
     const description = schema ? `Send ${schema.name} output to the next stage` : 'Send output to the next stage';
 
