@@ -2,7 +2,7 @@ import { Component, OnInit, Input, Output, EventEmitter, SimpleChanges } from '@
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { PrimeNGModule } from '../../../shared/primeng.module';
-import { OAAssistant, AssistantInstructions } from '../../../../lib/entities/OAAssistant';
+import { OAAssistant, AssistantInstructions, ArraySchemas } from '../../../../lib/entities/OAAssistant';
 import { ObjectSchemaService } from '../../../services/object-schema.service';
 import { OpenAiApiService } from '../../../services/open-ai-api.service';
 import { ObjectSchema, ObjectField } from '../../../interfaces/object-system';
@@ -70,7 +70,15 @@ export class AssistantFormComponent implements OnInit {
     }
   };
 
+  arraySchemas: ArraySchemas = {
+    inputs: [],
+    outputs: []
+  };
+
   activeTabIndex = 0;
+
+  showInputArrays = false;
+  showOutputArrays = false;
 
   private readonly DEFAULT_OUTPUT_TOOL = {
     type: 'function',
@@ -158,6 +166,12 @@ export class AssistantFormComponent implements OnInit {
         
       }
     });
+
+    if (this.assistant?.arraySchemas) {
+      this.arraySchemas = this.assistant.arraySchemas;
+      this.showInputArrays = this.arraySchemas.inputs.length > 0;
+      this.showOutputArrays = this.arraySchemas.outputs.length > 0;
+    }
   }
 
   async ngOnChanges(changes: SimpleChanges) {
@@ -669,7 +683,7 @@ export class AssistantFormComponent implements OnInit {
 
   private generateDefaultOutputFormat(): string {
     const hasOutputSchemas = this.instructionParts.coreInstructions.outputSchemas.length > 0;
-    const hasOutputFunctions = this.functions.some(f => f.name != this.DEFAULT_OUTPUT_DEFINITION.name && f.implementation?.isOutput);
+    const hasOutputFunctions = this.functions.some(f => f.implementation?.isOutput);
 
     // Don't generate instructions if:
     // 1. No outputs are selected, or
@@ -934,6 +948,12 @@ export class AssistantFormComponent implements OnInit {
         }
       }
 
+      // Add arraySchemas to the assistant
+      this.assistant.arraySchemas = {
+        inputs: [...this.arraySchemas.inputs],
+        outputs: [...this.arraySchemas.outputs]
+      };
+
       // Emit save event
       this.save.emit(assistantData as OAAssistant);
       this.visible = false;
@@ -1007,5 +1027,35 @@ export class AssistantFormComponent implements OnInit {
         parameters: func.parameters
       }
     }));
+  }
+
+  getSchemaName(schemaId: string): string {
+    return this.availableSchemas.find(s => s.id === schemaId)?.name || schemaId;
+  }
+
+  toggleSchemaArray(schemaId: string, isInput: boolean) {
+    const arrayList = isInput ? this.arraySchemas.inputs : this.arraySchemas.outputs;
+    const index = arrayList.indexOf(schemaId);
+    
+    if (index === -1) {
+      arrayList.push(schemaId);
+    } else {
+      arrayList.splice(index, 1);
+    }
+  }
+
+  isSchemaArray(schemaId: string, isInput: boolean): boolean {
+    const arrayList = isInput ? this.arraySchemas.inputs : this.arraySchemas.outputs;
+    return arrayList.includes(schemaId);
+  }
+
+  selectedSchemasAsOptions(formControlName: 'input_schemas' | 'output_schemas'): any[] {
+    const selectedIds = this.form.get(formControlName)?.value || [];
+    return this.availableSchemas
+        .filter(schema => selectedIds.includes(schema.id))
+        .map(schema => ({
+            id: schema.id,
+            name: schema.name
+        }));
   }
 }

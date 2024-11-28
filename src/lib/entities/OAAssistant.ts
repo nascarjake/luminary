@@ -6,6 +6,7 @@ export interface OAAssistant {
   description?: string;
   model: string;
   instructions?: string;
+  arraySchemas?: ArraySchemas;
   tools?: Array<{
     type: string;
     function: {
@@ -29,18 +30,20 @@ export interface OAAssistant {
 }
 
 export interface AssistantInstructions {
-  // System-managed parts
   coreInstructions: {
-    inputSchemas: string[];
-    outputSchemas: string[];
+    inputSchemas: any[];
+    outputSchemas: any[];
     defaultOutputFormat: string;
     arrayHandling: string;
   };
-  
-  // User-managed parts
   userInstructions: {
     businessLogic: string;
     processingSteps: string;
     customFunctions: string;
   };
+}
+
+export interface ArraySchemas {
+  inputs: string[];
+  outputs: string[];
 }
