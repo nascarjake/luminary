@@ -1,4 +1,4 @@
-import { Component, ElementRef, ViewChild, Input, Output, EventEmitter, AfterViewInit, OnDestroy } from '@angular/core';
+import { Component, ElementRef, ViewChild, Input, Output, EventEmitter, AfterViewInit, OnDestroy, SimpleChanges, OnChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { EditorState } from '@codemirror/state';
@@ -292,10 +292,11 @@ const DEFAULT_FUNCTION: FunctionDefinition = {
     }
   `]
 })
-export class FunctionEditorComponent implements AfterViewInit, OnDestroy {
+export class FunctionEditorComponent implements AfterViewInit, OnDestroy, OnChanges {
   @ViewChild('editorContainer') private editorContainer!: ElementRef;
   @Input() function: FunctionDefinition | null = null;
-  @Input() outputSchemas: ObjectSchema[] = []; // Add input for output schemas
+  @Input() outputSchemas: ObjectSchema[] = []; 
+  @Input() arraySchemas: { inputs: string[], outputs: string[] } = { inputs: [], outputs: [] };
   @Output() visibleChange = new EventEmitter<boolean>();
   @Output() save = new EventEmitter<FunctionDefinition>();
   @Output() cancel = new EventEmitter<void>();
@@ -305,42 +306,97 @@ export class FunctionEditorComponent implements AfterViewInit, OnDestroy {
   isEditing = false;
   functionImpl: FunctionDefinition['implementation'] | null = null;
   availableSchemas: any[] = [];
+  private editorExtensions = [
+    basicSetup,
+    json(),
+    keymap.of(defaultKeymap),
+    oneDark,
+    EditorView.updateListener.of(update => {
+      if (update.docChanged) {
+        this.validateJson(update.state.doc.toString());
+      }
+    }),
+    EditorView.theme({
+      "&": {height: "100%"},
+      ".cm-scroller": {overflow: "auto"}
+    })
+  ];
+
+  constructor() {
+    console.log('FunctionEditor constructor');
+  }
+
+  ngOnChanges(changes: SimpleChanges) {
+    console.log('FunctionEditor changes:', changes);
+    if (changes['function'] && !changes['function'].firstChange) {
+      console.log('Function changed:', changes['function'].currentValue);
+      // Initialize implementation form when function changes
+      const initialFunction = this.function || DEFAULT_FUNCTION;
+      this.functionImpl = initialFunction.implementation 
+        ? { ...initialFunction.implementation } 
+        : { ...DEFAULT_FUNCTION.implementation! };
+      this.isEditing = !!this.function;
+
+      // If this is an output function, find and select the matching schema
+      if (this.functionImpl?.isOutput && this.functionImpl?.outputSchema) {
+        const selectedSchema = this.outputSchemas.find(s => s.id === this.functionImpl?.outputSchema);
+        if (selectedSchema) {
+          this.functionImpl.outputSchema = selectedSchema.id;
+        }
+      }
+
+      console.log('Initialized functionImpl:', this.functionImpl);
+    }
+  }
 
   @Input()
   set visible(value: boolean) {
-    if (value && this.editorContainer) {
-      setTimeout(() => {
-        this.initializeEditor();
-      });
-    }
+    console.log('Setting visible:', value, 'Current function:', this.function);
+    if (this._visible === value) return; // Don't re-run if value hasn't changed
+    
     this._visible = value;
     this.visibleChange.emit(value);
 
     if (value) {
+      // Initialize implementation form when dialog opens
+      const initialFunction = this.function || DEFAULT_FUNCTION;
+      console.log('Initial function:', initialFunction);
+      this.functionImpl = initialFunction.implementation 
+        ? { ...initialFunction.implementation } 
+        : { ...DEFAULT_FUNCTION.implementation! };
+      console.log('Set functionImpl:', this.functionImpl);
       this.isEditing = !!this.function;
-      if (this.isEditing) {
-        this.functionImpl = { ...this.function.implementation };
-        // If this is an output function, find and select the matching schema
-        if (this.functionImpl?.isOutput && this.functionImpl?.outputSchema) {
-          const selectedSchema = this.outputSchemas.find(s => s.id === this.functionImpl?.outputSchema);
-          if (selectedSchema) {
-            this.functionImpl.outputSchema = selectedSchema.id;
-          }
+
+      // If this is an output function, find and select the matching schema
+      if (this.functionImpl?.isOutput && this.functionImpl?.outputSchema) {
+        const selectedSchema = this.outputSchemas.find(s => s.id === this.functionImpl?.outputSchema);
+        if (selectedSchema) {
+          this.functionImpl.outputSchema = selectedSchema.id;
         }
-      } else {
-        this.functionImpl = { ...DEFAULT_FUNCTION.implementation };
       }
+
       // Update available schemas when dialog opens
       this.availableSchemas = this.outputSchemas;
+
+      // Initialize editor after view is ready
+      setTimeout(() => {
+        this.initializeEditor();
+      });
+    } else {
+      // Clean up editor when dialog closes
+      this.editor?.destroy();
+      this.editor = undefined;
     }
   }
+
   get visible(): boolean {
     return this._visible;
   }
+
   private _visible = false;
 
   ngAfterViewInit() {
-    this.initializeEditor();
+    // Remove editor initialization from ngAfterViewInit
   }
 
   ngOnDestroy() {
@@ -348,36 +404,25 @@ export class FunctionEditorComponent implements AfterViewInit, OnDestroy {
   }
 
   private initializeEditor() {
+    // Destroy existing editor if it exists
+    if (this.editor) {
+      this.editor.destroy();
+    }
+
+    // Only initialize if we have the container
+    if (!this.editorContainer?.nativeElement) {
+      return;
+    }
+
     const startState = EditorState.create({
       doc: this.getInitialDoc(),
-      extensions: [
-        basicSetup,
-        json(),
-        keymap.of(defaultKeymap),
-        oneDark,
-        EditorView.updateListener.of(update => {
-          if (update.docChanged) {
-            this.validateJson(update.state.doc.toString());
-          }
-        }),
-        EditorView.theme({
-          "&": {height: "100%"},
-          ".cm-scroller": {overflow: "auto"}
-        })
-      ]
+      extensions: this.editorExtensions
     });
 
     this.editor = new EditorView({
       state: startState,
       parent: this.editorContainer.nativeElement
     });
-
-    // Initialize implementation form
-    const initialFunction = this.function || DEFAULT_FUNCTION;
-    this.functionImpl = initialFunction.implementation 
-      ? { ...initialFunction.implementation } 
-      : { ...DEFAULT_FUNCTION.implementation! };
-    this.isEditing = !!this.function;
   }
 
   private getInitialDoc(): string {
@@ -421,18 +466,36 @@ export class FunctionEditorComponent implements AfterViewInit, OnDestroy {
   // Add method to generate JSON for output schema
   private generateOutputParameters(schema: ObjectSchema): any {
     const schemaFields = this.generateFieldsBySchema(schema);
+    const isArray = this.isSchemaArray(schema.id, false); // false for output schemas
     
-    return {
-      type: 'object',
-      properties: {
-        result: {
-          type: 'object',
-          ...schemaFields,
-          description: `${schema.name} object`
-        }
-      },
-      required: ['result']
-    };
+    if (isArray) {
+      return {
+        type: 'object',
+        properties: {
+          result: {
+            type: 'array',
+            items: {
+              type: 'object',
+              ...schemaFields
+            },
+            description: `Array of ${schema.name} objects`
+          }
+        },
+        required: ['result']
+      };
+    } else {
+      return {
+        type: 'object',
+        properties: {
+          result: {
+            type: 'object',
+            ...schemaFields,
+            description: `${schema.name} object`
+          }
+        },
+        required: ['result']
+      };
+    }
   }
 
   // Helper method to generate fields from schema
@@ -458,6 +521,11 @@ export class FunctionEditorComponent implements AfterViewInit, OnDestroy {
       required,
       additionalProperties: false
     };
+  }
+
+  isSchemaArray(schemaId: string, isInput: boolean): boolean {
+    const arrayList = isInput ? this.arraySchemas.inputs : this.arraySchemas.outputs;
+    return arrayList.includes(schemaId);
   }
 
   // Watch for changes to output schema selection
@@ -490,18 +558,14 @@ export class FunctionEditorComponent implements AfterViewInit, OnDestroy {
           updatedDef.name = `myFunction`;
         }
 
-        // Create a new transaction to update the editor content
-        const newContent = JSON.stringify(updatedDef, null, 2);
-        const transaction = this.editor.state.update({
-          changes: {
-            from: 0,
-            to: this.editor.state.doc.length,
-            insert: newContent
-          }
+        // Create a new state with the updated content
+        const newState = EditorState.create({
+          doc: JSON.stringify(updatedDef, null, 2),
+          extensions: this.editorExtensions
         });
 
-        // Apply the transaction
-        this.editor.update([transaction]);
+        // Replace the entire state
+        this.editor.setState(newState);
       }
     }
   }

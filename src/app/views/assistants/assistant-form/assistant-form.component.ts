@@ -928,29 +928,32 @@ export class AssistantFormComponent implements OnInit {
           this.functions = this.functions.filter(f => !f.implementation?.isOutput || !functionsToRemove.includes(f.name));
         }
 
-        // Show preview only if there are changes
-        const dialogRef = this.dialogService.open(OutputPreviewComponent, {
-          header: 'Preview Output Functions',
-          width: '70%',
-          data: {
-            functions: outputFunctions.map(f => f.tool)
+        const outFuncs = this.functions.filter(f => f.implementation?.isOutput && !(f.name?.startsWith('send') && f.name?.includes('Output')));
+        if (!outFuncs?.length) {
+          // Show preview only if there are changes
+          const dialogRef = this.dialogService.open(OutputPreviewComponent, {
+            header: 'Preview Output Functions',
+            width: '70%',
+            data: {
+              functions: outputFunctions.map(f => f.tool)
+            }
+          });
+
+          const confirmed = await firstValueFrom(dialogRef.onClose);
+          if (!confirmed) {
+            this.loading = false;
+            return;
           }
-        });
 
-        const confirmed = await firstValueFrom(dialogRef.onClose);
-        if (!confirmed) {
-          this.loading = false;
-          return;
+          // Update functions if confirmed
+          outputFunctions.forEach(({ tool }) => {
+            const { definition } = this.createOutputFunction(
+              this.availableSchemas.find(s => s.name === tool.function.description.split(' ')[1]) || null,
+              tool.function.name
+            );
+            this.addOrUpdateOutputFunction({tool, definition});
+          });
         }
-
-        // Update functions if confirmed
-        outputFunctions.forEach(({ tool }) => {
-          const { definition } = this.createOutputFunction(
-            this.availableSchemas.find(s => s.name === tool.function.description.split(' ')[1]) || null,
-            tool.function.name
-          );
-          this.addOrUpdateOutputFunction({tool, definition});
-        });
       }
 
       // Create assistant data
