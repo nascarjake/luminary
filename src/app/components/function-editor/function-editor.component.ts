@@ -74,6 +74,13 @@ const DEFAULT_FUNCTION: FunctionDefinition = {
     >
       <div class="function-editor">
         <div class="editor-sections">
+        <div class="definition-section">
+            <div class="p-field-checkbox">
+              <p-checkbox [(ngModel)]="functionImpl.isOutput" [binary]="true" inputId="isOutput"></p-checkbox>
+              <label for="isOutput" class="p-checkbox-label">Is Output Function</label>
+            </div>
+            <small>Mark this function as responsible for output formatting</small>
+          </div>
           <div class="definition-section">
             <h3>Function Definition</h3>
             <p class="section-description">Define how the AI should call this function</p>
@@ -125,13 +132,7 @@ const DEFAULT_FUNCTION: FunctionDefinition = {
                 <small>Maximum execution time in milliseconds (1000-300000)</small>
               </div>
 
-              <div class="form-field">
-                <div class="p-field-checkbox">
-                  <p-checkbox [(ngModel)]="functionImpl.isOutput" [binary]="true" inputId="isOutput"></p-checkbox>
-                  <label for="isOutput" class="p-checkbox-label">Is Output Function</label>
-                </div>
-                <small>Mark this function as responsible for output formatting</small>
-              </div>
+              
             </div>
           </div>
         </div>

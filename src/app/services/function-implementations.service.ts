@@ -7,6 +7,7 @@ interface AssistantConfig {
   functions: AssistantFunctionImplementations;
   inputs: string[];
   outputs: string[];
+  arraySchemas?: any;
   instructionParts?: {
     coreInstructions: {
       inputSchemas: string[];
@@ -42,7 +43,7 @@ export class FunctionImplementationsService {
     return this.baseDir;
   }
 
-  async saveFunctionImplementations(profileId: string, assistantId: string, assistantName: string, functions: FunctionDefinition[], inputSchemas: string[] = [], outputSchemas: string[] = [], instructionParts?: AssistantConfig['instructionParts']): Promise<void> {
+  async saveFunctionImplementations(profileId: string, assistantId: string, assistantName: string, functions: FunctionDefinition[], inputSchemas: string[] = [], outputSchemas: string[] = [], instructionParts?: AssistantConfig['instructionParts'], arraySchemas?: any): Promise<void> {
     try {
       const baseDir = await this.ensureBaseDir();
 
@@ -70,7 +71,8 @@ export class FunctionImplementationsService {
         inputs: inputSchemas,
         outputs: outputSchemas,
         instructionParts,
-        name: assistantName
+        name: assistantName,
+        arraySchemas
       });
     } catch (error) {
       console.error('Failed to save assistant configuration:', error);
