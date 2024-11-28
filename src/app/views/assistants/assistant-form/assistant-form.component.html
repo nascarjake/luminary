@@ -170,6 +170,7 @@
                         <div class="col-12 mt-3" style="padding-top:1.5rem">
                             <app-function-list
                                 [(functions)]="visibleFunctions"
+                                [outputSchemas]="selectedSchemasAsOptions('output_schemas')"
                                 (functionsChange)="onFunctionsChange($event)">
                             </app-function-list>
                         </div>

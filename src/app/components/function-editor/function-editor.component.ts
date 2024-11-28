@@ -12,6 +12,8 @@ import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { CheckboxModule } from 'primeng/checkbox';
+import { DropdownModule } from 'primeng/dropdown';
+import { ObjectSchema } from '../../interfaces/object-system';
 
 export interface FunctionDefinition {
   name: string;
@@ -29,6 +31,7 @@ export interface FunctionDefinition {
     workingDir?: string;
     timeout?: number;
     isOutput?: boolean;
+    outputSchema?: string; 
   };
 }
 
@@ -46,7 +49,9 @@ const DEFAULT_FUNCTION: FunctionDefinition = {
     command: '',
     script: '',
     workingDir: '',
-    timeout: 30000 // Default 30 second timeout
+    timeout: 30000, 
+    isOutput: false,
+    outputSchema: undefined
   }
 };
 
@@ -60,7 +65,8 @@ const DEFAULT_FUNCTION: FunctionDefinition = {
     ButtonModule,
     InputTextModule,
     InputNumberModule,
-    CheckboxModule
+    CheckboxModule,
+    DropdownModule
   ],
   template: `
     <p-dialog 
@@ -74,13 +80,27 @@ const DEFAULT_FUNCTION: FunctionDefinition = {
     >
       <div class="function-editor">
         <div class="editor-sections">
-        <div class="definition-section">
-            <div class="p-field-checkbox">
+          <div class="">
+            <div class="p-field-checkbox" *ngIf="functionImpl">
               <p-checkbox [(ngModel)]="functionImpl.isOutput" [binary]="true" inputId="isOutput"></p-checkbox>
               <label for="isOutput" class="p-checkbox-label">Is Output Function</label>
             </div>
             <small>Mark this function as responsible for output formatting</small>
+
+            <div class="form-field" *ngIf="functionImpl?.isOutput">
+              <label>Output Schema</label>
+              <p-dropdown 
+                [(ngModel)]="functionImpl.outputSchema"
+                [options]="availableSchemas"
+                optionLabel="name"
+                optionValue="id"
+                placeholder="Select an output schema"
+                [style]="{'width': '100%'}"
+              ></p-dropdown>
+              <small>Select the schema this function will output</small>
+            </div>
           </div>
+
           <div class="definition-section">
             <h3>Function Definition</h3>
             <p class="section-description">Define how the AI should call this function</p>
@@ -274,6 +294,7 @@ const DEFAULT_FUNCTION: FunctionDefinition = {
 export class FunctionEditorComponent implements AfterViewInit, OnDestroy {
   @ViewChild('editorContainer') private editorContainer!: ElementRef;
   @Input() function: FunctionDefinition | null = null;
+  @Input() outputSchemas: ObjectSchema[] = []; // Add input for output schemas
   @Output() visibleChange = new EventEmitter<boolean>();
   @Output() save = new EventEmitter<FunctionDefinition>();
   @Output() cancel = new EventEmitter<void>();
@@ -282,16 +303,31 @@ export class FunctionEditorComponent implements AfterViewInit, OnDestroy {
   error: string | null = null;
   isEditing = false;
   functionImpl: FunctionDefinition['implementation'] | null = null;
+  availableSchemas: any[] = [];
 
   @Input()
   set visible(value: boolean) {
     if (value && this.editorContainer) {
       setTimeout(() => {
-        this.editor?.destroy();
         this.initializeEditor();
       });
     }
     this._visible = value;
+    this.visibleChange.emit(value);
+
+    if (value) {
+      this.isEditing = !!this.function;
+      if (this.isEditing) {
+        this.functionImpl = { ...this.function.implementation };
+      } else {
+        this.functionImpl = { ...DEFAULT_FUNCTION.implementation };
+      }
+      // Update available schemas when dialog opens
+      this.availableSchemas = this.outputSchemas.map(schema => ({
+        id: schema.id,
+        name: schema.name
+      }));
+    }
   }
   get visible(): boolean {
     return this._visible;

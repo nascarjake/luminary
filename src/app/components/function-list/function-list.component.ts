@@ -4,6 +4,7 @@ import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
 import { TooltipModule } from 'primeng/tooltip';
 import { FunctionEditorComponent, FunctionDefinition } from '../function-editor/function-editor.component';
+import { ObjectSchema } from '../../interfaces/object-system';
 
 @Component({
   selector: 'app-function-list',
@@ -64,6 +65,7 @@ import { FunctionEditorComponent, FunctionDefinition } from '../function-editor/
     <app-function-editor
       [(visible)]="showEditor"
       [function]="selectedFunction"
+      [outputSchemas]="outputSchemas"
       (save)="onFunctionSave($event)"
       (cancel)="hideEditor()"
     ></app-function-editor>
@@ -130,6 +132,7 @@ import { FunctionEditorComponent, FunctionDefinition } from '../function-editor/
 })
 export class FunctionListComponent {
   @Input() functions: FunctionDefinition[] = [];
+  @Input() outputSchemas: ObjectSchema[] = [];
   @Output() functionsChange = new EventEmitter<FunctionDefinition[]>();
 
   showEditor = false;
