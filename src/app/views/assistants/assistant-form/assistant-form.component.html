@@ -171,6 +171,7 @@
                             <app-function-list
                                 [(functions)]="visibleFunctions"
                                 [outputSchemas]="selectedSchemasAsOptions('output_schemas')"
+                                [arraySchemas]="arraySchemas"
                                 (functionsChange)="onFunctionsChange($event)">
                             </app-function-list>
                         </div>

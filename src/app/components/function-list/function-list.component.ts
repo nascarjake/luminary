@@ -41,7 +41,7 @@ import { ObjectSchema } from '../../interfaces/object-system';
               <div class="function-actions">
                 <p-button
                   icon="pi pi-pencil"
-                  (onClick)="showEditFunction(i)"
+                  (onClick)="editFunction(i)"
                   [rounded]="true"
                   [text]="true"
                   pTooltip="Edit Function"
@@ -66,6 +66,7 @@ import { ObjectSchema } from '../../interfaces/object-system';
       [(visible)]="showEditor"
       [function]="selectedFunction"
       [outputSchemas]="outputSchemas"
+      [arraySchemas]="arraySchemas"
       (save)="onFunctionSave($event)"
       (cancel)="hideEditor()"
     ></app-function-editor>
@@ -133,6 +134,7 @@ import { ObjectSchema } from '../../interfaces/object-system';
 export class FunctionListComponent {
   @Input() functions: FunctionDefinition[] = [];
   @Input() outputSchemas: ObjectSchema[] = [];
+  @Input() arraySchemas: { inputs: string[], outputs: string[] } = { inputs: [], outputs: [] };
   @Output() functionsChange = new EventEmitter<FunctionDefinition[]>();
 
   showEditor = false;
@@ -145,7 +147,8 @@ export class FunctionListComponent {
     this.showEditor = true;
   }
 
-  showEditFunction(index: number) {
+  editFunction(index: number) {
+    console.log('Editing function:', this.functions[index]);
     // Deep copy the function to avoid modifying the original object
     this.selectedFunction = JSON.parse(JSON.stringify(this.functions[index]));
     this.selectedIndex = index;
@@ -159,22 +162,34 @@ export class FunctionListComponent {
   }
 
   onFunctionSave(func: FunctionDefinition) {
-    const newFunctions = [...this.functions];
-    
+    console.log('Saving function:', func);
     if (this.selectedIndex !== null) {
+      const newFunctions = [...this.functions];
       newFunctions[this.selectedIndex] = func;
+      this.functions = newFunctions;
+      this.functionsChange.emit(newFunctions);
     } else {
-      newFunctions.push(func);
+      const newFunctions = [...this.functions, func];
+      this.functions = newFunctions;
+      this.functionsChange.emit(newFunctions);
     }
-
-    this.functions = newFunctions;
-    this.functionsChange.emit(newFunctions);
-    this.hideEditor();
+    this.selectedFunction = null;
+    this.selectedIndex = null;
+    this.showEditor = false;
   }
 
   deleteFunction(index: number) {
     const newFunctions = this.functions.filter((_, i) => i !== index);
     this.functions = newFunctions;
     this.functionsChange.emit(newFunctions);
+  }
+
+  isSchemaArray(schemaId: string, isInput: boolean): boolean {
+    const arrayList = isInput ? this.arraySchemas.inputs : this.arraySchemas.outputs;
+    return arrayList.includes(schemaId);
+  }
+
+  onAddFunction() {
+    this.showEditor = true;
   }
 }
