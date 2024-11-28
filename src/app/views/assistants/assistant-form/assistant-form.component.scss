@@ -126,6 +126,24 @@
   width: 100%;
 }
 
+.selected-schemas-config {
+  border: 1px solid var(--surface-border);
+  border-radius: 6px;
+  margin-top: 0.5rem;
+  
+  .schema-config-item {
+    border-bottom: 1px solid var(--surface-border);
+    
+    &:last-child {
+      border-bottom: none;
+    }
+    
+    &:hover {
+      background-color: var(--surface-hover);
+    }
+  }
+}
+
 :host ::ng-deep {
   .p-dialog {
     height: 90vh;
@@ -215,6 +233,21 @@
 
     .p-inputnumber-input {
       width: 100%;
+    }
+  }
+
+  .array-toggle {
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    user-select: none;
+    
+    &:hover {
+        background-color: var(--surface-hover);
+    }
+    
+    i {
+        font-size: 0.875rem;
     }
   }
 }

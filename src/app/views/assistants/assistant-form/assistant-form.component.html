@@ -91,32 +91,80 @@
                     <div class="grid">
                         <div class="col-12 md:col-6 instruction-section">
                             <h4>Input Schemas</h4>
-                            <p-multiSelect
-                                formControlName="input_schemas"
-                                [options]="availableSchemas"
-                                optionLabel="name"
-                                optionValue="id"
-                                class="w-full"
-                                placeholder="Select input schemas"
-                                display="chip"
-                                (onChange)="onInputSchemasChange()">
-                            </p-multiSelect>
-                            <small class="help-text">Select schemas that this assistant should use to process input.</small>
+                            <div class="flex gap-2 mb-2">
+                                <div style="width: calc(100% - 120px); display: inline-block">
+                                <p-multiSelect
+                                    formControlName="input_schemas"
+                                    [options]="availableSchemas"
+                                    optionLabel="name"
+                                    optionValue="id"
+                                    class="flex-grow-1"
+                                    placeholder="Select input schemas"
+                                    display="chip">
+                                </p-multiSelect>
+                                </div>
+                                <button pButton
+                                    type="button"
+                                    label="Add Arrays"
+                                    class="p-button-secondary"
+                                    *ngIf="!showInputArrays && form.get('input_schemas')?.value?.length"
+                                    (click)="showInputArrays = true">
+                                </button>
+                            </div>
+                            <small class="help-text mb-2 block">Select schemas that this assistant should use to process input.</small>
+                            
+                            <ng-container *ngIf="showInputArrays || arraySchemas.inputs.length > 0">
+                                <p-multiSelect
+                                    [(ngModel)]="arraySchemas.inputs"
+                                    [ngModelOptions]="{standalone: true}"
+                                    [options]="selectedSchemasAsOptions('input_schemas')"
+                                    optionLabel="name"
+                                    optionValue="id"
+                                    class="w-full"
+                                    placeholder="Select array schemas"
+                                    display="chip">
+                                </p-multiSelect>
+                                <small class="help-text block">Select which input schemas should be treated as arrays.</small>
+                            </ng-container>
                         </div>
         
                         <div class="col-12 md:col-6 instruction-section">
                             <h4>Output Schemas</h4>
-                            <p-multiSelect
-                                formControlName="output_schemas"
-                                [options]="availableSchemas"
-                                optionLabel="name"
-                                optionValue="id"
-                                class="w-full"
-                                placeholder="Select output schemas"
-                                display="chip"
-                                (onChange)="onOutputSchemasChange()">
-                            </p-multiSelect>
-                            <small class="help-text">Select schemas that this assistant should use to generate output.</small>
+                            <div class="flex gap-2 mb-2">
+                                <div style="width: calc(100% - 120px); display: inline-block">
+                                <p-multiSelect
+                                    formControlName="output_schemas"
+                                    [options]="availableSchemas"
+                                    optionLabel="name"
+                                    optionValue="id"
+                                    class="flex-grow-1"
+                                    placeholder="Select output schemas"
+                                    display="chip">
+                                </p-multiSelect>
+                                 </div>
+                                <button pButton
+                                    type="button"
+                                    label="Add Arrays"
+                                    class="p-button-secondary"
+                                    *ngIf="!showOutputArrays && form.get('output_schemas')?.value?.length"
+                                    (click)="showOutputArrays = true">
+                                </button>
+                            </div>
+                            <small class="help-text mb-2 block">Select schemas that this assistant should use to generate output.</small>
+                            
+                            <ng-container *ngIf="showOutputArrays || arraySchemas.outputs.length > 0">
+                                <p-multiSelect
+                                    [(ngModel)]="arraySchemas.outputs"
+                                    [ngModelOptions]="{standalone: true}"
+                                    [options]="selectedSchemasAsOptions('output_schemas')"
+                                    optionLabel="name"
+                                    optionValue="id"
+                                    class="w-full"
+                                    placeholder="Select array schemas"
+                                    display="chip">
+                                </p-multiSelect>
+                                <small class="help-text block">Select which output schemas should be treated as arrays.</small>
+                            </ng-container>
                         </div>
 
                         <div class="col-12 mt-3" style="padding-top:1.5rem">
