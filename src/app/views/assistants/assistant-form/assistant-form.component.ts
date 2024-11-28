@@ -14,6 +14,7 @@ import { FunctionImplementation } from '../../../interfaces/function-implementat
 import { DialogService } from 'primeng/dynamicdialog';
 import { MessageService } from 'primeng/api';
 import { OutputPreviewComponent } from '../output-preview/output-preview.component';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-assistant-form',
@@ -76,7 +77,7 @@ export class AssistantFormComponent implements OnInit {
     function: {
       name: 'sendOutput',
       description: 'Send the output to the next stage',
-      strict: true,
+      strict: false,
       parameters: {
         type: 'object',
         properties: {
@@ -86,7 +87,6 @@ export class AssistantFormComponent implements OnInit {
             additionalProperties: true
           }
         },
-        additionalProperties: false,
         required: ['result']
       }
     }
@@ -95,7 +95,7 @@ export class AssistantFormComponent implements OnInit {
   private readonly DEFAULT_OUTPUT_DEFINITION: FunctionDefinition = {
     name: 'sendOutput',
     description: 'Send the output to the next stage',
-    strict: true,
+    strict: false,
     parameters: {
       type: 'object',
       properties: {
@@ -105,7 +105,6 @@ export class AssistantFormComponent implements OnInit {
           additionalProperties: true
         }
       },
-      additionalProperties: false,
       required: ['result']
     },
     implementation: {
@@ -438,7 +437,7 @@ export class AssistantFormComponent implements OnInit {
     return fieldSchema;
   }
 
-  private generateFieldsBySchema(schema: ObjectSchema): { properties: Record<string, any>, required: string[], additionalProperties?: boolean } {
+  private generateFieldsBySchema(schema: ObjectSchema): { properties: Record<string, any>, required: string[]} {
     const properties: Record<string, any> = {};
     const required: string[] = [];
 
@@ -449,7 +448,7 @@ export class AssistantFormComponent implements OnInit {
       }
     });
 
-    return { properties, required, additionalProperties: false };
+    return { properties, required };
   }
 
   private generateSchemaWithComments(schemaId: string): string {
@@ -673,16 +672,37 @@ export class AssistantFormComponent implements OnInit {
 
     let instructions = [];
 
-
-    instructions.push(
-      "When you complete your task, send the output using the sendOutput() function.",
-      "Please format your response as a JSON object with a 'result' field containing your output.",
-      "If the output is JSON, you can include it directly in the 'result' field.",
-      "Example: { \"result\": \"your output here\" }"
-    );
-    
-
+    // Add function names based on schemas
     if (hasOutputSchemas) {
+      const outputSchemas = this.instructionParts.coreInstructions.outputSchemas;
+      if (outputSchemas.length === 1) {
+        instructions.push(
+          "When you complete your task, send the output using the sendOutput() function.",
+          "Please format your response as a JSON object with a 'result' field containing your output.",
+          "If the output is JSON, you can include it directly in the 'result' field.",
+          "Example: { \"result\": \"your output here\" }"
+        );
+      } else {
+        // Multiple schemas - list all schema-specific functions
+        const schemaFunctions = outputSchemas.map(schemaId => {
+          const schema = this.availableSchemas.find(s => s.id === schemaId);
+          if (schema) {
+            const schemaName = schema.name.replace(/\s+/g, '');
+            return `send${schemaName}Output()`;
+          }
+          return null;
+        }).filter(Boolean);
+
+        instructions.push(
+          "When you complete your task, send the output using one of these functions:",
+          ...schemaFunctions.map(func => `- ${func}`),
+          "",
+          "Please format your response as a JSON object with a 'result' field containing your output.",
+          "If the output is JSON, you can include it directly in the 'result' field.",
+          "Example: { \"result\": \"your output here\" }"
+        );
+      }
+
       instructions.push(
         "Your output must conform to one of the provided output schemas.",
         "Ensure all required fields are present and properly formatted."
@@ -734,14 +754,14 @@ export class AssistantFormComponent implements OnInit {
         function: {
           name: functionName,
           description,
-          strict: true,
+          strict: false,
           parameters
         }
       },
       definition: {
         name: functionName,
         description,
-        strict: true,
+        strict: false,
         parameters,
         implementation: {
           command: '',
@@ -775,36 +795,69 @@ export class AssistantFormComponent implements OnInit {
 
     this.loading = true;
     try {
-      // Get selected output schemas
-      const outputSchemas = this.instructionParts.coreInstructions.outputSchemas;
-      const outputFunctions: any[] = [];
+      // Update assistant data from form
+      this.updateAssistantFromForm();
 
-      // Generate output functions based on schemas
+      // Generate output functions based on selected schemas
+      const outputSchemas = this.instructionParts.coreInstructions.outputSchemas;
+      const outputFunctions: { tool: any, definition: any }[] = [];
+
+      // Cache current tools for comparison
+      const currentTools = this.assistant.tools?.filter(t => t.type === 'function' && t.function?.name?.startsWith('send'))?.map(t => ({
+        name: t.function.name,
+        description: t.function.description,
+        parameters: t.function.parameters
+      }));
+
       if (outputSchemas.length > 1) {
+        // Multiple schemas - create schema-specific output functions
         outputSchemas.forEach(schemaId => {
           const schema = this.availableSchemas.find(s => s.id === schemaId);
           if (schema) {
             const schemaName = schema.name.replace(/\s+/g, '');
             const functionName = `send${schemaName}Output`;
-            const { tool } = this.createOutputFunction(schema, functionName);
-            outputFunctions.push(tool);
+            const { tool, definition } = this.createOutputFunction(schema, functionName);
+            outputFunctions.push({ tool, definition });
           }
         });
       } else if (outputSchemas.length === 1) {
+        // Single schema
         const schema = this.availableSchemas.find(s => s.id === outputSchemas[0]);
-        if (schema) {
-          const { tool } = this.createOutputFunction(schema);
-          outputFunctions.push(tool);
-        }
+        const { tool, definition } = this.createOutputFunction(schema);
+        outputFunctions.push({ tool, definition });
       }
 
-      // If we have output functions to add, show preview
-      if (outputFunctions.length > 0) {
-        const confirmed = await this.showOutputPreview(outputFunctions);
-        if (!confirmed) return;
+      // Compare new tools with current tools
+      const newTools = outputFunctions.map(f => ({
+        name: f.tool.function.name,
+        description: f.tool.function.description,
+        parameters: f.tool.function.parameters
+      }));
 
-        // Add the functions after confirmation
-        outputFunctions.forEach(tool => {
+      console.log('Current tools:', JSON.stringify(currentTools, null, 2));
+      console.log('New tools:', JSON.stringify(newTools, null, 2));
+
+      const hasChanges = JSON.stringify(currentTools) !== JSON.stringify(newTools);
+      console.log('Has changes:', hasChanges);
+
+      if (hasChanges) {
+        // Show preview only if there are changes
+        const dialogRef = this.dialogService.open(OutputPreviewComponent, {
+          header: 'Preview Output Functions',
+          width: '70%',
+          data: {
+            functions: outputFunctions.map(f => f.tool)
+          }
+        });
+
+        const confirmed = await firstValueFrom(dialogRef.onClose);
+        if (!confirmed) {
+          this.loading = false;
+          return;
+        }
+
+        // Update functions if confirmed
+        outputFunctions.forEach(({ tool }) => {
           const { definition } = this.createOutputFunction(
             this.availableSchemas.find(s => s.name === tool.function.description.split(' ')[1]) || null,
             tool.function.name
