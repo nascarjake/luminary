@@ -239,7 +239,15 @@ export class AssistantFormComponent implements OnInit {
                   type: 'object',
                   properties: tool.function.parameters?.properties || {},
                   required: tool.function.parameters?.required || []
-                }
+                },
+                // Mark send* functions as output functions
+                implementation: tool.function.name.startsWith('send') ? {
+                  command: '',
+                  script: '',
+                  workingDir: '',
+                  timeout: 30000,
+                  isOutput: true
+                } : undefined
               }));
 
             // Load function implementations
@@ -809,6 +817,8 @@ export class AssistantFormComponent implements OnInit {
         parameters: t.function.parameters
       }));
 
+     
+
       if (outputSchemas.length > 1) {
         // Multiple schemas - create schema-specific output functions
         outputSchemas.forEach(schemaId => {
@@ -841,6 +851,20 @@ export class AssistantFormComponent implements OnInit {
       console.log('Has changes:', hasChanges);
 
       if (hasChanges) {
+         // Clean up existing output functions
+        if (this.assistant.tools) {
+          // Keep track of which functions to remove
+          const functionsToRemove = this.assistant.tools
+            .filter(t => t.type === 'function' && t.function?.name?.startsWith('send') && t.function?.name?.includes('Output'))
+            .map(t => t.function.name);
+
+          // Remove from tools array
+          this.assistant.tools = this.assistant.tools.filter(t => !functionsToRemove.includes(t.function?.name));
+
+          // Remove from functions array (but preserve any non-output functions)
+          this.functions = this.functions.filter(f => !f.implementation?.isOutput || !functionsToRemove.includes(f.name));
+        }
+
         // Show preview only if there are changes
         const dialogRef = this.dialogService.open(OutputPreviewComponent, {
           header: 'Preview Output Functions',
