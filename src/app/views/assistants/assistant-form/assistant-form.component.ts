@@ -11,6 +11,9 @@ import { FunctionImplementationsService } from '../../../services/function-imple
 import { ConfigService } from '../../../services/config.service';
 import { FunctionListComponent } from '../../../components/function-list/function-list.component';
 import { FunctionImplementation } from '../../../interfaces/function-implementations';
+import { DialogService } from 'primeng/dynamicdialog';
+import { MessageService } from 'primeng/api';
+import { OutputPreviewComponent } from '../output-preview/output-preview.component';
 
 @Component({
   selector: 'app-assistant-form',
@@ -20,8 +23,10 @@ import { FunctionImplementation } from '../../../interfaces/function-implementat
     FormsModule,
     ReactiveFormsModule,
     PrimeNGModule,
-    FunctionListComponent
+    FunctionListComponent,
+    OutputPreviewComponent
   ],
+  providers: [DialogService, MessageService],
   templateUrl: './assistant-form.component.html',
   styleUrls: ['./assistant-form.component.scss']
 })
@@ -71,13 +76,14 @@ export class AssistantFormComponent implements OnInit {
     function: {
       name: 'sendOutput',
       description: 'Send the output to the next stage',
-      strict: false,
+      strict: true,
       parameters: {
         type: 'object',
         properties: {
           result: {
-            type: 'string',
-            description: 'The output result as a JSON string'
+            type: 'object',
+            description: 'The output result as a JSON object',
+            additionalProperties: true
           }
         },
         additionalProperties: false,
@@ -89,13 +95,14 @@ export class AssistantFormComponent implements OnInit {
   private readonly DEFAULT_OUTPUT_DEFINITION: FunctionDefinition = {
     name: 'sendOutput',
     description: 'Send the output to the next stage',
-    strict: false,
+    strict: true,
     parameters: {
       type: 'object',
       properties: {
         result: {
-          type: 'string',
-          description: 'The output result as a JSON string'
+          type: 'object',
+          description: 'The output result as a JSON object',
+          additionalProperties: true
         }
       },
       additionalProperties: false,
@@ -115,7 +122,9 @@ export class AssistantFormComponent implements OnInit {
     private openAiService: OpenAiApiService,
     private functionImplementationsService: FunctionImplementationsService,
     private objectSchemaService: ObjectSchemaService,
-    private configService: ConfigService
+    private configService: ConfigService,
+    private dialogService: DialogService,
+    private messageService: MessageService
   ) {
     this.initForm();
   }
@@ -343,63 +352,9 @@ export class AssistantFormComponent implements OnInit {
   }
 
   async onSubmit() {
-    if (this.form.invalid) return;
-
-    this.loading = true;
-    try {
-      // Ensure default output function if needed
-      this.ensureDefaultOutputFunction();
-
-      const formValue = this.form.value;
-      const assistantData: Partial<OAAssistant> = {
-        name: formValue.name,
-        description: formValue.description,
-        model: formValue.model,
-        temperature: formValue.temperature,
-        top_p: formValue.top_p,
-        response_format: { type: formValue.response_format_type },
-        tools: this.functions.map(func => ({
-        type: 'function',
-        function: {
-          name: func.name,
-          strict: func.strict,
-          description: func.description,
-          parameters: func.parameters
-        }
-        }))
-      };
-
-      // Only send the combined instructions to OpenAI
-      assistantData.instructions = this.combineInstructions();
-
-      // Include the ID if we're editing an existing assistant
-      if (this.assistant?.id) {
-        assistantData.id = this.assistant.id;
-      }
-
-      // Save function implementations and instruction parts locally
-      if (this.assistant?.id) {
-        const activeProfile = await this.configService.getActiveProfile();
-        if (activeProfile) {
-          await this.functionImplementationsService.saveFunctionImplementations(
-            activeProfile.id,
-            this.assistant.id,
-            this.assistant.name,
-            this.functions,
-            this.instructionParts.coreInstructions.inputSchemas,
-            this.instructionParts.coreInstructions.outputSchemas,
-            this.instructionParts
-          );
-        }
-      }
-
-      this.save.emit(assistantData as OAAssistant);
-      this.visible = false;
-      this.visibleChange.emit(false);
-    } catch (error) {
-      console.error('Failed to save assistant:', error);
-    } finally {
-      this.loading = false;
+    if (this.form.valid) {
+      this.updateAssistantFromForm();
+      await this.saveAssistant();
     }
   }
 
@@ -473,18 +428,28 @@ export class AssistantFormComponent implements OnInit {
             value !== '' && 
             key !== 'items' && 
             key !== 'properties' &&
+            key !== 'required' &&
             !(Array.isArray(value) && value.length === 0)) {
           fieldSchema[key] = value;
         }
       });
     }
 
-    // Only add required if it's true
-    if (field.required) {
-      fieldSchema.required = true;
-    }
-
     return fieldSchema;
+  }
+
+  private generateFieldsBySchema(schema: ObjectSchema): { properties: Record<string, any>, required: string[], additionalProperties?: boolean } {
+    const properties: Record<string, any> = {};
+    const required: string[] = [];
+
+    schema.fields.forEach(field => {
+      properties[field.name] = this.generateFieldSchema(field);
+      if (field.required) {
+        required.push(field.name);
+      }
+    });
+
+    return { properties, required, additionalProperties: false };
   }
 
   private generateSchemaWithComments(schemaId: string): string {
@@ -755,25 +720,169 @@ export class AssistantFormComponent implements OnInit {
     return this.functions.some(f => f.implementation?.isOutput);
   }
 
-  private ensureDefaultOutputFunction() {
-    if (!this.hasOutputFunction()) {
-      // Add default output tool to assistant
-      if (!this.assistant) {
-        this.assistant = {} as OAAssistant;
+  private createOutputFunction(schema: ObjectSchema | null, functionName: string = 'sendOutput'): { tool: any, definition: FunctionDefinition } {
+    const parameters = schema ? {
+      type: 'object',
+      ...this.generateFieldsBySchema(schema)
+    } : this.DEFAULT_OUTPUT_TOOL.function.parameters;
+
+    const description = schema ? `Send ${schema.name} output to the next stage` : 'Send output to the next stage';
+
+    return {
+      tool: {
+        type: 'function',
+        function: {
+          name: functionName,
+          description,
+          strict: true,
+          parameters
+        }
+      },
+      definition: {
+        name: functionName,
+        description,
+        strict: true,
+        parameters,
+        implementation: {
+          command: '',
+          script: '',
+          workingDir: '',
+          timeout: 30000,
+          isOutput: true
+        }
       }
-      if (!this.assistant.tools) {
-        this.assistant.tools = [];
+    };
+  }
+
+  private addOrUpdateOutputFunction(outputFunc: { tool: any, definition: FunctionDefinition }) {
+    const existingTool = this.assistant.tools.find(t => t.function.name === outputFunc.tool.function.name);
+    if (existingTool) {
+      Object.assign(existingTool, outputFunc.tool);
+    } else {
+      this.assistant.tools.push(outputFunc.tool);
+    }
+
+    const existingDef = this.functions.find(t => t.name === outputFunc.definition.name);
+    if (existingDef) {
+      Object.assign(existingDef, outputFunc.definition);
+    } else {
+      this.functions.push(outputFunc.definition);
+    }
+  }
+
+  async saveAssistant() {
+    if (!this.assistant) return;
+
+    this.loading = true;
+    try {
+      // Get selected output schemas
+      const outputSchemas = this.instructionParts.coreInstructions.outputSchemas;
+      const outputFunctions: any[] = [];
+
+      // Generate output functions based on schemas
+      if (outputSchemas.length > 1) {
+        outputSchemas.forEach(schemaId => {
+          const schema = this.availableSchemas.find(s => s.id === schemaId);
+          if (schema) {
+            const schemaName = schema.name.replace(/\s+/g, '');
+            const functionName = `send${schemaName}Output`;
+            const { tool } = this.createOutputFunction(schema, functionName);
+            outputFunctions.push(tool);
+          }
+        });
+      } else if (outputSchemas.length === 1) {
+        const schema = this.availableSchemas.find(s => s.id === outputSchemas[0]);
+        if (schema) {
+          const { tool } = this.createOutputFunction(schema);
+          outputFunctions.push(tool);
+        }
       }
 
-      // Check if default output function already exists
-      const existingDefault = this.assistant.tools.find(t => t.function.name === this.DEFAULT_OUTPUT_TOOL.function.name);
-      if (!existingDefault) {
-        this.assistant.tools.push(this.DEFAULT_OUTPUT_TOOL);
-        
-        // Add to functions list but don't display
-        this.functions.push(this.DEFAULT_OUTPUT_DEFINITION);
+      // If we have output functions to add, show preview
+      if (outputFunctions.length > 0) {
+        const confirmed = await this.showOutputPreview(outputFunctions);
+        if (!confirmed) return;
+
+        // Add the functions after confirmation
+        outputFunctions.forEach(tool => {
+          const { definition } = this.createOutputFunction(
+            this.availableSchemas.find(s => s.name === tool.function.description.split(' ')[1]) || null,
+            tool.function.name
+          );
+          this.addOrUpdateOutputFunction({tool, definition});
+        });
       }
+
+      // Create assistant data
+      const formValue = this.form.value;
+      const assistantData: Partial<OAAssistant> = {
+        name: formValue.name,
+        description: formValue.description,
+        model: formValue.model,
+        temperature: formValue.temperature,
+        top_p: formValue.top_p,
+        response_format: { type: formValue.response_format_type },
+        tools: this.functions.map(func => ({
+          type: 'function',
+          function: {
+            name: func.name,
+            strict: func.strict,
+            description: func.description,
+            parameters: func.parameters
+          }
+        }))
+      };
+
+      // Only send the combined instructions to OpenAI
+      assistantData.instructions = this.combineInstructions();
+
+      // Include the ID if we're editing an existing assistant
+      if (this.assistant?.id) {
+        assistantData.id = this.assistant.id;
+      }
+
+      // Save function implementations and instruction parts locally
+      if (this.assistant?.id) {
+        const activeProfile = await this.configService.getActiveProfile();
+        if (activeProfile) {
+          await this.functionImplementationsService.saveFunctionImplementations(
+            activeProfile.id,
+            this.assistant.id,
+            this.assistant.name,
+            this.functions,
+            this.instructionParts.coreInstructions.inputSchemas,
+            this.instructionParts.coreInstructions.outputSchemas,
+            this.instructionParts
+          );
+        }
+      }
+
+      // Emit save event
+      this.save.emit(assistantData as OAAssistant);
+      this.visible = false;
+      this.visibleChange.emit(false);
+    } catch (error) {
+      console.error('Failed to save assistant:', error);
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'Failed to save assistant. Please try again.'
+      });
+    } finally {
+      this.loading = false;
     }
+  }
+
+  private async showOutputPreview(outputFunctions: any[]): Promise<boolean> {
+    const ref = this.dialogService.open(OutputPreviewComponent, {
+      header: 'Output Functions Preview',
+      width: '70%',
+      data: {
+        functions: outputFunctions
+      }
+    });
+
+    return ref.onClose.toPromise();
   }
 
   hideDialog() {
@@ -786,10 +895,40 @@ export class AssistantFormComponent implements OnInit {
   }
 
   get visibleFunctions(): FunctionDefinition[] {
-    return this.functions.filter(f => f.name !== this.DEFAULT_OUTPUT_DEFINITION.name);
+    return this.functions
   }
 
   set visibleFunctions(value: FunctionDefinition[]) {
-    this.functions = [...value, this.DEFAULT_OUTPUT_DEFINITION];
+    this.functions = [...value];
+  }
+
+  private updateAssistantFromForm() {
+    if (!this.assistant) {
+      this.assistant = {} as OAAssistant;
+    }
+
+    const formValue = this.form.value;
+    
+    // Update assistant properties
+    this.assistant.name = formValue.name;
+    this.assistant.description = formValue.description;
+    this.assistant.model = formValue.model;
+    this.assistant.temperature = formValue.temperature;
+    this.assistant.top_p = formValue.top_p;
+    this.assistant.response_format = { type: formValue.response_format_type };
+
+    // Update instructions
+    this.assistant.instructions = this.combineInstructions();
+
+    // Update tools
+    this.assistant.tools = this.functions.map(func => ({
+      type: 'function',
+      function: {
+        name: func.name,
+        strict: func.strict,
+        description: func.description,
+        parameters: func.parameters
+      }
+    }));
   }
 }
