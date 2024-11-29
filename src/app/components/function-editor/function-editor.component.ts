@@ -80,6 +80,13 @@ const DEFAULT_FUNCTION: FunctionDefinition = {
     >
       <div class="function-editor">
         <div class="editor-sections">
+          <div class="definition-section">
+            <h3>Function Definition</h3>
+            <p class="section-description">Define how the AI should call this function</p>
+            <div class="editor-container" #editorContainer></div>
+            <div *ngIf="error" class="error-message">{{ error }}</div>
+          </div>
+
           <div class="">
             <div class="p-field-checkbox" *ngIf="functionImpl">
               <p-checkbox [(ngModel)]="functionImpl.isOutput" [binary]="true" inputId="isOutput"></p-checkbox>
@@ -100,13 +107,6 @@ const DEFAULT_FUNCTION: FunctionDefinition = {
               ></p-dropdown>
               <small>Select the schema this function will output</small>
             </div>
-          </div>
-
-          <div class="definition-section">
-            <h3>Function Definition</h3>
-            <p class="section-description">Define how the AI should call this function</p>
-            <div class="editor-container" #editorContainer></div>
-            <div *ngIf="error" class="error-message">{{ error }}</div>
           </div>
           
           <div class="implementation-section">
@@ -505,10 +505,40 @@ export class FunctionEditorComponent implements AfterViewInit, OnDestroy, OnChan
 
     if (schema.fields) {
       schema.fields.forEach(field => {
-        properties[field.name] = {
+        const fieldSchema: any = {
           type: field.type.toLowerCase(),
           description: field.description || `${field.name} field`
         };
+
+        // Handle array type and its validation
+        if (field.type === 'array' && field.validation?.items?.type) {
+          fieldSchema.items = {
+            type: field.validation.items.type.toLowerCase()
+          };
+
+          // Add validation rules for array items if present
+          if (field.validation.items.validation) {
+            Object.entries(field.validation.items.validation).forEach(([key, value]) => {
+              if (value !== undefined && 
+                  value !== null && 
+                  value !== '' && 
+                  !(Array.isArray(value) && value.length === 0)) {
+                fieldSchema.items[key] = value;
+              }
+            });
+          }
+
+          // Add array-specific validation (minItems, maxItems)
+          if (field.validation.minItems !== undefined && field.validation.minItems !== null) {
+            fieldSchema.minItems = field.validation.minItems;
+          }
+          if (field.validation.maxItems !== undefined && field.validation.maxItems !== null) {
+            fieldSchema.maxItems = field.validation.maxItems;
+          }
+        }
+
+        properties[field.name] = fieldSchema;
+
         if (field.required) {
           required.push(field.name);
         }
