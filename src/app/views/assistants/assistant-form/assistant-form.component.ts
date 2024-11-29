@@ -462,12 +462,31 @@ export class AssistantFormComponent implements OnInit {
     }
 
     if (field.validation) {
+      // Handle array items type
+      if (field.type === 'array' && field.validation.items?.type) {
+        fieldSchema.items = {
+          type: field.validation.items.type
+        };
+        
+        // Add validation for array items if present
+        if (field.validation.items.validation) {
+          Object.entries(field.validation.items.validation).forEach(([key, value]) => {
+            if (value !== undefined && 
+                value !== null && 
+                value !== '' && 
+                !(Array.isArray(value) && value.length === 0)) {
+              fieldSchema.items[key] = value;
+            }
+          });
+        }
+      }
+
       // Only add non-null, non-empty validation rules
       Object.entries(field.validation).forEach(([key, value]) => {
         if (value !== undefined && 
             value !== null && 
             value !== '' && 
-            key !== 'items' && 
+            key !== 'items' && // Skip items since we handle it separately
             key !== 'properties' &&
             key !== 'required' &&
             !(Array.isArray(value) && value.length === 0)) {
