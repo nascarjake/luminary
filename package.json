@@ -72,8 +72,10 @@
   "build": {
     "appId": "com.luminary.app",
     "productName": "Luminary",
+    "asar": false,
     "directories": {
-      "output": "release"
+      "output": "release",
+      "buildResources": "build/assets"
     },
     "files": [
       {
@@ -84,8 +86,7 @@
         ]
       },
       {
-        "from": "dist/luminary/browser",
-        "to": "dist/browser",
+        "from": "dist/browser",
         "filter": [
           "**/*"
         ]
