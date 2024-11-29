@@ -144,13 +144,25 @@ export function createZodSchema(schema: ObjectSchema): z.ZodObject<any> {
         break;
       case 'array':
         if (field.validation?.items) {
-          const itemSchema = createZodSchema({
-            id: 'nested',
-            name: field.name,
-            fields: [field.validation.items],
-            version: 1  // Default version for nested schemas
-          });
-          zodField = z.array(itemSchema);
+          // Handle primitive types directly
+          if (field.validation.items.type === 'string') {
+            zodField = z.array(z.string());
+          } else if (field.validation.items.type === 'number') {
+            zodField = z.array(z.number());
+          } else if (field.validation.items.type === 'boolean') {
+            zodField = z.array(z.boolean());
+          } else if (field.validation.items.type === 'date') {
+            zodField = z.array(z.string().datetime());
+          } else {
+            // For complex types, create a nested schema
+            const itemSchema = createZodSchema({
+              id: 'nested',
+              name: field.name,
+              fields: [field.validation.items],
+              version: 1
+            });
+            zodField = z.array(itemSchema);
+          }
         } else {
           zodField = z.array(z.any());
         }

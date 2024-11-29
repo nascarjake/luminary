@@ -324,13 +324,22 @@ function createWindow() {
   // Open DevTools
   win.webContents.openDevTools();
 
-  const appPath = path.join(__dirname, '../dist/browser');
+  const appPath = path.join(__dirname, '../browser');
   console.log('App directory:', appPath);
   console.log('App directory exists:', fs.existsSync(appPath));
   
   // Load the built Angular app
-  win.loadFile(path.join(appPath, 'index.html'), {
-    search: `?baseUrl=${encodeURIComponent(url.pathToFileURL(appPath).href)}`
+  win.loadFile(path.join(appPath, 'index.html'));
+
+  // Intercept file:// requests and convert them to app-relative paths
+  win.webContents.session.webRequest.onBeforeRequest({ urls: ['file://*'] }, (details, callback) => {
+    const url = new URL(details.url);
+    const relativePath = url.pathname.split('/browser/')[1];
+    if (relativePath) {
+      callback({ redirectURL: path.join(appPath, relativePath) });
+    } else {
+      callback({});
+    }
   });
 
   // Log when window is ready
