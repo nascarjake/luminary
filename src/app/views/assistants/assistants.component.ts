@@ -170,6 +170,8 @@ export class AssistantsComponent implements OnInit {
     
     this.loading = true;
     try {
+      let savedAssistant: OAAssistant;
+      
       if (formData.id) {
         const payload = {
           name: formData.name,
@@ -180,11 +182,11 @@ export class AssistantsComponent implements OnInit {
         };
         console.log('Update assistant payload:', payload);
         
-        const updatedAssistant = await this.openAiService.updateAssistant(formData.id, payload);
+        savedAssistant = await this.openAiService.updateAssistant(formData.id, payload);
         // Update the assistant in the local array
         const index = this.assistants.findIndex(a => a.id === formData.id);
         if (index !== -1) {
-          this.assistants[index] = updatedAssistant;
+          this.assistants[index] = savedAssistant;
         }
       } else {
         const payload = {
@@ -196,9 +198,28 @@ export class AssistantsComponent implements OnInit {
         };
         console.log('Create assistant payload:', payload);
         
-        const newAssistant = await this.openAiService.createAssistant(payload);
-        this.assistants.push(newAssistant);
+        savedAssistant = await this.openAiService.createAssistant(payload);
+        this.assistants.push(savedAssistant);
       }
+
+      // Now that we have the assistant ID, save function implementations
+      const activeProfile = await this.configService.getActiveProfile();
+      if (activeProfile && !formData.id) {
+        if(!formData.instructionParts.userInstructions.processingSteps){
+          formData.instructionParts.userInstructions.processingSteps = ' ';
+        }
+        await this.functionImplementationsService.saveFunctionImplementations(
+          activeProfile.id,
+          savedAssistant.id,
+          formData.name,
+          formData.functions,
+          formData.inputSchemas,
+          formData.outputSchemas,
+          formData.instructionParts,
+          formData.arraySchemas
+        );
+      }
+
       this.showDialog = false;
       this.selectedAssistant = null;
     } catch (error: any) {
