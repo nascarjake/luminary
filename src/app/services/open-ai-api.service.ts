@@ -114,13 +114,6 @@ export class OpenAiApiService {
   }
 
   public createAssistant(assistant: Partial<OAAssistant>): Promise<OAAssistant> {
-    // Ensure tools array exists and includes our default function
-    const tools = assistant.tools || [];
-    if (!tools.some(t => t.type === 'function' && t.function.name === 'processOutput')) {
-      tools.push(this.DEFAULT_PROCESS_FUNCTION);
-    }
-    assistant.tools = tools;
-
     console.log('Creating assistant with payload:', assistant);
     return this.http.post<OAAssistant>(`${this.apiUrl}/assistants`, assistant, { headers: this.getHeaders() })
       .pipe(
