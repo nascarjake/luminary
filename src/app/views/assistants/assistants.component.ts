@@ -152,7 +152,7 @@ export class AssistantsComponent implements OnInit {
       }
       
       // Add the new assistant to the list
-      this.assistants.push(newAssistant);
+      this.assistants.unshift(newAssistant);
     } catch (error) {
       console.error('Error cloning assistant:', error);
     } finally {
@@ -199,7 +199,7 @@ export class AssistantsComponent implements OnInit {
         console.log('Create assistant payload:', payload);
         
         savedAssistant = await this.openAiService.createAssistant(payload);
-        this.assistants.push(savedAssistant);
+        this.assistants.unshift(savedAssistant);
       }
 
       // Now that we have the assistant ID, save function implementations

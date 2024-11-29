@@ -5,6 +5,7 @@ export interface FunctionImplementation {
   workingDir?: string;
   timeout?: number;
   isOutput?: boolean;
+  environmentVariables?: any;
 }
 
 export interface AssistantFunctionImplementations {
