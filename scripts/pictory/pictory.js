@@ -12,6 +12,7 @@ class PictoryClient {
   constructor(config) {
     this.config = config;
     this.authToken = null;
+    console.log('Pictory API URL:', config.apiUrl);
     this.http = axios.create({
       baseURL: config.apiUrl
     });
