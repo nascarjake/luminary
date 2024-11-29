@@ -192,6 +192,102 @@
                     </div>
                   </ng-container>
 
+                  <!-- Array validation -->
+                  <ng-container *ngSwitchCase="'array'">
+                    <div class="validation-field" formGroupName="validation">
+                      <label class="block font-medium mb-2">Min Items</label>
+                      <p-inputNumber
+                        formControlName="minItems"
+                        [min]="0"
+                        placeholder="Min items"
+                        class="w-full">
+                      </p-inputNumber>
+                    </div>
+                    <div class="validation-field" formGroupName="validation">
+                      <label class="block font-medium mb-2">Max Items</label>
+                      <p-inputNumber
+                        formControlName="maxItems"
+                        [min]="0"
+                        placeholder="Max items"
+                        class="w-full">
+                      </p-inputNumber>
+                    </div>
+                    <div class="validation-field" formGroupName="validation">
+                      <div formGroupName="items">
+                        <label class="block font-medium mb-2">Array Item Type</label>
+                        <p-dropdown
+                          formControlName="type"
+                          [options]="arrayItemTypes"
+                          placeholder="Select item type"
+                          class="w-full">
+                        </p-dropdown>
+                        <!-- Item type specific validation -->
+                        <div formGroupName="validation" class="mt-3">
+                          <ng-container [ngSwitch]="field.get('validation.items.type')?.value">
+                            <!-- String validation -->
+                            <ng-container *ngSwitchCase="'string'">
+                              <div class="validation-field">
+                                <label class="block font-medium mb-2">Min Length</label>
+                                <p-inputNumber
+                                  formControlName="minLength"
+                                  [min]="0"
+                                  placeholder="Min length"
+                                  class="w-full">
+                                </p-inputNumber>
+                              </div>
+                              <div class="validation-field">
+                                <label class="block font-medium mb-2">Max Length</label>
+                                <p-inputNumber
+                                  formControlName="maxLength"
+                                  [min]="0"
+                                  placeholder="Max length"
+                                  class="w-full">
+                                </p-inputNumber>
+                              </div>
+                              <div class="validation-field">
+                                <label class="block font-medium mb-2">Pattern</label>
+                                <input
+                                  type="text"
+                                  pInputText
+                                  formControlName="pattern"
+                                  placeholder="Regular expression"
+                                  class="w-full" />
+                              </div>
+                            </ng-container>
+
+                            <!-- Number validation -->
+                            <ng-container *ngSwitchCase="'number'">
+                              <div class="validation-field">
+                                <label class="block font-medium mb-2">Minimum</label>
+                                <p-inputNumber
+                                  formControlName="min"
+                                  [useGrouping]="false"
+                                  mode="decimal"
+                                  [minFractionDigits]="0"
+                                  [maxFractionDigits]="0"
+                                  placeholder="Min value"
+                                  class="w-full">
+                                </p-inputNumber>
+                              </div>
+                              <div class="validation-field">
+                                <label class="block font-medium mb-2">Maximum</label>
+                                <p-inputNumber
+                                  formControlName="max"
+                                  [useGrouping]="false"
+                                  mode="decimal"
+                                  [minFractionDigits]="0"
+                                  [maxFractionDigits]="0"
+                                  placeholder="Max value"
+                                  class="w-full">
+                                </p-inputNumber>
+                              </div>
+                            </ng-container>
+                          </ng-container>
+                        </div>
+                      </div>
+                    </div>
+                  </ng-container>
+
                   <!-- Enum validation -->
                   <ng-container *ngSwitchCase="'enum'">
                     <div class="validation-field" formGroupName="validation">

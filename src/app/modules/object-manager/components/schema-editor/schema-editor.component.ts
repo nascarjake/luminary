@@ -22,6 +22,14 @@ export class SchemaEditorComponent implements OnInit {
     { label: 'Object', value: 'object' }
   ];
 
+  arrayItemTypes = [
+    { label: 'String', value: 'string' },
+    { label: 'Number', value: 'number' },
+    { label: 'Boolean', value: 'boolean' },
+    { label: 'Date', value: 'date' },
+    { label: 'Object', value: 'object' }
+  ];
+
   mediaTypes = [
     { label: 'Image', value: 'image' },
     { label: 'Video', value: 'video' },
@@ -80,7 +88,19 @@ export class SchemaEditorComponent implements OnInit {
         min: [field?.validation?.min || null],
         max: [field?.validation?.max || null],
         enum: [field?.validation?.enum || []],
-        items: [field?.validation?.items || null],
+        minItems: [field?.validation?.minItems || null],
+        maxItems: [field?.validation?.maxItems || null],
+        items: this.fb.group({
+          type: [field?.validation?.items?.type || undefined],
+          validation: this.fb.group({
+            minLength: [field?.validation?.items?.validation?.minLength || null],
+            maxLength: [field?.validation?.items?.validation?.maxLength || null],
+            pattern: [field?.validation?.items?.validation?.pattern || ''],
+            min: [field?.validation?.items?.validation?.min || null],
+            max: [field?.validation?.items?.validation?.max || null],
+            enum: [field?.validation?.items?.validation?.enum || []]
+          })
+        }) || null,
         properties: [field?.validation?.properties || []]
       })
     });
