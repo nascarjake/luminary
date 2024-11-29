@@ -190,7 +190,7 @@ ipcMain.handle('dialog:showOpenDialog', async (event, options) => {
 // Terminal execution
 ipcMain.handle('terminal:executeCommand', async (event, options) => {
   return new Promise((resolve, reject) => {
-    const { command, args, cwd, stdin } = options;
+    const { command, args, cwd, stdin, env } = options;
     
     // Normalize paths in arguments
     const normalizedArgs = args.map(arg => {
@@ -200,17 +200,23 @@ ipcMain.handle('terminal:executeCommand', async (event, options) => {
       return arg;
     });
 
-    // Normalize working directory
-    const normalizedCwd = cwd ? path.normalize(cwd) : undefined;
-
-    // Create process with platform-specific options
-    const spawnOptions = {
-      cwd: normalizedCwd,
-      shell: os.platform() === 'win32', // Use shell on Windows
-      env: { ...process.env }
-    };
-
-    const child = spawn(command, normalizedArgs, spawnOptions);
+    // Create environment variables object by merging process.env with custom env
+    const environment = { ...process.env };
+    if (env) {
+      Object.assign(environment, env);
+    }
+    
+    console.log('Executing command:', command, 'with args:', normalizedArgs);
+    console.log('Working directory:', cwd);
+    if (env) {
+      console.log('Environment variables:', env);
+    }
+    
+    const child = spawn(command, normalizedArgs, {
+      cwd,
+      env: environment,
+      shell: true
+    });
     let output = '';
 
     if (stdin) {
