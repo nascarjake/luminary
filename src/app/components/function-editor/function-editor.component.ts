@@ -13,6 +13,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { CheckboxModule } from 'primeng/checkbox';
 import { DropdownModule } from 'primeng/dropdown';
+import { TableModule } from 'primeng/table';
 import { ObjectSchema } from '../../interfaces/object-system';
 
 export interface FunctionDefinition {
@@ -31,7 +32,8 @@ export interface FunctionDefinition {
     workingDir?: string;
     timeout?: number;
     isOutput?: boolean;
-    outputSchema?: string; 
+    outputSchema?: string;
+    environmentVariables?: Record<string, string>;
   };
 }
 
@@ -51,7 +53,8 @@ const DEFAULT_FUNCTION: FunctionDefinition = {
     workingDir: '',
     timeout: 30000, 
     isOutput: false,
-    outputSchema: undefined
+    outputSchema: undefined,
+    environmentVariables: {}
   }
 };
 
@@ -66,7 +69,8 @@ const DEFAULT_FUNCTION: FunctionDefinition = {
     InputTextModule,
     InputNumberModule,
     CheckboxModule,
-    DropdownModule
+    DropdownModule,
+    TableModule
   ],
   template: `
     <p-dialog 
@@ -153,7 +157,38 @@ const DEFAULT_FUNCTION: FunctionDefinition = {
                 <small>Maximum execution time in milliseconds (1000-300000)</small>
               </div>
 
-              
+              <div class="form-field">
+                <label>Environment Variables</label>
+                <p-table [value]="envVars">
+                  <ng-template pTemplate="header">
+                    <tr>
+                      <th>Key</th>
+                      <th>Value</th>
+                      <th></th>
+                    </tr>
+                  </ng-template>
+                  <ng-template pTemplate="body" let-envVar let-index="rowIndex">
+                    <tr>
+                      <td>{{ envVar.key }}</td>
+                      <td>{{ envVar.value }}</td>
+                      <td>
+                        <button pButton type="button" icon="pi pi-trash" 
+                                (click)="removeEnvVar(index)" 
+                                pTooltip="Remove environment variable"></button>
+                      </td>
+                    </tr>
+                  </ng-template>
+                </p-table>
+                <div class="p-inputgroup">
+                  <input type="text" pInputText [(ngModel)]="newEnvVar.key" 
+                         placeholder="Key">
+                  <input type="text" pInputText [(ngModel)]="newEnvVar.value" 
+                         placeholder="Value">
+                  <button pButton type="button" icon="pi pi-plus" 
+                          (click)="addEnvVar()" 
+                          pTooltip="Add environment variable"></button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -173,6 +208,67 @@ const DEFAULT_FUNCTION: FunctionDefinition = {
     </p-dialog>
   `,
   styles: [`
+    :host {
+      display: block;
+    }
+    
+    .dialog-content {
+      height: 80vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .form-field {
+      margin-bottom: 1rem;
+    }
+
+    .form-field label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+    }
+
+    .form-field small {
+      display: block;
+      margin-top: 0.25rem;
+      color: #666;
+    }
+
+    .editor-container {
+      flex: 1;
+      overflow: hidden;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    .dialog-footer {
+      margin-top: 1rem;
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.5rem;
+    }
+
+    /* Environment Variables Styles */
+    .p-inputgroup {
+      margin-top: 0.5rem;
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .p-inputgroup input {
+      flex: 1;
+    }
+
+    :host ::ng-deep {
+      .p-table {
+        margin-bottom: 0.5rem;
+      }
+
+      .p-button.p-button-icon-only {
+        width: 2rem;
+      }
+    }
+
     .function-editor {
       background-color: var(--surface-ground);
       border-radius: 6px;
@@ -306,6 +402,8 @@ export class FunctionEditorComponent implements AfterViewInit, OnDestroy, OnChan
   isEditing = false;
   functionImpl: FunctionDefinition['implementation'] | null = null;
   availableSchemas: any[] = [];
+  envVars: { key: string, value: string }[] = [];
+  newEnvVar = { key: '', value: '' };
   private editorExtensions = [
     basicSetup,
     json(),
@@ -337,6 +435,10 @@ export class FunctionEditorComponent implements AfterViewInit, OnDestroy, OnChan
         : { ...DEFAULT_FUNCTION.implementation! };
       this.isEditing = !!this.function;
 
+      // Initialize environment variables from function implementation
+      this.envVars = Object.entries(this.functionImpl.environmentVariables || {})
+        .map(([key, value]) => ({ key, value }));
+
       // If this is an output function, find and select the matching schema
       if (this.functionImpl?.isOutput && this.functionImpl?.outputSchema) {
         const selectedSchema = this.outputSchemas.find(s => s.id === this.functionImpl?.outputSchema);
@@ -366,6 +468,10 @@ export class FunctionEditorComponent implements AfterViewInit, OnDestroy, OnChan
         : { ...DEFAULT_FUNCTION.implementation! };
       console.log('Set functionImpl:', this.functionImpl);
       this.isEditing = !!this.function;
+
+      // Initialize environment variables from function implementation
+      this.envVars = Object.entries(this.functionImpl.environmentVariables || {})
+        .map(([key, value]) => ({ key, value }));
 
       // If this is an output function, find and select the matching schema
       if (this.functionImpl?.isOutput && this.functionImpl?.outputSchema) {
@@ -600,6 +706,17 @@ export class FunctionEditorComponent implements AfterViewInit, OnDestroy, OnChan
     }
   }
 
+  addEnvVar() {
+    if (this.newEnvVar.key && this.newEnvVar.value) {
+      this.envVars.push({ ...this.newEnvVar });
+      this.newEnvVar = { key: '', value: '' };
+    }
+  }
+
+  removeEnvVar(index: number) {
+    this.envVars.splice(index, 1);
+  }
+
   onSave() {
     if (!this.editor) return;
     
@@ -611,6 +728,15 @@ export class FunctionEditorComponent implements AfterViewInit, OnDestroy, OnChan
         ...functionDef,
         implementation: this.functionImpl || undefined
       };
+
+      // Convert envVars array to object
+      if (this.functionImpl) {
+        this.functionImpl.environmentVariables = this.envVars.reduce((acc, { key, value }) => {
+          acc[key] = value;
+          return acc;
+        }, {} as Record<string, string>);
+      }
+
       this.save.emit(fullFunction);
       this.visible = false;
       this.visibleChange.emit(false);

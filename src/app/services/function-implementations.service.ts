@@ -57,7 +57,8 @@ export class FunctionImplementationsService {
             script: f.implementation!.script,
             workingDir: f.implementation!.workingDir,
             timeout: f.implementation!.timeout,
-            isOutput: f.implementation!.isOutput
+            isOutput: f.implementation!.isOutput,
+            environmentVariables: f.implementation!.environmentVariables
           }))
       };
 
@@ -115,7 +116,8 @@ export class FunctionImplementationsService {
           script: impl.script,
           workingDir: impl.workingDir,
           timeout: impl.timeout,
-          isOutput: impl.isOutput
+          isOutput: impl.isOutput,
+          environmentVariables: impl.environmentVariables
         }
       };
     });
