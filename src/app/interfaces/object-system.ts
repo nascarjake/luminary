@@ -15,7 +15,9 @@ export interface ObjectFieldValidation {
   min?: number;
   max?: number;
   enum?: any[];
-  items?: ObjectField;
+  minItems?: number;
+  maxItems?: number;
+  items?: ObjectField;  // Change back to ObjectField for array items
   properties?: ObjectField[];
   mediaType?: MediaType;  // For fields that represent media files
 }
