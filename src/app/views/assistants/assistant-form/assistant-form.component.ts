@@ -1036,8 +1036,17 @@ export class AssistantFormComponent implements OnInit {
         };
       }
 
+      let saveData: any = assistantData;
+      if (!saveData.id) {
+        saveData.functions = this.functions;
+        saveData.inputSchemas = this.instructionParts.coreInstructions.inputSchemas;
+        saveData.outputSchemas = this.instructionParts.coreInstructions.outputSchemas;
+        saveData.instructionParts = this.instructionParts;
+        saveData.arraySchemas = this.arraySchemas;
+      }
+
       // Emit save event
-      this.save.emit(assistantData as OAAssistant);
+      this.save.emit(saveData);
       this.visible = false;
       this.visibleChange.emit(false);
     } catch (error) {
