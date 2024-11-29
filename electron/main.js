@@ -317,12 +317,14 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: preloadPath
+      preload: preloadPath,
+      allowRunningInsecureContent: true,
+      webSecurity: false
     }
   });
 
   // Open DevTools
-  win.webContents.openDevTools();
+  //win.webContents.openDevTools();
 
   const appPath = path.join(__dirname, '../browser');
   console.log('App directory:', appPath);
@@ -331,17 +333,6 @@ function createWindow() {
   // Load the built Angular app
   win.loadFile(path.join(appPath, 'index.html'));
 
-  // Intercept file:// requests and convert them to app-relative paths
-  win.webContents.session.webRequest.onBeforeRequest({ urls: ['file://*'] }, (details, callback) => {
-    const url = new URL(details.url);
-    const relativePath = url.pathname.split('/browser/')[1];
-    if (relativePath) {
-      callback({ redirectURL: path.join(appPath, relativePath) });
-    } else {
-      callback({});
-    }
-  });
-
   // Log when window is ready
   win.webContents.on('did-finish-load', () => {
     console.log('Window finished loading');
@@ -349,19 +340,31 @@ function createWindow() {
 
   // Handle window close
   win.on('close', async (e) => {
-    e.preventDefault();
-    // Check if we're on the graph page and if there are unsaved changes
-    const hasUnsavedChanges = await win.webContents.executeJavaScript(`
-      const graphEditor = document.querySelector('app-graph-editor');
-      graphEditor ? graphEditor.hasUnsavedChanges() : false;
-    `);
-    
-    if (hasUnsavedChanges) {
-      const response = await win.webContents.executeJavaScript('window.confirm("You have unsaved changes. Are you sure you want to exit?")');
-      if (response) {
-        win.destroy();
+    try {
+      const hasUnsavedChanges = await win.webContents.executeJavaScript(`
+        window.graphEditor ? window.graphEditor.hasUnsavedChanges() : false
+      `);
+
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        const { response } = await dialog.showMessageBox(win, {
+          type: 'question',
+          buttons: ['Save', "Don't Save", 'Cancel'],
+          title: 'Unsaved Changes',
+          message: 'Do you want to save your changes before closing?'
+        });
+
+        if (response === 0) {  // Save
+          await win.webContents.executeJavaScript('document.querySelector("app-graph-editor").querySelector(".save-button").click()');
+          win.destroy();
+        } else if (response === 1) {  // Don't Save
+          win.destroy();
+        }
+        // If response === 2 (Cancel), do nothing and keep the window open
       }
-    } else {
+    } catch (error) {
+      console.error('Error checking for unsaved changes:', error);
+      // If there's an error, allow the window to close
       win.destroy();
     }
   });
