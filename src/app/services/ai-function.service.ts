@@ -489,7 +489,8 @@ export class AiFunctionService {
               command,
               args: [script],
               cwd: normalizedWorkingDir,
-              stdin: JSON.stringify(processedArgs)
+              stdin: JSON.stringify(processedArgs),
+              env: implementation.environmentVariables
             });
 
             try {

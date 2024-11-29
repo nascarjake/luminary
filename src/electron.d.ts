@@ -72,6 +72,7 @@ declare module 'electron-api' {
       args: string[];
       cwd: string;
       stdin?: string;
+      env?: Record<string, string>;
     }): Promise<string>;
   }
 
