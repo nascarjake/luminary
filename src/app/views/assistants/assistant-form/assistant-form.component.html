@@ -100,7 +100,8 @@
                                     optionValue="id"
                                     class="flex-grow-1"
                                     placeholder="Select input schemas"
-                                    display="chip">
+                                    display="chip"
+                                    (onChange)="onInputSchemasChange()">
                                 </p-multiSelect>
                                 </div>
                                 <button pButton
@@ -122,7 +123,8 @@
                                     optionValue="id"
                                     class="w-full"
                                     placeholder="Select array schemas"
-                                    display="chip">
+                                    display="chip"
+                                    >
                                 </p-multiSelect>
                                 <small class="help-text block">Select which input schemas should be treated as arrays.</small>
                             </ng-container>
@@ -139,7 +141,8 @@
                                     optionValue="id"
                                     class="flex-grow-1"
                                     placeholder="Select output schemas"
-                                    display="chip">
+                                    display="chip"
+                                    (onChange)="onOutputSchemasChange()">
                                 </p-multiSelect>
                                  </div>
                                 <button pButton
@@ -335,9 +338,20 @@
     </form>
 
     <ng-template pTemplate="footer">
-        <div class="flex justify-content-end">
-            <button pButton label="Cancel" icon="pi pi-times" class="p-button-text" (click)="hideDialog()"></button>
-            <button pButton label="Save" icon="pi pi-check" class="p-button-text" (click)="onSubmit()"></button>
+        <div class="flex flex-column w-full">
+            <div class="flex align-items-center justify-content-between w-full">
+                <div class="flex align-items-center">
+                    <small class="p-error" *ngIf="submitted && !form.valid">
+                        <ul class="m-0 pl-2">
+                            <li *ngFor="let error of getValidationErrors()">{{ error }}</li>
+                        </ul>
+                    </small>
+                </div>
+                <div class="flex">
+                    <button pButton label="Cancel" icon="pi pi-times" class="p-button-text mr-2" (click)="hideDialog()"></button>
+                    <button pButton label="Save" icon="pi pi-check" (click)="onSubmit()"></button>
+                </div>
+            </div>
         </div>
     </ng-template>
 </p-dialog>

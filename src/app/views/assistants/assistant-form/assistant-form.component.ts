@@ -38,6 +38,7 @@ export class AssistantFormComponent implements OnInit {
   @Output() save = new EventEmitter<OAAssistant>();
   @Output() cancel = new EventEmitter<void>();
 
+  submitted = false;
   availableModels: { label: string; value: string; }[] = [];
   functions: FunctionDefinition[] = [];
   availableSchemas: ObjectSchema[] = [];
@@ -137,6 +138,7 @@ export class AssistantFormComponent implements OnInit {
   }
 
   private initForm() {
+    this.submitted = false;
     this.form = this.formBuilder.group({
       name: ['', Validators.required],
       model: ['', Validators.required],
@@ -176,6 +178,7 @@ export class AssistantFormComponent implements OnInit {
 
   async ngOnChanges(changes: SimpleChanges) {
     if (changes['visible'] && changes['visible'].currentValue) {
+      this.submitted = false;
       if (!this.assistant) {
         // Reset form when opening for a new assistant
         this.form.reset({
@@ -388,6 +391,7 @@ export class AssistantFormComponent implements OnInit {
   }
 
   async onSubmit() {
+    this.submitted = true;
     if (this.form.valid) {
       this.updateAssistantFromForm();
       await this.saveAssistant();
@@ -1045,6 +1049,7 @@ export class AssistantFormComponent implements OnInit {
     this.visible = false;
     this.visibleChange.emit(false);
     this.cancel.emit();
+    this.submitted = false;
     
     // Don't reset the form here as it will be handled by ngOnChanges
     // when the dialog is reopened
@@ -1112,5 +1117,19 @@ export class AssistantFormComponent implements OnInit {
     const selectedIds = this.form.get(formControlName)?.value || [];
     return this.availableSchemas
         .filter(schema => selectedIds.includes(schema.id))
+  }
+
+  getValidationErrors(): string[] {
+    const errors: string[] = [];
+    const controls = this.form.controls;
+
+    if (controls['name'].errors?.['required']) {
+      errors.push('Assistant name is required');
+    }
+    if (controls['model'].errors?.['required']) {
+      errors.push('Model selection is required');
+    }
+    
+    return errors;
   }
 }

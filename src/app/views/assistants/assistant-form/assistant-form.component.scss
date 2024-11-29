@@ -250,6 +250,20 @@
         font-size: 0.875rem;
     }
   }
+
+  .p-error {
+    ul {
+      list-style-type: none;
+      li {
+        color: var(--red-500);
+        font-size: 0.875rem;
+        &:before {
+          content: "•";
+          margin-right: 0.5rem;
+        }
+      }
+    }
+  }
 }
 
 .help-text {
