@@ -1,4 +1,7 @@
 <div class="assistants-page">
+  <p-toast></p-toast>
+  <p-confirmDialog></p-confirmDialog>
+  
   <p-card header="Assistants">
     <div class="card-header">
       <div class="align-items-center gap-2">
@@ -51,7 +54,7 @@
               ></p-button>
               <p-button
                 icon="pi pi-trash"
-                (onClick)="deleteAssistant(assistant)"
+                (onClick)="confirmDelete(assistant)"
                 [rounded]="true"
                 [text]="true"
                 severity="danger"

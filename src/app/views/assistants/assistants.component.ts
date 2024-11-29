@@ -6,6 +6,7 @@ import { OAAssistant } from '../../../lib/entities/OAAssistant';
 import { AssistantFormComponent } from './assistant-form/assistant-form.component';
 import { FunctionImplementationsService } from '../../services/function-implementations.service';
 import { ConfigService } from '../../services/config.service';
+import { ConfirmationService, MessageService } from 'primeng/api';
 
 @Component({
   selector: 'app-assistants',
@@ -16,7 +17,8 @@ import { ConfigService } from '../../services/config.service';
     AssistantFormComponent
   ],
   templateUrl: './assistants.component.html',
-  styleUrls: ['./assistants.component.scss']
+  styleUrls: ['./assistants.component.scss'],
+  providers: [ConfirmationService, MessageService]
 })
 export class AssistantsComponent implements OnInit {
   assistants: OAAssistant[] = [];
@@ -27,7 +29,9 @@ export class AssistantsComponent implements OnInit {
   constructor(
     private openAiService: OpenAiApiService,
     private functionImplementationsService: FunctionImplementationsService,
-    private configService: ConfigService
+    private configService: ConfigService,
+    private confirmationService: ConfirmationService,
+    private messageService: MessageService
   ) {}
 
   ngOnInit() {
@@ -41,9 +45,18 @@ export class AssistantsComponent implements OnInit {
       this.assistants = response.data;
     } catch (error) {
       console.error('Error loading assistants:', error);
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'Failed to load assistants'
+      });
     } finally {
       this.loading = false;
     }
+  }
+
+  async refreshAssistants() {
+    await this.loadAssistants();
   }
 
   createAssistant() {
@@ -56,12 +69,31 @@ export class AssistantsComponent implements OnInit {
     this.showDialog = true;
   }
 
+  confirmDelete(assistant: OAAssistant) {
+    this.confirmationService.confirm({
+      message: `Are you sure you want to delete the assistant "${assistant.name}"?`,
+      header: 'Confirm Delete',
+      icon: 'pi pi-exclamation-triangle',
+      accept: () => this.deleteAssistant(assistant)
+    });
+  }
+
   async deleteAssistant(assistant: OAAssistant) {
     try {
       await this.openAiService.deleteAssistant(assistant.id);
-      this.assistants = this.assistants.filter(a => a.id !== assistant.id);
+      await this.loadAssistants();
+      this.messageService.add({
+        severity: 'success',
+        summary: 'Success',
+        detail: 'Assistant deleted successfully'
+      });
     } catch (error) {
       console.error('Error deleting assistant:', error);
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'Failed to delete assistant'
+      });
     }
   }
 
@@ -126,10 +158,6 @@ export class AssistantsComponent implements OnInit {
     } finally {
       this.loading = false;
     }
-  }
-
-  async refreshAssistants() {
-    await this.loadAssistants();
   }
 
   async onSave(formData: any) {
