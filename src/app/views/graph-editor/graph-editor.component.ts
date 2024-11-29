@@ -18,6 +18,9 @@ declare global {
     }
     LGraph: typeof LiteGraph.LGraph;
     LGraphCanvas: typeof LiteGraph.LGraphCanvas;
+    graphEditor?: {
+      hasUnsavedChanges: () => boolean;
+    };
   }
 }
 
@@ -84,6 +87,11 @@ export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   ngOnInit() {
+    window.graphEditor = {
+      hasUnsavedChanges: () => {
+        return this.hasUnsavedChanges();
+      }
+    };
     this.initializeLiteGraph();
     
     // Subscribe to graph state changes

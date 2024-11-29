@@ -331,19 +331,31 @@ function createWindow() {
 
   // Handle window close
   win.on('close', async (e) => {
-    e.preventDefault();
-    // Check if we're on the graph page and if there are unsaved changes
-    const hasUnsavedChanges = await win.webContents.executeJavaScript(`
-      const graphEditor = document.querySelector('app-graph-editor');
-      graphEditor ? graphEditor.hasUnsavedChanges() : false;
-    `);
-    
-    if (hasUnsavedChanges) {
-      const response = await win.webContents.executeJavaScript('window.confirm("You have unsaved changes. Are you sure you want to exit?")');
-      if (response) {
-        win.destroy();
+    try {
+      const hasUnsavedChanges = await win.webContents.executeJavaScript(`
+        window.graphEditor ? window.graphEditor.hasUnsavedChanges() : false
+      `);
+
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        const { response } = await dialog.showMessageBox(win, {
+          type: 'question',
+          buttons: ['Save', "Don't Save", 'Cancel'],
+          title: 'Unsaved Changes',
+          message: 'Do you want to save your changes before closing?'
+        });
+
+        if (response === 0) {  // Save
+          await win.webContents.executeJavaScript('document.querySelector("app-graph-editor").querySelector(".save-button").click()');
+          win.destroy();
+        } else if (response === 1) {  // Don't Save
+          win.destroy();
+        }
+        // If response === 2 (Cancel), do nothing and keep the window open
       }
-    } else {
+    } catch (error) {
+      console.error('Error checking for unsaved changes:', error);
+      // If there's an error, allow the window to close
       win.destroy();
     }
   });
