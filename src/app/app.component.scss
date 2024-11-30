@@ -2,7 +2,8 @@
   display: flex;
   flex-direction: column;
   height: 100vh;
-  width: 100vw;
+  background: #181818;
+  border-radius: 8px;
   overflow: hidden;
 
   app-header {
@@ -10,30 +11,35 @@
     z-index: 2; // Ensure header is above sidebars
   }
 
-  app-main {
-    flex: 1;
+  .app-container {
     display: flex;
+    flex-direction: column;
+    flex: 1;
     overflow: hidden;
-    position: relative;
-    padding-top: 0px; // Match header height
-  }
 
-  ::ng-deep router-outlet + * {
-    flex: 1;
-    height: 100%;
-    min-width: 0; // Prevent flex items from overflowing
-    display: flex;
-    padding-right: 300px; // Account for right sidebar width
-  }
+    app-main {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+      position: relative;
+      padding-top: 0px; // Match header height
+    }
 
+    ::ng-deep router-outlet + * {
+      flex: 1;
+      height: 100%;
+      min-width: 0; // Prevent flex items from overflowing
+      display: flex;
+      padding-right: 300px; // Account for right sidebar width
+    }
 
-
-  app-object-sidebar {
-    position: absolute;
-    right: 0;
-    top: 98px; // Account for header height
-    bottom: 0;
-    width: 300px;
-    z-index: 1;
+    app-object-sidebar {
+      position: absolute;
+      right: 0;
+      top: 130px; // Account for header height
+      bottom: 0;
+      width: 300px;
+      z-index: 1;
+    }
   }
 }

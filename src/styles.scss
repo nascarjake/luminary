@@ -10,10 +10,18 @@
   font-size: 15px;
 }
 
-html, body {
+html {
+  background: transparent;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-family);
+  background: transparent;
+  overflow: hidden;
   height: 100vw;
   width: 100vw;
-  overflow: hidden;
   display: block;
   background-color: $color-black-primary;
 }

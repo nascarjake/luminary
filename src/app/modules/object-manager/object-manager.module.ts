@@ -30,15 +30,16 @@ const routes: Routes = [
     SchemaListComponent,
     SchemaEditorComponent,
     InstanceListComponent,
-    InstanceEditorComponent,
-    ObjectManagerComponent
+    InstanceEditorComponent
   ],
   imports: [
     CommonModule,
     FormsModule,
     ReactiveFormsModule,
     RouterModule.forChild(routes),
-    PrimeNGModule
-  ]
+    PrimeNGModule,
+    ObjectManagerComponent
+  ],
+  exports: [ObjectManagerComponent]
 })
 export class ObjectManagerModule { }
