@@ -171,8 +171,8 @@ export class ConfigService {
         const configDir = await window.electron.path.appConfigDir();
         
         // Migrate graph data
-        const oldGraphPath = await window.electron.path.join(configDir, `graph-${profile.id}.json`);
-        const newGraphPath = await window.electron.path.join(configDir, `graph-${profile.id}-${project.id}.json`);
+        const oldGraphPath = await window.electron.path.join(configDir, `graphs/graph-${profile.id}.json`);
+        const newGraphPath = await window.electron.path.join(configDir, `graphs/graph-${profile.id}-${project.id}.json`);
         
         if (await window.electron.fs.exists(oldGraphPath)) {
           console.log('Migrating graph data...');
@@ -211,7 +211,7 @@ export class ConfigService {
           const assistantData = await window.electron.fs.readTextFile(oldPath);
           
           // Extract assistant ID from filename
-          const match = file.match(/assistant-[^-]+-([^.]+)\.json/);
+          const match = file.match(/assistant-.*-(asst_[^.]+)\.json/);
           if (match) {
             const assistantId = match[1];
             const newPath = await window.electron.path.join(configDir, `assistant-${profile.id}-${project.id}-${assistantId}.json`);
@@ -242,7 +242,7 @@ export class ConfigService {
           if (key?.startsWith(`assistant-${profile.id}-`)) {
             const data = localStorage.getItem(key);
             if (data) {
-              const match = key.match(/assistant-[^-]+-([^.]+)/);
+              const match = key.match(/assistant-.*-(asst_[^.]+)/);
               if (match) {
                 const assistantId = match[1];
                 const newKey = `assistant-${profile.id}-${project.id}-${assistantId}`;
