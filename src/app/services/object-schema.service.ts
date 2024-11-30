@@ -28,6 +28,14 @@ export class ObjectSchemaService implements IObjectSchemaService {
         this.loadSchemas();
       }
     });
+
+    // Subscribe to profile changes
+    this.configService.activeProfile$.subscribe(profile => {
+      if (profile && this.initialized) {
+        console.log('Active profile changed, reloading schemas...');
+        this.loadSchemas();
+      }
+    });
   }
 
   /**
