@@ -1,25 +1,28 @@
 <p-toast></p-toast>
-<app-header>
-  <div class="right-buttons">
-    <button pButton 
-            type="button" 
-            icon="pi pi-trash" 
-            label="Clear All Objects" 
-            class="p-button-danger" 
-            >
-    </button>
-    <button pButton 
-            type="button" 
-            icon="pi pi-sign-out" 
-            label="Logout" 
-            class="p-button-secondary" 
-            >
-    </button>
-  </div>
-</app-header>
-<app-main>
-  @if (!loading) {
-    <router-outlet />
-  }
-</app-main>
-<app-object-sidebar></app-object-sidebar>
+<app-title-bar></app-title-bar>
+<div class="app-container">
+  <app-header>
+    <div class="right-buttons">
+      <button pButton 
+              type="button" 
+              icon="pi pi-trash" 
+              label="Clear All Objects" 
+              class="p-button-danger" 
+              >
+      </button>
+      <button pButton 
+              type="button" 
+              icon="pi pi-sign-out" 
+              label="Logout" 
+              class="p-button-secondary" 
+              >
+      </button>
+    </div>
+  </app-header>
+  <app-main>
+    @if (!loading) {
+      <router-outlet />
+    }
+  </app-main>
+  <app-object-sidebar></app-object-sidebar>
+</div>

@@ -1,0 +1,68 @@
+.title-bar {
+  height: 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #181818;
+  -webkit-app-region: drag;
+  padding: 0 8px;
+  user-select: none;
+
+  .window-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #fff;
+    font-size: 13px;
+
+    .app-icon {
+      width: 16px;
+      height: 16px;
+    }
+  }
+
+  .window-controls {
+    display: flex;
+    gap: 8px;
+    -webkit-app-region: no-drag;
+
+    &.mac {
+      gap: 8px;
+      margin-left: 12px;
+      order: -1;
+    }
+
+    .control-button {
+      width: 28px;
+      height: 28px;
+      border: none;
+      background: transparent;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      cursor: pointer;
+      transition: background-color 0.2s;
+
+      &:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+      }
+
+      &.close:hover {
+        background-color: #e81123;
+      }
+
+      i {
+        font-size: 12px;
+      }
+    }
+  }
+}
+
+:host {
+  display: block;
+  background: #181818;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+}

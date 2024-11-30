@@ -495,6 +495,24 @@ ipcMain.handle('profile:import', async (_, profileId, zipBuffer) => {
   }
 });
 
+// Window control handlers
+ipcMain.handle('window:minimize', () => {
+  BrowserWindow.getFocusedWindow()?.minimize();
+});
+
+ipcMain.handle('window:maximize', () => {
+  const win = BrowserWindow.getFocusedWindow();
+  if (win?.isMaximized()) {
+    win.unmaximize();
+  } else {
+    win?.maximize();
+  }
+});
+
+ipcMain.handle('window:close', () => {
+  BrowserWindow.getFocusedWindow()?.close();
+});
+
 // Helper functions for zip operations
 async function createZipArchive(sourceDir, targetPath) {
   return new Promise((resolve, reject) => {
@@ -524,16 +542,17 @@ function createWindow() {
   console.log('Preload script path:', preloadPath);
   console.log('Preload script exists:', fs.existsSync(preloadPath));
 
-  const win = new BrowserWindow({
+  const mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
-    title: 'Luminary',
+    frame: false,
+    titleBarStyle: 'hidden',
+    transparent: true,
+    backgroundColor: '#00000000',
     webPreferences: {
-      nodeIntegration: false,
+      nodeIntegration: true,
       contextIsolation: true,
-      preload: preloadPath,
-      allowRunningInsecureContent: true,
-      webSecurity: false
+      preload: preloadPath
     }
   });
 
@@ -545,23 +564,23 @@ function createWindow() {
   console.log('App directory exists:', fs.existsSync(appPath));
   
   // Load the built Angular app
-  win.loadFile(path.join(appPath, 'index.html'));
+  mainWindow.loadFile(path.join(appPath, 'index.html'));
 
   // Log when window is ready
-  win.webContents.on('did-finish-load', () => {
+  mainWindow.webContents.on('did-finish-load', () => {
     console.log('Window finished loading');
   });
 
   // Handle window close
-  win.on('close', async (e) => {
+  mainWindow.on('close', async (e) => {
     try {
-      const hasUnsavedChanges = await win.webContents.executeJavaScript(`
+      const hasUnsavedChanges = await mainWindow.webContents.executeJavaScript(`
         window.graphEditor ? window.graphEditor.hasUnsavedChanges() : false
       `);
 
       if (hasUnsavedChanges) {
         e.preventDefault();
-        const { response } = await dialog.showMessageBox(win, {
+        const { response } = await dialog.showMessageBox(mainWindow, {
           type: 'question',
           buttons: ['Save', "Don't Save", 'Cancel'],
           title: 'Unsaved Changes',
@@ -569,17 +588,17 @@ function createWindow() {
         });
 
         if (response === 0) {  // Save
-          await win.webContents.executeJavaScript('document.querySelector("app-graph-editor").querySelector(".save-button").click()');
-          win.destroy();
+          await mainWindow.webContents.executeJavaScript('document.querySelector("app-graph-editor").querySelector(".save-button").click()');
+          mainWindow.destroy();
         } else if (response === 1) {  // Don't Save
-          win.destroy();
+          mainWindow.destroy();
         }
         // If response === 2 (Cancel), do nothing and keep the window open
       }
     } catch (error) {
       console.error('Error checking for unsaved changes:', error);
       // If there's an error, allow the window to close
-      win.destroy();
+      mainWindow.destroy();
     }
   });
 }

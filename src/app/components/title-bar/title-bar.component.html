@@ -1,0 +1,34 @@
+<div class="title-bar">
+  <div class="title-bar-drag-region">
+    <div class="window-title">
+      <!--<img src="assets/icon.png" alt="App Icon" class="app-icon">
+      <span>Luminary</span>-->
+    </div>
+  </div>
+  
+  <div class="window-controls" [class.mac]="isMac">
+    <!--<ng-container *ngIf="isMac">
+      <button class="control-button close" (click)="close()">
+        <i class="pi pi-times"></i>
+      </button>
+      <button class="control-button minimize" (click)="minimize()">
+        <i class="pi pi-minus"></i>
+      </button>
+      <button class="control-button maximize" (click)="maximize()">
+        <i class="pi pi-window-maximize"></i>
+      </button>
+    </ng-container>-->
+    
+    <ng-container *ngIf="!isMac">
+      <button class="control-button minimize" (click)="minimize()">
+        <i class="pi pi-minus"></i>
+      </button>
+      <button class="control-button maximize" (click)="maximize()">
+        <i class="pi pi-window-maximize"></i>
+      </button>
+      <button class="control-button close" (click)="close()">
+        <i class="pi pi-times"></i>
+      </button>
+    </ng-container>
+  </div>
+</div>

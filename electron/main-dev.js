@@ -523,44 +523,41 @@ ipcMain.handle('terminal:executeCommand', async (event, options) => {
 });
 
 function createWindow() {
-  console.log('Creating window');
-  
-  const preloadPath = path.join(__dirname, 'preload.js');
-  console.log('Preload script path:', preloadPath);
-  console.log('Preload script exists:', fs.existsSync(preloadPath));
-
-  const win = new BrowserWindow({
+  const mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
-    title: 'Luminary',
+    frame: false,
+    titleBarStyle: 'hidden',
+    transparent: true,
+    backgroundColor: '#00000000',
     webPreferences: {
-      nodeIntegration: false,
+      nodeIntegration: true,
       contextIsolation: true,
-      preload: preloadPath
+      preload: path.join(__dirname, 'preload.js')
     }
   });
 
   // Open DevTools
-  win.webContents.openDevTools();
+  mainWindow.webContents.openDevTools();
 
   // Load the Angular app from the dev server
-  win.loadURL('http://localhost:4200');
+  mainWindow.loadURL('http://localhost:4200');
 
   // Log when window is ready
-  win.webContents.on('did-finish-load', () => {
+  mainWindow.webContents.on('did-finish-load', () => {
     console.log('Window finished loading');
   });
 
   // Handle window close
-  win.on('close', async (e) => {
+  mainWindow.on('close', async (e) => {
     try {
-      const hasUnsavedChanges = await win.webContents.executeJavaScript(`
+      const hasUnsavedChanges = await mainWindow.webContents.executeJavaScript(`
         window.graphEditor ? window.graphEditor.hasUnsavedChanges() : false
       `);
 
       if (hasUnsavedChanges) {
         e.preventDefault();
-        const { response } = await dialog.showMessageBox(win, {
+        const { response } = await dialog.showMessageBox(mainWindow, {
           type: 'question',
           buttons: ['Save', "Don't Save", 'Cancel'],
           title: 'Unsaved Changes',
@@ -568,20 +565,38 @@ function createWindow() {
         });
 
         if (response === 0) {  // Save
-          await win.webContents.executeJavaScript('document.querySelector("app-graph-editor").querySelector(".save-button").click()');
-          win.destroy();
+          await mainWindow.webContents.executeJavaScript('document.querySelector("app-graph-editor").querySelector(".save-button").click()');
+          mainWindow.destroy();
         } else if (response === 1) {  // Don't Save
-          win.destroy();
+          mainWindow.destroy();
         }
         // If response === 2 (Cancel), do nothing and keep the window open
       }
     } catch (error) {
       console.error('Error checking for unsaved changes:', error);
       // If there's an error, allow the window to close
-      win.destroy();
+      mainWindow.destroy();
     }
   });
 }
+
+// Window control handlers
+ipcMain.handle('window:minimize', () => {
+  BrowserWindow.getFocusedWindow()?.minimize();
+});
+
+ipcMain.handle('window:maximize', () => {
+  const win = BrowserWindow.getFocusedWindow();
+  if (win?.isMaximized()) {
+    win.unmaximize();
+  } else {
+    win?.maximize();
+  }
+});
+
+ipcMain.handle('window:close', () => {
+  BrowserWindow.getFocusedWindow()?.close();
+});
 
 app.whenReady().then(() => {
   console.log('Electron app is ready (DEV)');

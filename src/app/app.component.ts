@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit } from '@angular/core';
-import { Router, RouterModule } from '@angular/router';
+import { Router, RouterModule, RouterOutlet } from '@angular/router';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { AuthService } from './services/auth.service';
@@ -13,6 +13,7 @@ import { GeneratedObjectsService } from './services/generated-objects.service';
 import { HeaderComponent } from './layouts/header/header.component';
 import { MainComponent } from './layouts/main/main.component';
 import { ObjectSidebarComponent } from './components/object-sidebar/object-sidebar.component';
+import { TitleBarComponent } from './components/title-bar/title-bar.component';
 import { firstValueFrom } from 'rxjs';
 
 @Component({
@@ -21,7 +22,9 @@ import { firstValueFrom } from 'rxjs';
   imports: [
     CommonModule,
     RouterModule,
+    RouterOutlet,
     ToastModule,
+    TitleBarComponent,
     HeaderComponent,
     MainComponent,
     ObjectSidebarComponent

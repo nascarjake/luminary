@@ -12,6 +12,8 @@ import { ObjectSchemaService } from './services/object-schema.service';
 import { ObjectInstanceService } from './services/object-instance.service';
 import { ObjectMigrationService } from './services/object-migration.service';
 import { GeneratedObjectsService } from './services/generated-objects.service';
+import { TitleBarComponent } from './components/title-bar/title-bar.component';
+import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -23,7 +25,9 @@ export const appConfig: ApplicationConfig = {
     ObjectInstanceService,
     ObjectMigrationService,
     GeneratedObjectsService,
+    TitleBarComponent,
     importProvidersFrom([
+      BrowserAnimationsModule,
       FormsModule,
       ReactiveFormsModule,
       PrimeNGModule,

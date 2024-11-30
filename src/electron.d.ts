@@ -1,11 +1,12 @@
 declare module 'electron-api' {
   interface ElectronFS {
-    exists(path: string): Promise<boolean>;
-    readTextFile(path: string): Promise<string>;
-    writeTextFile(path: string, contents: string): Promise<void>;
-    removeTextFile(path: string): Promise<void>;
-    createDir(path: string, options?: { recursive?: boolean }): Promise<void>;
-    readdir(path: string): Promise<string[]>;
+    readTextFile: (path: string) => Promise<string>;
+    writeTextFile: (path: string, content: string) => Promise<void>;
+    removeTextFile: (path: string) => Promise<void>;
+    exists: (path: string) => Promise<boolean>;
+    mkdir: (path: string, options?: { recursive: boolean }) => Promise<void>;
+    createDir: (path: string, options?: { recursive: boolean }) => Promise<void>;
+    readdir: (path: string) => Promise<string[]>;
   }
 
   interface ElectronProfile {
@@ -14,9 +15,9 @@ declare module 'electron-api' {
   }
 
   interface ElectronPath {
-    appConfigDir(): Promise<string>;
-    join(...paths: string[]): Promise<string>;
-    relative(from: string, to: string): Promise<string>;
+    join: (...args: string[]) => Promise<string>;
+    appConfigDir: () => Promise<string>;
+    relative: (from: string, to: string) => Promise<string>;
   }
 
   interface ElectronFunctions {
@@ -100,6 +101,12 @@ declare module 'electron-api' {
     }>;
   }
 
+  interface ElectronWindow {
+    minimize(): Promise<void>;
+    maximize(): Promise<void>;
+    close(): Promise<void>;
+  }
+
   interface IpcRenderer {
     invoke(channel: string, ...args: any[]): Promise<any>;
     on(channel: string, listener: (event: any, ...args: any[]) => void): void;
@@ -107,8 +114,9 @@ declare module 'electron-api' {
   }
 
   interface Electron {
-    fs: ElectronFS;
     path: ElectronPath;
+    fs: ElectronFS;
+    window: ElectronWindow;
     functions: ElectronFunctions;
     assistant: ElectronAssistant;
     download: ElectronDownload;
@@ -122,9 +130,9 @@ declare module 'electron-api' {
     };
   }
 
-  global {
-    interface Window {
-      electron: Electron;
-    }
+  interface Window {
+    electron: Electron;
   }
+
+  export { Electron };
 }
