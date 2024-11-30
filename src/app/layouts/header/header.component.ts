@@ -191,6 +191,11 @@ export class HeaderComponent implements OnInit, OnDestroy {
             label: 'Change Profile',
             icon: 'pi pi-user-edit',
             routerLink: '/'
+          },
+          {
+            label: 'Manage Projects',
+            icon: 'pi pi-folder',
+            routerLink: '/projects'
           }
         ]
       }
