@@ -34,6 +34,14 @@ export class ObjectInstanceService implements IObjectInstanceService {
         this.loadInstances();
       }
     });
+
+    // Subscribe to profile changes
+    this.configService.activeProfile$.subscribe(profile => {
+      if (profile && this.initialized) {
+        console.log('Active profile changed, reloading instances...');
+        this.loadInstances();
+      }
+    });
   }
 
   /**
