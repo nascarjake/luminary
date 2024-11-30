@@ -9,30 +9,40 @@ import { ConfigService } from '../services/config.service';
 })
 export class GraphService {
   private readonly CURRENT_VERSION = '1.0.0';
-  private graphState = new BehaviorSubject<IGraphState>({
-    nodes: [],
-    connections: []
-  });
+  private _currentState: IGraphState | null = null;
+  private currentStateSubject = new BehaviorSubject<IGraphState | null>(null);
 
   constructor(private configService: ConfigService) {
     // Load saved graph state if exists
     this.loadGraph();
 
-    // Also subscribe to future profile changes
+    // Subscribe to profile and project changes
     this.configService.activeProfile$.subscribe(profile => {
       if (profile) {
         console.log('Active profile changed, reloading graph...');
         this.loadGraph();
       }
     });
+
+    this.configService.activeProject$.subscribe(project => {
+      if (project) {
+        console.log('Active project changed, reloading graph...');
+        this.loadGraph();
+      }
+    });
   }
 
-  get state$(): Observable<IGraphState> {
-    return this.graphState.asObservable();
+  public get currentState$(): Observable<IGraphState | null> {
+    return this.currentStateSubject.asObservable();
   }
 
-  get currentState(): IGraphState {
-    return this.graphState.value;
+  public get state(): IGraphState | null {
+    return this._currentState;
+  }
+
+  public setState(state: IGraphState | null): void {
+    this._currentState = state;
+    this.currentStateSubject.next(state);
   }
 
   addNode(assistantId: string, name: string, position: { x: number, y: number }): IAssistantNode {
@@ -45,84 +55,116 @@ export class GraphService {
       outputs: []  // These will be populated based on assistant's schema
     };
 
-    const currentState = this.currentState;
-    this.graphState.next({
-      ...currentState,
-      nodes: [...currentState.nodes, node]
-    });
+    const currentState = this.state;
+    if (currentState) {
+      this.setState({
+        ...currentState,
+        nodes: [...currentState.nodes, node]
+      });
+    } else {
+      this.setState({
+        nodes: [node],
+        connections: []
+      });
+    }
 
     return node;
   }
 
   addConnection(fromNode: string, fromOutput: string, toNode: string, toInput: string): void {
-    const currentState = this.currentState;
-    this.graphState.next({
-      ...currentState,
-      connections: [...currentState.connections, {
-        fromNode,
-        fromOutput,
-        toNode,
-        toInput
-      }]
-    });
+    const currentState = this.state;
+    if (currentState) {
+      this.setState({
+        ...currentState,
+        connections: [...currentState.connections, {
+          fromNode,
+          fromOutput,
+          toNode,
+          toInput
+        }]
+      });
+    } else {
+      this.setState({
+        nodes: [],
+        connections: [{
+          fromNode,
+          fromOutput,
+          toNode,
+          toInput
+        }]
+      });
+    }
   }
 
   removeNode(nodeId: string): void {
-    const currentState = this.currentState;
-    this.graphState.next({
-      nodes: currentState.nodes.filter(n => n.id !== nodeId),
-      connections: currentState.connections.filter(
-        c => c.fromNode !== nodeId && c.toNode !== nodeId
-      )
-    });
+    const currentState = this.state;
+    if (currentState) {
+      this.setState({
+        nodes: currentState.nodes.filter(n => n.id !== nodeId),
+        connections: currentState.connections.filter(
+          c => c.fromNode !== nodeId && c.toNode !== nodeId
+        )
+      });
+    }
   }
 
   removeConnection(fromNode: string, fromOutput: string, toNode: string, toInput: string): void {
-    const currentState = this.currentState;
-    this.graphState.next({
-      ...currentState,
-      connections: currentState.connections.filter(
-        c => !(c.fromNode === fromNode && 
-               c.fromOutput === fromOutput && 
-               c.toNode === toNode && 
-               c.toInput === toInput)
-      )
-    });
+    const currentState = this.state;
+    if (currentState) {
+      this.setState({
+        ...currentState,
+        connections: currentState.connections.filter(
+          c => !(c.fromNode === fromNode && 
+                 c.fromOutput === fromOutput && 
+                 c.toNode === toNode && 
+                 c.toInput === toInput)
+        )
+      });
+    }
   }
 
   updateState(state: IGraphState): void {
     console.log('Updating graph state:', state);
-    this.graphState.next(state);
+    this.setState(state);
   }
 
-  private async getConfigDir(): Promise<string> {
-    return await window.electron.path.appConfigDir();
+  private async getGraphFilePath(): Promise<string> {
+    const profile = this.configService.getActiveProfile();
+    const project = this.configService.getActiveProject();
+    if (!profile) throw new Error('No active profile');
+    if (!project) throw new Error('No active project');
+    
+    const configDir = await window.electron.path.appConfigDir();
+    return window.electron.path.join(configDir, `graph-${profile.id}-${project.id}.json`);
   }
 
   async saveGraph(): Promise<void> {
     try {
-      const configDir = await this.getConfigDir();
       const activeProfile = this.configService.getActiveProfile();
+      const activeProject = this.configService.getActiveProject();
       
-      if (!activeProfile) {
-        console.warn('No active profile found, cannot save graph');
+      if (!activeProfile || !activeProject) {
+        console.warn('No active profile or project found, cannot save graph');
         return;
       }
 
-      console.log('Current graph state before save:', this.currentState);
+      console.log('Current graph state before save:', this.state);
       
       const graphData: IGraphSaveData = {
-        ...this.currentState,
+        ...this.state,
         version: this.CURRENT_VERSION,
         lastModified: new Date().toISOString()
       };
 
       console.log('Prepared graph data for save:', graphData);
-
-      await window.electron.graph.save(configDir, activeProfile.id, graphData);
-      console.log('Graph saved successfully for profile:', activeProfile.id);
-
-      // Don't reload the graph after saving - the state is already correct
+      
+      if (window.electron) {
+        const filePath = await this.getGraphFilePath();
+        await window.electron.graph.save(filePath, activeProfile.id, graphData);
+        console.log('Graph saved successfully');
+      } else {
+        console.error('Electron not available, cannot save graph');
+      }
     } catch (error) {
       console.error('Error saving graph:', error);
       throw error;
@@ -131,28 +173,32 @@ export class GraphService {
 
   private async loadGraph(): Promise<void> {
     try {
-      const configDir = await this.getConfigDir();
       const activeProfile = this.configService.getActiveProfile();
+      const activeProject = this.configService.getActiveProject();
       
-      if (!activeProfile) {
-        console.warn('No active profile found, starting with empty graph');
+      if (!activeProfile || !activeProject) {
+        console.warn('No active profile or project found, starting with empty graph');
         return;
       }
 
-      const graphData = await window.electron.graph.load(configDir, activeProfile.id);
-      
-      if (graphData) {
-        // Version check and migration could be added here if needed
-        const { version, lastModified, ...state } = graphData;
-        this.graphState.next(state);
-        console.log('Graph loaded successfully for profile:', activeProfile.id);
+      if (window.electron) {
+        const filePath = await this.getGraphFilePath();
+        const graphData = await window.electron.graph.load(filePath, activeProfile.id);
+        
+        if (graphData) {
+          const { version, lastModified, ...state } = graphData;
+          this.setState(state);
+          console.log('Graph loaded successfully');
+        } else {
+          // Initialize empty graph for new project
+          this.setState({
+            nodes: [],
+            connections: []
+          });
+          console.log('No existing graph found');
+        }
       } else {
-        // Initialize empty graph for new profile
-        this.graphState.next({
-          nodes: [],
-          connections: []
-        });
-        console.log('No existing graph found for profile:', activeProfile.id);
+        console.error('Electron not available, cannot load graph');
       }
     } catch (error) {
       console.error('Error loading graph:', error);

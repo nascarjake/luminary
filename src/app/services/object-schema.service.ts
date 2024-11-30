@@ -42,10 +42,12 @@ export class ObjectSchemaService implements IObjectSchemaService {
 
   private async getSchemasFilePath(): Promise<string> {
     const profile = this.configService.getActiveProfile();
+    const project = this.configService.getActiveProject();
     if (!profile) throw new Error('No active profile');
+    if (!project) throw new Error('No active project');
     
     const configDir = await window.electron.path.appConfigDir();
-    return window.electron.path.join(configDir, `schemas-${profile.id}.json`);
+    return window.electron.path.join(configDir, `schemas-${profile.id}-${project.id}.json`);
   }
 
   private async loadSchemas(): Promise<void> {
