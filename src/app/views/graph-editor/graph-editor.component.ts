@@ -71,6 +71,17 @@ export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
         e.returnValue = '';
       }
     });
+
+    // Subscribe to project changes
+    this.configService.activeProject$.subscribe(project => {
+      if (project && this.isDirty) {
+        const shouldSave = confirm('You have unsaved changes in your graph. Would you like to save them before switching projects?');
+        if (shouldSave) {
+          this.saveGraph();
+        }
+        this.markClean();
+      }
+    });
   }
 
   // Public method to check if there are unsaved changes

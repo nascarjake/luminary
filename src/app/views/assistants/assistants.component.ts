@@ -33,7 +33,15 @@ export class AssistantsComponent implements OnInit {
     private configService: ConfigService,
     private confirmationService: ConfirmationService,
     private messageService: MessageService
-  ) {}
+  ) {
+    // Subscribe to project changes
+    this.configService.activeProject$.subscribe(project => {
+      if (project) {
+        console.log('Active project changed, reloading assistants...');
+        this.loadAssistants();
+      }
+    });
+  }
 
   ngOnInit() {
     this.loadAssistants();
