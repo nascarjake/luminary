@@ -67,22 +67,16 @@ ipcMain.handle('path:relative', async (_, from, to) => {
   return path.relative(from, to);
 });
 
-ipcMain.handle('graph:save', async (_, baseDir, profileId, graphData) => {
+ipcMain.handle('graph:save', async (_, baseDir, profileId, projectId, graphData) => {
   try {
     console.log('graph:save called with:', {
       baseDir,
       profileId,
+      projectId,
       graphDataType: typeof graphData
     });
 
-    const graphDir = path.join(baseDir, 'graphs');
-    console.log('Creating graph directory at:', graphDir);
-    
-    if (!fs.existsSync(graphDir)) {
-      fs.mkdirSync(graphDir, { recursive: true });
-    }
-    
-    const graphPath = path.join(graphDir, `graph-${profileId}.json`);
+    const graphPath = path.join(baseDir, `graph-${profileId}-${projectId}.json`);
     console.log('Saving graph to:', graphPath);
     
     fs.writeFileSync(graphPath, JSON.stringify(graphData, null, 2));
@@ -94,10 +88,18 @@ ipcMain.handle('graph:save', async (_, baseDir, profileId, graphData) => {
   }
 });
 
-ipcMain.handle('graph:load', async (_, baseDir, profileId) => {
+ipcMain.handle('graph:load', async (_, baseDir, profileId, projectId) => {
   try {
-    const graphPath = path.join(baseDir, 'graphs', `graph-${profileId}.json`);
+    const graphPath = path.join(baseDir, `graph-${profileId}-${projectId}.json`);
     if (!fs.existsSync(graphPath)) {
+      // Try loading from old path format
+      const oldGraphPath = path.join(baseDir, `graph-${profileId}.json`);
+      if (fs.existsSync(oldGraphPath)) {
+        console.log('Found graph in old location, will migrate on next save');
+        const content = fs.readFileSync(oldGraphPath, 'utf8');
+        return JSON.parse(content);
+      }
+      console.log('No graph found:', { profileId, projectId });
       return null;
     }
     const data = await fs.promises.readFile(graphPath, 'utf8');
@@ -181,6 +183,11 @@ ipcMain.handle('download:file', async (_, fileUrl, filePath) => {
 });
 console.log('Registered download:file handler');
 
+ipcMain.handle('fs:readdir', async (_, path) => {
+  console.log('Reading directory:', path);
+  return fs.readdirSync(path);
+});
+
 // Dialog handlers
 ipcMain.handle('dialog:showOpenDialog', async (event, options) => {
   const window = BrowserWindow.fromWebContents(event.sender);
@@ -252,9 +259,9 @@ ipcMain.handle('terminal:executeCommand', async (event, options) => {
 console.log('Registered terminal:executeCommand handler');
 
 // Assistant configuration handling
-ipcMain.handle('assistant:save', async (_, baseDir, profileId, assistantId, config) => {
-  console.log('Saving assistant configuration:', { profileId, assistantId });
-  const filePath = path.join(baseDir, `assistant-${profileId}-${assistantId}.json`);
+ipcMain.handle('assistant:save', async (_, baseDir, profileId, projectId, assistantId, config) => {
+  console.log('Saving assistant configuration:', { profileId, projectId, assistantId });
+  const filePath = path.join(baseDir, `assistant-${profileId}-${projectId}-${assistantId}.json`);
   
   try {
     fs.writeFileSync(filePath, JSON.stringify(config, null, 2));
@@ -265,32 +272,36 @@ ipcMain.handle('assistant:save', async (_, baseDir, profileId, assistantId, conf
   }
 });
 
-ipcMain.handle('assistant:load', async (_, baseDir, profileId, assistantId) => {
-  console.log('Loading assistant configuration:', { profileId, assistantId });
-  const filePath = path.join(baseDir, `assistant-${profileId}-${assistantId}.json`);
+ipcMain.handle('assistant:load', async (_, baseDir, profileId, projectId, assistantId) => {
+  console.log('Loading assistant configuration:', { profileId, projectId, assistantId });
+  const filePath = path.join(baseDir, `assistant-${profileId}-${projectId}-${assistantId}.json`);
   
   try {
     if (!fs.existsSync(filePath)) {
-      // Try to load from old location for backward compatibility
-      const oldFunctionsDir = path.join(baseDir, 'functions');
-      const oldFilePath = path.join(oldFunctionsDir, `functions-${assistantId}.json`);
-      
+      // Try loading from old path format
+      const oldFilePath = path.join(baseDir, `assistant-${profileId}-${assistantId}.json`);
       if (fs.existsSync(oldFilePath)) {
+        console.log('Found assistant in old location, will migrate on next save');
+        const content = fs.readFileSync(oldFilePath, 'utf8');
+        return JSON.parse(content);
+      }
+      
+      // Try the functions directory as last resort
+      const oldFunctionsDir = path.join(baseDir, 'functions');
+      const oldFunctionsPath = path.join(oldFunctionsDir, `functions-${assistantId}.json`);
+      
+      if (fs.existsSync(oldFunctionsPath)) {
         console.log('Found old function file, migrating to new format...');
-        const oldContent = fs.readFileSync(oldFilePath, 'utf8');
+        const oldContent = fs.readFileSync(oldFunctionsPath, 'utf8');
         const functions = JSON.parse(oldContent);
-        // Migrate to new format
-        const newConfig = {
+        return {
           functions,
           inputs: [],
           outputs: []
         };
-        // Save in new format
-        fs.writeFileSync(filePath, JSON.stringify(newConfig, null, 2));
-        return newConfig;
       }
       
-      console.log('No configuration found for assistant:', { profileId, assistantId });
+      console.log('No configuration found for assistant:', { profileId, projectId, assistantId });
       return null;
     }
     const content = fs.readFileSync(filePath, 'utf8');

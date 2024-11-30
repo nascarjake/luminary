@@ -7,6 +7,7 @@ import { AssistantFormComponent } from './assistant-form/assistant-form.componen
 import { FunctionImplementationsService } from '../../services/function-implementations.service';
 import { ConfigService } from '../../services/config.service';
 import { ConfirmationService, MessageService } from 'primeng/api';
+import { Profile, Project } from '../../../lib/entities/AppConfig';
 
 @Component({
   selector: 'app-assistants',
@@ -115,16 +116,22 @@ export class AssistantsComponent implements OnInit {
 
       // Get the profile ID
       const activeProfile = this.configService.getActiveProfile();
-      if (!activeProfile) {
-        throw new Error('No active profile');
+      const activeProject = this.configService.getActiveProject();
+      if (!activeProfile || !activeProject) {
+        throw new Error('No active profile or project');
       }
 
       // Get the original assistant's local data
-      const originalLocalData = await this.functionImplementationsService.loadFunctionImplementations(activeProfile.id, assistant.id);
+      const originalLocalData = await this.functionImplementationsService.loadFunctionImplementations(
+        activeProfile.id,
+        activeProject.id,
+        assistant.id
+      );
       if (originalLocalData) {
         // Save the cloned implementation details with the new assistant ID
         await this.functionImplementationsService.saveFunctionImplementations(
           activeProfile.id,
+          activeProject.id,
           newAssistant.id,
           clonePayload.name,
           originalLocalData.functions.functions.map(f => ({
@@ -157,6 +164,32 @@ export class AssistantsComponent implements OnInit {
       console.error('Error cloning assistant:', error);
     } finally {
       this.loading = false;
+    }
+  }
+
+  async loadLocalAssistant(activeProfile: Profile, activeProject: Project, assistantId: string) {
+    try {
+      const originalLocalData = await this.functionImplementationsService.loadFunctionImplementations(
+        activeProfile.id,
+        activeProject.id,
+        assistantId
+      );
+      
+      if (originalLocalData?.functions?.functions) {
+        const functions = originalLocalData.functions.functions;
+        return {
+          id: assistantId,
+          // Use the assistantId as name since it's not stored in the config
+          name: assistantId,
+          functions: functions,
+          inputSchemas: originalLocalData.inputs || [],
+          outputSchemas: originalLocalData.outputs || [],
+          instructionParts: originalLocalData.instructionParts,
+          arraySchemas: originalLocalData.arraySchemas
+        };
+      }
+    } catch (error) {
+      console.error('Error loading local assistant:', error);
     }
   }
 
@@ -204,12 +237,14 @@ export class AssistantsComponent implements OnInit {
 
       // Now that we have the assistant ID, save function implementations
       const activeProfile = await this.configService.getActiveProfile();
-      if (activeProfile && !formData.id) {
+      const activeProject = await this.configService.getActiveProject();
+      if (activeProfile && activeProject && !formData.id) {
         if(!formData.instructionParts.userInstructions.processingSteps){
           formData.instructionParts.userInstructions.processingSteps = ' ';
         }
         await this.functionImplementationsService.saveFunctionImplementations(
           activeProfile.id,
+          activeProject.id,
           savedAssistant.id,
           formData.name,
           formData.functions,

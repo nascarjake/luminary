@@ -199,6 +199,26 @@ export class ConfigService {
           const instanceData = await window.electron.fs.readTextFile(oldInstancePath);
           await window.electron.fs.writeTextFile(newInstancePath, instanceData);
         }
+
+        // Migrate assistant data
+        console.log('Looking for assistant files to migrate...');
+        const files = await window.electron.fs.readdir(configDir);
+        const assistantFiles = files.filter(f => f.startsWith(`assistant-${profile.id}-`) && f.endsWith('.json'));
+        
+        for (const file of assistantFiles) {
+          console.log(`Migrating assistant file: ${file}`);
+          const oldPath = await window.electron.path.join(configDir, file);
+          const assistantData = await window.electron.fs.readTextFile(oldPath);
+          
+          // Extract assistant ID from filename
+          const match = file.match(/assistant-[^-]+-([^.]+)\.json/);
+          if (match) {
+            const assistantId = match[1];
+            const newPath = await window.electron.path.join(configDir, `assistant-${profile.id}-${project.id}-${assistantId}.json`);
+            await window.electron.fs.writeTextFile(newPath, assistantData);
+            console.log(`Migrated assistant ${assistantId} to project ${project.id}`);
+          }
+        }
       } else {
         // Handle web storage migration
         const oldGraphData = localStorage.getItem(`graph-${profile.id}`);
@@ -214,6 +234,22 @@ export class ConfigService {
         const oldInstanceData = localStorage.getItem(`instances-${profile.id}`);
         if (oldInstanceData) {
           localStorage.setItem(`instances-${profile.id}-${project.id}`, oldInstanceData);
+        }
+        
+        // Migrate assistant data in localStorage
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key?.startsWith(`assistant-${profile.id}-`)) {
+            const data = localStorage.getItem(key);
+            if (data) {
+              const match = key.match(/assistant-[^-]+-([^.]+)/);
+              if (match) {
+                const assistantId = match[1];
+                const newKey = `assistant-${profile.id}-${project.id}-${assistantId}`;
+                localStorage.setItem(newKey, data);
+              }
+            }
+          }
         }
       }
 

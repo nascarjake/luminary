@@ -160,7 +160,7 @@ export class GraphService {
       
       if (window.electron) {
         const filePath = await this.getGraphFilePath();
-        await window.electron.graph.save(filePath, activeProfile.id, graphData);
+        await window.electron.graph.save(filePath, activeProfile.id, activeProject.id, graphData);
         console.log('Graph saved successfully');
       } else {
         console.error('Electron not available, cannot save graph');
@@ -183,7 +183,7 @@ export class GraphService {
 
       if (window.electron) {
         const filePath = await this.getGraphFilePath();
-        const graphData = await window.electron.graph.load(filePath, activeProfile.id);
+        const graphData = await window.electron.graph.load(filePath, activeProfile.id, activeProject.id);
         
         if (graphData) {
           const { version, lastModified, ...state } = graphData;

@@ -5,6 +5,7 @@ declare module 'electron-api' {
     writeTextFile(path: string, contents: string): Promise<void>;
     removeTextFile(path: string): Promise<void>;
     createDir(path: string, options?: { recursive?: boolean }): Promise<void>;
+    readdir(path: string): Promise<string[]>;
   }
 
   interface ElectronPath {
@@ -20,7 +21,7 @@ declare module 'electron-api' {
   }
 
   interface ElectronAssistant {
-    save(baseDir: string, profileId: string, assistantId: string, config: {
+    save(baseDir: string, profileId: string, projectId: string, assistantId: string, config: {
       functions: any;
       inputs: string[];
       outputs: string[];
@@ -40,7 +41,7 @@ declare module 'electron-api' {
         };
       };
     }): Promise<boolean>;
-    load(baseDir: string, profileId: string, assistantId: string): Promise<{
+    load(baseDir: string, profileId: string, projectId: string, assistantId: string): Promise<{
       functions: any;
       inputs: string[];
       outputs: string[];
@@ -77,8 +78,8 @@ declare module 'electron-api' {
   }
 
   interface ElectronGraph {
-    save(baseDir: string, profileId: string, graphData: any): Promise<boolean>;
-    load(baseDir: string, profileId: string): Promise<any>;
+    save(baseDir: string, profileId: string, projectId: string, graphData: any): Promise<boolean>;
+    load(baseDir: string, profileId: string, projectId: string): Promise<any>;
   }
 
   interface ElectronDialog {
