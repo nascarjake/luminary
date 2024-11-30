@@ -114,10 +114,13 @@ export class ConfigService {
       console.log('Single profile found, setting as active...');
       this.activeProfile = this.config.profiles[0];
       
-      // Create default project if none exists
-      if (!this.activeProfile.projects?.length) {
-        const defaultProject = this.createProject(this.activeProfile.id, 'Default Project');
-        this.setActiveProject(defaultProject.id);
+      // Migrate data if needed and create default project
+      await this.migrateToFirstProject(this.activeProfile.id);
+      
+      // Set active project after migration
+      const project = this.getActiveProject();
+      if (project) {
+        this.setActiveProject(project.id);
       }
     } else if (this.config.profiles.length > 1) {
       const defaultProfile = this.getDefaultProfile();
@@ -125,10 +128,13 @@ export class ConfigService {
         console.log('Multiple profiles found, using default profile...');
         this.activeProfile = defaultProfile;
         
-        // Create default project if none exists
-        if (!this.activeProfile.projects?.length) {
-          const defaultProject = this.createProject(this.activeProfile.id, 'Default Project');
-          this.setActiveProject(defaultProject.id);
+        // Migrate data if needed and create default project
+        await this.migrateToFirstProject(this.activeProfile.id);
+        
+        // Set active project after migration
+        const project = this.getActiveProject();
+        if (project) {
+          this.setActiveProject(project.id);
         }
       } else {
         console.log('Multiple profiles found, no default set. User selection required.');
@@ -157,9 +163,62 @@ export class ConfigService {
 
     // Create default project if none exists
     if (!profile.projects?.length) {
+      console.log('Creating default project for migration...');
       const project = this.createProject(profile.id, 'Default Project', 'Migrated from existing data');
       profile.activeProjectId = project.id;
+      
+      if (window.electron) {
+        const configDir = await window.electron.path.appConfigDir();
+        
+        // Migrate graph data
+        const oldGraphPath = await window.electron.path.join(configDir, `graph-${profile.id}.json`);
+        const newGraphPath = await window.electron.path.join(configDir, `graph-${profile.id}-${project.id}.json`);
+        
+        if (await window.electron.fs.exists(oldGraphPath)) {
+          console.log('Migrating graph data...');
+          const graphData = await window.electron.fs.readTextFile(oldGraphPath);
+          await window.electron.fs.writeTextFile(newGraphPath, graphData);
+        }
+
+        // Migrate schema data
+        const oldSchemaPath = await window.electron.path.join(configDir, `schemas-${profile.id}.json`);
+        const newSchemaPath = await window.electron.path.join(configDir, `schemas-${profile.id}-${project.id}.json`);
+        
+        if (await window.electron.fs.exists(oldSchemaPath)) {
+          console.log('Migrating schema data...');
+          const schemaData = await window.electron.fs.readTextFile(oldSchemaPath);
+          await window.electron.fs.writeTextFile(newSchemaPath, schemaData);
+        }
+
+        // Migrate instance data
+        const oldInstancePath = await window.electron.path.join(configDir, `instances-${profile.id}.json`);
+        const newInstancePath = await window.electron.path.join(configDir, `instances-${profile.id}-${project.id}.json`);
+        
+        if (await window.electron.fs.exists(oldInstancePath)) {
+          console.log('Migrating instance data...');
+          const instanceData = await window.electron.fs.readTextFile(oldInstancePath);
+          await window.electron.fs.writeTextFile(newInstancePath, instanceData);
+        }
+      } else {
+        // Handle web storage migration
+        const oldGraphData = localStorage.getItem(`graph-${profile.id}`);
+        if (oldGraphData) {
+          localStorage.setItem(`graph-${profile.id}-${project.id}`, oldGraphData);
+        }
+
+        const oldSchemaData = localStorage.getItem(`schemas-${profile.id}`);
+        if (oldSchemaData) {
+          localStorage.setItem(`schemas-${profile.id}-${project.id}`, oldSchemaData);
+        }
+
+        const oldInstanceData = localStorage.getItem(`instances-${profile.id}`);
+        if (oldInstanceData) {
+          localStorage.setItem(`instances-${profile.id}-${project.id}`, oldInstanceData);
+        }
+      }
+
       this.save();
+      console.log('Migration completed successfully');
     }
   }
 
