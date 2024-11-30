@@ -13,6 +13,7 @@ import { v4 as uuid } from 'uuid';
 import { AppConfig } from '../../../lib/entities/AppConfig';
 import { MessageService } from 'primeng/api';
 import { ToastModule } from 'primeng/toast';
+import { ProfileExportComponent } from '../../components/profile-export/profile-export.component';
 
 @Component({
   selector: 'app-login',
@@ -26,7 +27,8 @@ import { ToastModule } from 'primeng/toast';
     FormElementComponent,
     SelectButtonModule,
     ListboxModule,
-    ToastModule
+    ToastModule,
+    ProfileExportComponent
   ],
   providers: [
     MessageService

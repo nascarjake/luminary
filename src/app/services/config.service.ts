@@ -90,6 +90,10 @@ export class ConfigService {
     return this.config.profiles;
   }
 
+  public getProfile(profileId: string): Profile | undefined {
+    return this.config.profiles.find(p => p.id === profileId);
+  }
+
   public getDefaultProfile(): Profile | undefined {
     return this.config.profiles.find(p => p.default);
   }
@@ -270,11 +274,15 @@ export class ConfigService {
   }
 
   public setActiveProfile(profile: Profile): void {
-    if (!this.initialized) {
-      console.warn('ConfigService not initialized when setting active profile');
-    }
-    console.log('Setting active profile:', profile);
     this.activeProfile = profile;
+    this.save();
+
+    // Check if profile has any projects, if not migrate
+    if (!profile.projects || profile.projects.length === 0) {
+      this.migrateToFirstProject(profile.id);
+    }
+
+    // Notify subscribers
     this.activeProfileSubject.next(profile);
   }
 

@@ -114,7 +114,17 @@ contextBridge.exposeInMainWorld('electron', {
     }
   },
   dialog: {
-    showOpenDialog: (options) => ipcRenderer.invoke('dialog:showOpenDialog', options)
+    showOpenDialog(options) {
+      return ipcRenderer.invoke('dialog:showOpenDialog', options);
+    }
+  },
+  profile: {
+    export(profileId) {
+      return ipcRenderer.invoke('profile:export', profileId);
+    },
+    import(profileId, zipData) {
+      return ipcRenderer.invoke('profile:import', profileId, zipData);
+    }
   },
   ipcRenderer: {
     on: (channel, listener) => ipcRenderer.on(channel, listener),

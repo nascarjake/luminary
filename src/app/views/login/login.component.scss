@@ -27,3 +27,38 @@
     text-align: center;
   }
 }
+
+.view {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 2rem;
+}
+
+.selectMode {
+  margin-bottom: 1rem;
+}
+
+.profile {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: center;
+}
+
+.profile-actions {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+  max-width: 400px;
+}

@@ -23,7 +23,7 @@ export class ObjectMigrationService {
 
   async migrateOutlines(): Promise<void> {
     // Create schema for outlines
-    const schema = await this.createSchemaIfNotExists({
+    /*const schema = await this.createSchemaIfNotExists({
       name: 'ScriptOutline',
       description: 'Outline for a script or content piece',
       fields: [
@@ -53,11 +53,11 @@ export class ObjectMigrationService {
       } catch (error) {
         console.error(`Failed to migrate outline ${outline.id}:`, error);
       }
-    }
+    }*/
   }
 
   async migrateScripts(): Promise<void> {
-    const schema = await this.createSchemaIfNotExists({
+    /*const schema = await this.createSchemaIfNotExists({
       name: 'Script',
       description: 'Generated script content',
       fields: [
@@ -93,11 +93,11 @@ export class ObjectMigrationService {
       } catch (error) {
         console.error(`Failed to migrate script ${script.id}:`, error);
       }
-    }
+    }*/
   }
 
   async migratePictoryRequests(): Promise<void> {
-    const schema = await this.createSchemaIfNotExists({
+    /*const schema = await this.createSchemaIfNotExists({
       name: 'PictoryRequest',
       description: 'Request for Pictory video generation',
       fields: [
@@ -147,11 +147,11 @@ export class ObjectMigrationService {
       } catch (error) {
         console.error(`Failed to migrate Pictory request ${request.id}:`, error);
       }
-    }
+    }*/
   }
 
   async migratePictoryRenders(): Promise<void> {
-    const schema = await this.createSchemaIfNotExists({
+    /*const schema = await this.createSchemaIfNotExists({
       name: 'PictoryRender',
       description: 'Completed Pictory video render',
       fields: [
@@ -201,11 +201,11 @@ export class ObjectMigrationService {
       } catch (error) {
         console.error(`Failed to migrate Pictory render ${render.id}:`, error);
       }
-    }
+    }*/
   }
 
   async migrateVideos(): Promise<void> {
-    const schema = await this.createSchemaIfNotExists({
+    /*const schema = await this.createSchemaIfNotExists({
       name: 'Video',
       description: 'Stored video file',
       fields: [
@@ -248,7 +248,7 @@ export class ObjectMigrationService {
       } catch (error) {
         console.error(`Failed to migrate video ${video.id}:`, error);
       }
-    }
+    }*/
   }
 
   async migrateObjects(): Promise<void> {

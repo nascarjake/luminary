@@ -8,6 +8,11 @@ declare module 'electron-api' {
     readdir(path: string): Promise<string[]>;
   }
 
+  interface ElectronProfile {
+    export(profileId: string): Promise<Uint8Array>;
+    import(profileId: string, zipData: Uint8Array): Promise<boolean>;
+  }
+
   interface ElectronPath {
     appConfigDir(): Promise<string>;
     join(...paths: string[]): Promise<string>;
@@ -111,6 +116,7 @@ declare module 'electron-api' {
     graph: ElectronGraph;
     dialog: ElectronDialog;
     ipcRenderer: IpcRenderer;
+    profile: ElectronProfile;
     app: {
       getVersion(): Promise<string>;
     };
