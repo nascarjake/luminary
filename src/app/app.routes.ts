@@ -3,6 +3,7 @@ import { ObjectManagerComponent } from './modules/object-manager/components/obje
 import { SchemaListComponent } from './modules/object-manager/components/schema-list/schema-list.component';
 import { InstanceListComponent } from './modules/object-manager/components/instance-list/instance-list.component';
 import { LeaveGraphGuard } from './guards/leave-graph.guard';
+import { ProjectListComponent } from './views/projects/project-list.component';
 
 export const routes: Routes = [
   {
@@ -21,6 +22,10 @@ export const routes: Routes = [
     path: 'graph',
     loadComponent: () => import('./views/graph-editor/graph-editor.component').then(c => c.GraphEditorComponent),
     canDeactivate: [LeaveGraphGuard]
+  },
+  {
+    path: 'projects',
+    component: ProjectListComponent
   },
   {
     path: 'objects',
