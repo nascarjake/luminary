@@ -1,20 +1,98 @@
 import { Injectable } from '@angular/core';
-import { AppConfig } from '../../lib/entities/AppConfig';
+import { AppConfig, Profile, Project } from '../../lib/entities/AppConfig';
 import { BehaviorSubject, Observable } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ConfigService {
-  private activeProfile: AppConfig['profiles'][number] | undefined;
+  private activeProfile?: Profile;
+  private activeProject?: Project;
   private config: AppConfig = {
-    version: '0.0.1',
+    version: '0.0.4',
     profiles: []
   };
   private initialized = false;
-  private activeProfileSubject = new BehaviorSubject<AppConfig['profiles'][number] | undefined>(undefined);
+  private activeProfileSubject = new BehaviorSubject<Profile | undefined>(undefined);
+  private activeProjectSubject = new BehaviorSubject<Project | undefined>(undefined);
 
   constructor() {}
+
+  // Project methods
+  public createProject(profileId: string, name: string, description?: string): Project {
+    const profile = this.config.profiles.find(p => p.id === profileId);
+    if (!profile) throw new Error('Profile not found');
+
+    const project: Project = {
+      id: crypto.randomUUID(),
+      name,
+      description,
+      created: new Date().toISOString(),
+      lastModified: new Date().toISOString()
+    };
+
+    profile.projects = profile.projects || [];
+    profile.projects.push(project);
+    this.save();
+    
+    return project;
+  }
+
+  public getProjects(profileId: string): Project[] {
+    const profile = this.config.profiles.find(p => p.id === profileId);
+    return profile?.projects || [];
+  }
+
+  public getActiveProject(): Project | undefined {
+    if (!this.activeProfile) return undefined;
+    return this.activeProfile.projects?.find(p => p.id === this.activeProfile?.activeProjectId);
+  }
+
+  public setActiveProject(projectId: string): void {
+    if (!this.activeProfile) throw new Error('No active profile');
+    
+    const project = this.activeProfile.projects?.find(p => p.id === projectId);
+    if (!project) throw new Error('Project not found');
+    
+    this.activeProfile.activeProjectId = projectId;
+    this.save();
+    this.activeProjectSubject.next(project);
+  }
+
+  public get activeProject$(): Observable<Project | undefined> {
+    return this.activeProjectSubject.asObservable();
+  }
+
+  // Profile methods
+  public createProfile(profile: Omit<Profile, 'projects'>): void {
+    const newProfile: Profile = {
+      ...profile,
+      projects: [],
+      threads: [],
+      default: false,
+      openai: profile.openai || { apiKey: '' }
+    };
+    this.config.profiles.push(newProfile);
+    this.save();
+  }
+
+  public updateProfile(profile: Profile): void {
+    this.config.profiles = this.config.profiles.map(p => (p.id === profile.id ? profile : p));
+    this.save();
+  }
+
+  public deleteProfile(profile: Profile): void {
+    this.config.profiles = this.config.profiles.filter(p => p.id !== profile.id);
+    this.save();
+  }
+
+  public getProfiles(): Profile[] {
+    return this.config.profiles;
+  }
+
+  public getDefaultProfile(): Profile | undefined {
+    return this.config.profiles.find(p => p.default);
+  }
 
   public async initialize(): Promise<any> {
     if (this.initialized) {
@@ -33,21 +111,30 @@ export class ConfigService {
 
     // Handle profile selection based on number of profiles
     if (this.config.profiles.length === 1) {
-      // If there's exactly one profile, use it
       console.log('Single profile found, setting as active...');
       this.activeProfile = this.config.profiles[0];
+      
+      // Create default project if none exists
+      if (!this.activeProfile.projects?.length) {
+        const defaultProject = this.createProject(this.activeProfile.id, 'Default Project');
+        this.setActiveProject(defaultProject.id);
+      }
     } else if (this.config.profiles.length > 1) {
-      // If there are multiple profiles, check for a default
       const defaultProfile = this.getDefaultProfile();
       if (defaultProfile) {
         console.log('Multiple profiles found, using default profile...');
         this.activeProfile = defaultProfile;
+        
+        // Create default project if none exists
+        if (!this.activeProfile.projects?.length) {
+          const defaultProject = this.createProject(this.activeProfile.id, 'Default Project');
+          this.setActiveProject(defaultProject.id);
+        }
       } else {
         console.log('Multiple profiles found, no default set. User selection required.');
         this.activeProfile = undefined;
       }
     } else {
-      // No profiles exist, start with blank slate
       console.log('No profiles exist. User needs to create one.');
       this.activeProfile = undefined;
     }
@@ -55,43 +142,39 @@ export class ConfigService {
     console.log('ConfigService initialized with active profile:', this.activeProfile);
     this.initialized = true;
     this.activeProfileSubject.next(this.activeProfile);
+    
+    // Set active project
+    const activeProject = this.getActiveProject();
+    if (activeProject) {
+      this.activeProjectSubject.next(activeProject);
+    }
   }
 
-  public get activeProfile$(): Observable<AppConfig['profiles'][number] | undefined> {
+  // Helper method to migrate existing data to first project
+  public async migrateToFirstProject(profileId: string): Promise<void> {
+    const profile = this.config.profiles.find(p => p.id === profileId);
+    if (!profile) throw new Error('Profile not found');
+
+    // Create default project if none exists
+    if (!profile.projects?.length) {
+      const project = this.createProject(profile.id, 'Default Project', 'Migrated from existing data');
+      profile.activeProjectId = project.id;
+      this.save();
+    }
+  }
+
+  public get activeProfile$(): Observable<Profile | undefined> {
     return this.activeProfileSubject.asObservable();
   }
 
-  public createProfile(profile: AppConfig['profiles'][number]): void {
-    this.config.profiles.push(profile);
-    this.save();
-  }
-
-  public updateProfile(profile: AppConfig['profiles'][number]): void {
-    this.config.profiles = this.config.profiles.map(p => (p.id === profile.id ? profile : p));
-    this.save();
-  }
-
-  public deleteProfile(profile: AppConfig['profiles'][number]): void {
-    this.config.profiles = this.config.profiles.filter(p => p.id !== profile.id);
-    this.save();
-  }
-
-  public getProfiles(): AppConfig['profiles'] {
-    return this.config.profiles;
-  }
-
-  public getDefaultProfile(): AppConfig['profiles'][number] | undefined {
-    return this.config.profiles.find(p => p.default);
-  }
-
-  public getActiveProfile(): AppConfig['profiles'][number] | undefined {
+  public getActiveProfile(): Profile | undefined {
     if (!this.initialized) {
       console.warn('ConfigService not initialized when getting active profile');
     }
     return this.activeProfile;
   }
 
-  public setActiveProfile(profile: AppConfig['profiles'][number]): void {
+  public setActiveProfile(profile: Profile): void {
     if (!this.initialized) {
       console.warn('ConfigService not initialized when setting active profile');
     }
@@ -100,7 +183,7 @@ export class ConfigService {
     this.activeProfileSubject.next(profile);
   }
 
-  public setDefaultProfile(profile: AppConfig['profiles'][number]): void {
+  public setDefaultProfile(profile: Profile): void {
     this.config.profiles = this.config.profiles.map(p => ({ ...p, default: p.id === profile.id }));
     this.save();
   }

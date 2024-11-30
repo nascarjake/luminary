@@ -379,7 +379,7 @@ export class AiFunctionService {
     data: any
   ): Promise<{ success: boolean; errors?: string[] }> {
     try {
-      const state = this.graphService.currentState;
+      const state = this.graphService.state;
       const connections = state.connections.filter(c => c.fromNode === sourceNodeId);
       
       for (const connection of connections) {
@@ -537,7 +537,7 @@ export class AiFunctionService {
       }
 
       // Find nodes for this assistant
-      const state = this.graphService.currentState;
+      const state = this.graphService.state;
       const sourceNodes = state.nodes.filter(n => n.assistantId === assistantId);
       
       if (sourceNodes.length === 0) {

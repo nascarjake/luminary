@@ -95,7 +95,7 @@ export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
     this.initializeLiteGraph();
     
     // Subscribe to graph state changes
-    this.graphService.state$.subscribe(state => {
+    this.graphService.currentState$.subscribe(state => {
       if (this.isInitialized && state) {
         this.loadGraphState(state);
       }
@@ -225,7 +225,7 @@ export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
       this.graph.start();
 
       // Load saved state
-      const state = this.graphService.currentState;
+      const state = this.graphService.state;
       this.loadGraphState(state);
       this.markClean(); // Initial state is clean
     }

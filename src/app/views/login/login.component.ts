@@ -95,7 +95,8 @@ export class LoginComponent {
       openai: {
         apiKey: this.registerForm.value.apiKey!
       },
-      threads: []
+      threads: [],
+      projects: []
     };
     this.configService.createProfile(profile);
     this.configService.setDefaultProfile(profile);
