@@ -21,7 +21,13 @@ export class ObjectSchemaService implements IObjectSchemaService {
   private initialized = false;
 
   constructor(private configService: ConfigService) {
-    // Don't auto-initialize in constructor
+    // Subscribe to project changes
+    this.configService.activeProject$.subscribe(project => {
+      if (project && this.initialized) {
+        console.log('Active project changed, reloading schemas...');
+        this.loadSchemas();
+      }
+    });
   }
 
   /**
@@ -47,7 +53,7 @@ export class ObjectSchemaService implements IObjectSchemaService {
     if (!project) throw new Error('No active project');
     
     const configDir = await window.electron.path.appConfigDir();
-    return window.electron.path.join(configDir, `schemas-${profile.id}-${project.id}.json`);
+    return window.electron.path.join(configDir, `schemas-${profile.id}.json`);
   }
 
   private async loadSchemas(): Promise<void> {

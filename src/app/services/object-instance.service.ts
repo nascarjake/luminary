@@ -27,7 +27,13 @@ export class ObjectInstanceService implements IObjectInstanceService {
     private configService: ConfigService,
     private schemaService: ObjectSchemaService
   ) {
-    // Don't auto-initialize in constructor
+    // Subscribe to project changes
+    this.configService.activeProject$.subscribe(project => {
+      if (project && this.initialized) {
+        console.log('Active project changed, reloading instances...');
+        this.loadInstances();
+      }
+    });
   }
 
   /**
