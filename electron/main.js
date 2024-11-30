@@ -77,7 +77,7 @@ ipcMain.handle('graph:save', async (_, baseDir, profileId, projectId, graphData)
     });
 
     const graphDir = path.join(baseDir, 'graphs');
-    const graphPath = path.join(graphDir, `graph-${profileId}-${projectId}.json`);
+    const graphPath = path.join(graphDir, `graph-${profileId}.json`);
     console.log('Saving graph to:', graphPath);
     
     fs.writeFileSync(graphPath, JSON.stringify(graphData, null, 2));
@@ -263,7 +263,7 @@ console.log('Registered terminal:executeCommand handler');
 // Assistant configuration handling
 ipcMain.handle('assistant:save', async (_, baseDir, profileId, projectId, assistantId, config) => {
   console.log('Saving assistant configuration:', { profileId, projectId, assistantId });
-  const filePath = path.join(baseDir, `assistant-${profileId}-${projectId}-${assistantId}.json`);
+  const filePath = path.join(baseDir, `assistant-${profileId}-${assistantId}.json`);
   
   try {
     fs.writeFileSync(filePath, JSON.stringify(config, null, 2));
