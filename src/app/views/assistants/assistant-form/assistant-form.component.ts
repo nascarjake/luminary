@@ -222,9 +222,11 @@ export class AssistantFormComponent implements OnInit {
 
           // Load instruction parts and functions from local storage
           const activeProfile = await this.configService.getActiveProfile();
-          if (activeProfile && this.assistant.id) {
+          const activeProject = await this.configService.getActiveProject();
+          if (activeProfile && activeProject && this.assistant.id) {
             const config = await this.functionImplementationsService.loadFunctionImplementations(
               activeProfile.id,
+              activeProject.id,
               this.assistant.id
             );
 
@@ -304,8 +306,9 @@ export class AssistantFormComponent implements OnInit {
     if (!this.assistant) return;
 
     const activeProfile = await this.configService.getActiveProfile();
-    if (!activeProfile) {
-      console.error('No active profile found');
+    const activeProject = await this.configService.getActiveProject();
+    if (!activeProfile || !activeProject) {
+      console.error('No active profile or project');
       this.functions = functionDefs;
       return;
     }
@@ -313,6 +316,7 @@ export class AssistantFormComponent implements OnInit {
     try {
       const config = await this.functionImplementationsService.loadFunctionImplementations(
         activeProfile.id,
+        activeProject.id,
         this.assistant.id
       );
       
@@ -408,14 +412,16 @@ export class AssistantFormComponent implements OnInit {
     if (!this.assistant) return;
 
     const activeProfile = await this.configService.getActiveProfile();
-    if (!activeProfile) {
-      console.error('No active profile found');
+    const activeProject = await this.configService.getActiveProject();
+    if (!activeProfile || !activeProject) {
+      console.error('No active profile or project');
       return;
     }
 
     try {
       await this.functionImplementationsService.saveFunctionImplementations(
         activeProfile.id,
+        activeProject.id,
         this.assistant.id,
         this.assistant.name,
         this.functions,
@@ -1014,9 +1020,11 @@ export class AssistantFormComponent implements OnInit {
       // Save function implementations and instruction parts locally
       if (this.assistant?.id) {
         const activeProfile = await this.configService.getActiveProfile();
-        if (activeProfile) {
+        const activeProject = await this.configService.getActiveProject();
+        if (activeProfile && activeProject) {
           await this.functionImplementationsService.saveFunctionImplementations(
             activeProfile.id,
+            activeProject.id,
             this.assistant.id,
             this.assistant.name,
             this.functions,

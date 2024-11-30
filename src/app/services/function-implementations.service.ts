@@ -43,7 +43,7 @@ export class FunctionImplementationsService {
     return this.baseDir;
   }
 
-  async saveFunctionImplementations(profileId: string, assistantId: string, assistantName: string, functions: FunctionDefinition[], inputSchemas: string[] = [], outputSchemas: string[] = [], instructionParts?: AssistantConfig['instructionParts'], arraySchemas?: any): Promise<void> {
+  async saveFunctionImplementations(profileId: string, projectId: string, assistantId: string, assistantName: string, functions: FunctionDefinition[], inputSchemas: string[] = [], outputSchemas: string[] = [], instructionParts?: AssistantConfig['instructionParts'], arraySchemas?: any): Promise<void> {
     try {
       const baseDir = await this.ensureBaseDir();
 
@@ -67,7 +67,7 @@ export class FunctionImplementationsService {
       }
 
       // Save to the new assistant configuration file
-      await window.electron.assistant.save(baseDir, profileId, assistantId, {
+      await window.electron.assistant.save(baseDir, profileId, projectId, assistantId, {
         functions: implementations,
         inputs: inputSchemas,
         outputs: outputSchemas,
@@ -81,7 +81,7 @@ export class FunctionImplementationsService {
     }
   }
 
-  async loadFunctionImplementations(profileId: string, assistantId: string): Promise<AssistantConfig> {
+  async loadFunctionImplementations(profileId: string, projectId: string, assistantId: string): Promise<AssistantConfig> {
     try {
       const baseDir = await this.ensureBaseDir();
 
@@ -89,7 +89,7 @@ export class FunctionImplementationsService {
         throw new Error('Electron API not available');
       }
 
-      const config = await window.electron.assistant.load(baseDir, profileId, assistantId);
+      const config = await window.electron.assistant.load(baseDir, profileId, projectId, assistantId);
       if (!config) {
         return { functions: { assistantId, functions: [] }, inputs: [], outputs: [] };
       }

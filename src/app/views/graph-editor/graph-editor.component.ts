@@ -619,8 +619,12 @@ export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
       const activeProfile = await this.configService.getActiveProfile();
       if (!activeProfile) return;
 
+      const activeProject = await this.configService.getActiveProject();
+      if (!activeProject) return;
+
       const config = await this.functionImplementationsService.loadFunctionImplementations(
         activeProfile.id,
+        activeProject.id,
         assistant.id
       );
 

@@ -23,6 +23,9 @@ contextBridge.exposeInMainWorld('electron', {
     },
     async createDir(path, options) {
       return ipcRenderer.invoke('fs:createDir', path, options);
+    },
+    async readdir(path) {
+      return ipcRenderer.invoke('fs:readdir', path);
     }
   },
   path: {
@@ -46,19 +49,19 @@ contextBridge.exposeInMainWorld('electron', {
     }
   },
   assistant: {
-    async save(baseDir, profileId, assistantId, config) {
-      return ipcRenderer.invoke('assistant:save', baseDir, profileId, assistantId, config);
+    async save(baseDir, profileId, projectId, assistantId, config) {
+      return ipcRenderer.invoke('assistant:save', baseDir, profileId, projectId, assistantId, config);
     },
-    async load(baseDir, profileId, assistantId) {
-      return ipcRenderer.invoke('assistant:load', baseDir, profileId, assistantId);
+    async load(baseDir, profileId, projectId, assistantId) {
+      return ipcRenderer.invoke('assistant:load', baseDir, profileId, projectId, assistantId);
     }
   },
   graph: {
-    async save(baseDir, profileId, graphData) {
-      return ipcRenderer.invoke('graph:save', baseDir, profileId, graphData);
+    async save(baseDir, profileId, projectId, graphData) {
+      return ipcRenderer.invoke('graph:save', baseDir, profileId, projectId, graphData);
     },
-    async load(baseDir, profileId) {
-      return ipcRenderer.invoke('graph:load', baseDir, profileId);
+    async load(baseDir, profileId, projectId) {
+      return ipcRenderer.invoke('graph:load', baseDir, profileId, projectId);
     }
   },
   download: {
