@@ -59,7 +59,7 @@ ipcMain.handle('fs:readdir', async (_, path) => {
 });
 
 ipcMain.handle('path:appConfigDir', async () => {
-  const dir = path.join(os.homedir(), '.gpt-assistant-ui');
+  const dir = path.join(os.homedir(), '.luminary');
   console.log('Getting config dir:', dir);
   return dir;
 });
@@ -446,7 +446,7 @@ async function extractZipArchive(zipPath, targetDir) {
 
 // Helper function to get config directory
 async function getConfigDir() {
-  const dir = path.join(os.homedir(), '.gpt-assistant-ui');
+  const dir = path.join(os.homedir(), '.luminary');
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }

@@ -37,7 +37,7 @@ import { firstValueFrom } from 'rxjs';
   }
 })
 export class AppComponent implements OnInit, OnDestroy {
-  public title = 'gpt-assistant-ui';
+  public title = 'Luminary';
   public loading = true;
   public hasSidebar = false;
 

@@ -54,7 +54,7 @@ ipcMain.handle('fs:createDir', async (_, path, options) => {
 });
 
 ipcMain.handle('path:appConfigDir', async () => {
-  const dir = path.join(os.homedir(), '.gpt-assistant-ui');
+  const dir = path.join(os.homedir(), '.luminary');
   console.log('Getting config dir:', dir);
   return dir;
 });
