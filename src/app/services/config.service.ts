@@ -171,24 +171,24 @@ export class ConfigService {
         const configDir = await window.electron.path.appConfigDir();
         
         // Migrate graph data
-        const oldGraphPath = await window.electron.path.join(configDir, `graphs/graph-${profile.id}.json`);
+        /*const oldGraphPath = await window.electron.path.join(configDir, `graphs/graph-${profile.id}.json`);
         const newGraphPath = await window.electron.path.join(configDir, `graphs/graph-${profile.id}-${project.id}.json`);
         
         if (await window.electron.fs.exists(oldGraphPath)) {
           console.log('Migrating graph data...');
           const graphData = await window.electron.fs.readTextFile(oldGraphPath);
           await window.electron.fs.writeTextFile(newGraphPath, graphData);
-        }
+        }*/
 
         // Migrate schema data
-        const oldSchemaPath = await window.electron.path.join(configDir, `schemas-${profile.id}.json`);
+        /*const oldSchemaPath = await window.electron.path.join(configDir, `schemas-${profile.id}.json`);
         const newSchemaPath = await window.electron.path.join(configDir, `schemas-${profile.id}-${project.id}.json`);
         
         if (await window.electron.fs.exists(oldSchemaPath)) {
           console.log('Migrating schema data...');
           const schemaData = await window.electron.fs.readTextFile(oldSchemaPath);
           await window.electron.fs.writeTextFile(newSchemaPath, schemaData);
-        }
+        }*/
 
         // Migrate instance data
         const oldInstancePath = await window.electron.path.join(configDir, `instances-${profile.id}.json`);
@@ -201,7 +201,7 @@ export class ConfigService {
         }
 
         // Migrate assistant data
-        console.log('Looking for assistant files to migrate...');
+        /*console.log('Looking for assistant files to migrate...');
         const files = await window.electron.fs.readdir(configDir);
         const assistantFiles = files.filter(f => f.startsWith(`assistant-${profile.id}-`) && f.endsWith('.json'));
         
@@ -218,10 +218,10 @@ export class ConfigService {
             await window.electron.fs.writeTextFile(newPath, assistantData);
             console.log(`Migrated assistant ${assistantId} to project ${project.id}`);
           }
-        }
+        }*/
       } else {
         // Handle web storage migration
-        const oldGraphData = localStorage.getItem(`graph-${profile.id}`);
+        /*const oldGraphData = localStorage.getItem(`graph-${profile.id}`);
         if (oldGraphData) {
           localStorage.setItem(`graph-${profile.id}-${project.id}`, oldGraphData);
         }
@@ -229,7 +229,7 @@ export class ConfigService {
         const oldSchemaData = localStorage.getItem(`schemas-${profile.id}`);
         if (oldSchemaData) {
           localStorage.setItem(`schemas-${profile.id}-${project.id}`, oldSchemaData);
-        }
+        }*/
 
         const oldInstanceData = localStorage.getItem(`instances-${profile.id}`);
         if (oldInstanceData) {
@@ -237,7 +237,7 @@ export class ConfigService {
         }
         
         // Migrate assistant data in localStorage
-        for (let i = 0; i < localStorage.length; i++) {
+        /*for (let i = 0; i < localStorage.length; i++) {
           const key = localStorage.key(i);
           if (key?.startsWith(`assistant-${profile.id}-`)) {
             const data = localStorage.getItem(key);
@@ -250,7 +250,7 @@ export class ConfigService {
               }
             }
           }
-        }
+        }*/
       }
 
       this.save();
