@@ -7,6 +7,9 @@ import { TableModule } from 'primeng/table';
 import { FormsModule } from '@angular/forms';
 import { ConfigService } from '../../services/config.service';
 import { Project } from '../../../lib/entities/AppConfig';
+import { ConfirmationService, MessageService } from 'primeng/api';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { ToastModule } from 'primeng/toast';
 
 @Component({
   selector: 'app-project-list',
@@ -17,7 +20,13 @@ import { Project } from '../../../lib/entities/AppConfig';
     DialogModule,
     InputTextModule,
     TableModule,
-    FormsModule
+    FormsModule,
+    ConfirmDialogModule,
+    ToastModule
+  ],
+  providers: [
+    ConfirmationService,
+    MessageService
   ],
   template: `
     <div class="project-list">
@@ -50,11 +59,20 @@ import { Project } from '../../../lib/entities/AppConfig';
             <td>{{project.created | date}}</td>
             <td>{{project.lastModified | date}}</td>
             <td>
-              <button pButton 
-                      [label]="project.id === activeProjectId ? 'Active' : 'Switch'"
-                      [disabled]="project.id === activeProjectId"
-                      (click)="switchProject(project)">
-              </button>
+              <div class="flex gap-2">
+                <button pButton 
+                        [label]="project.id === activeProjectId ? 'Active' : 'Switch'"
+                        [disabled]="project.id === activeProjectId"
+                        (click)="switchProject(project)">
+                </button>
+                <button pButton 
+                        icon="pi pi-trash"
+                        style="margin-left: 10px"
+                        class="p-button-danger"
+                        [disabled]="project.id === activeProjectId"
+                        (click)="deleteProject(project)">
+                </button>
+              </div>
             </td>
           </tr>
         </ng-template>
@@ -69,6 +87,7 @@ import { Project } from '../../../lib/entities/AppConfig';
         <div class="field">
           <label for="name">Project Name</label>
           <input id="name" 
+                 style="width: 100%"
                  type="text" 
                  pInputText 
                  [(ngModel)]="newProject.name" 
@@ -77,6 +96,7 @@ import { Project } from '../../../lib/entities/AppConfig';
         <div class="field">
           <label for="description">Description (Optional)</label>
           <input id="description" 
+                 style="width: 100%"  
                  type="text" 
                  pInputText 
                  [(ngModel)]="newProject.description" 
@@ -98,6 +118,8 @@ import { Project } from '../../../lib/entities/AppConfig';
         </button>
       </ng-template>
     </p-dialog>
+    <p-confirmDialog></p-confirmDialog>
+    <p-toast></p-toast>
   `,
   styles: [`
     .project-list {
@@ -136,8 +158,13 @@ export class ProjectListComponent implements OnInit {
   activeProjectId?: string;
   showDialog = false;
   newProject: Partial<Project> = {};
+  activeProfile: any;
 
-  constructor(private configService: ConfigService) {}
+  constructor(
+    private configService: ConfigService,
+    private confirmationService: ConfirmationService,
+    private messageService: MessageService
+  ) {}
 
   ngOnInit() {
     this.loadProjects();
@@ -148,6 +175,7 @@ export class ProjectListComponent implements OnInit {
     if (profile) {
       this.projects = this.configService.getProjects(profile.id);
       this.activeProjectId = profile.activeProjectId;
+      this.activeProfile = profile;
     }
   }
 
@@ -176,5 +204,24 @@ export class ProjectListComponent implements OnInit {
   switchProject(project: Project) {
     this.configService.setActiveProject(project.id);
     this.activeProjectId = project.id;
+  }
+
+  public deleteProject(project: Project): void {
+    if (!this.activeProfile?.id) return;
+
+    this.confirmationService.confirm({
+      message: `Are you sure you want to delete the project "${project.name}"?`,
+      header: 'Delete Project',
+      icon: 'pi pi-exclamation-triangle',
+      accept: () => {
+        this.configService.deleteProject(this.activeProfile.id, project.id);
+        this.projects = this.configService.getProjects(this.activeProfile.id);
+        this.messageService.add({
+          severity: 'success',
+          summary: 'Project Deleted',
+          detail: 'The project has been successfully removed.'
+        });
+      }
+    });
   }
 }

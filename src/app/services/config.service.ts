@@ -63,6 +63,18 @@ export class ConfigService {
     return this.activeProjectSubject.asObservable();
   }
 
+  public deleteProject(profileId: string, projectId: string): void {
+    const profile = this.config.profiles.find(p => p.id === profileId);
+    if (!profile) throw new Error('Profile not found');
+    
+    profile.projects = profile.projects?.filter(p => p.id !== projectId) || [];
+    if (profile.activeProjectId === projectId) {
+      profile.activeProjectId = undefined;
+      this.activeProjectSubject.next(undefined);
+    }
+    this.save();
+  }
+
   // Profile methods
   public createProfile(profile: Omit<Profile, 'projects'>): void {
     const newProfile: Profile = {

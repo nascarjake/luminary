@@ -39,10 +39,16 @@
       <div class="profile-actions">
         <p-button icon="pi pi-arrow-right" iconPos="right" label="Login" [disabled]="!selectedProfile" (click)="onSelectProfile()" />
         @if (selectedProfile) {
-          <app-profile-export [profileId]="selectedProfile.id" />
+          <div class="flex gap-2">
+            <app-profile-export style="display: inline-block" [profileId]="selectedProfile.id" />
+            <div style="display: inline-block"><p-button icon="pi pi-trash" 
+                     class="p-button-danger" 
+                     (click)="deleteProfile()" /></div>
+          </div>
         }
       </div>
     </div>
   }
 </div>
 <p-toast></p-toast>
+<p-confirmDialog></p-confirmDialog>
