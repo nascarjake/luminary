@@ -14,6 +14,8 @@ import { AppConfig } from '../../../lib/entities/AppConfig';
 import { MessageService } from 'primeng/api';
 import { ToastModule } from 'primeng/toast';
 import { ProfileExportComponent } from '../../components/profile-export/profile-export.component';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { ConfirmationService } from 'primeng/api';
 
 @Component({
   selector: 'app-login',
@@ -28,10 +30,12 @@ import { ProfileExportComponent } from '../../components/profile-export/profile-
     SelectButtonModule,
     ListboxModule,
     ToastModule,
-    ProfileExportComponent
+    ProfileExportComponent,
+    ConfirmDialogModule
   ],
   providers: [
-    MessageService
+    MessageService,
+    ConfirmationService
   ],
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss'
@@ -56,7 +60,8 @@ export class LoginComponent {
     private readonly openAiApiService: OpenAiApiService,
     private readonly authService: AuthService,
     private readonly configService: ConfigService,
-    private readonly messageService: MessageService
+    private readonly messageService: MessageService,
+    private readonly confirmationService: ConfirmationService
   ) {}
 
   public async onSelectProfile(): Promise<void> {
@@ -107,6 +112,26 @@ export class LoginComponent {
 
   private async validateApiKey(): Promise<boolean> {
     return await this.openAiApiService.validateApiKey();
+  }
+
+  public deleteProfile(): void {
+    if (!this.selectedProfile) return;
+    
+    this.confirmationService.confirm({
+      message: `Are you sure you want to delete the profile "${this.selectedProfile.name}"?`,
+      header: 'Delete Profile',
+      icon: 'pi pi-exclamation-triangle',
+      accept: () => {
+        this.configService.deleteProfile(this.selectedProfile!);
+        this.selectedProfile = undefined;
+        this.profiles = this.configService.getProfiles();
+        this.messageService.add({
+          severity: 'success',
+          summary: 'Profile Deleted',
+          detail: 'The profile has been successfully removed.'
+        });
+      }
+    });
   }
 
 }
