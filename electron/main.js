@@ -495,6 +495,14 @@ ipcMain.handle('profile:import', async (_, profileId, zipBuffer) => {
   }
 });
 
+async function getConfigDir() {
+  const dir = path.join(os.homedir(), '.luminary');
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  return dir;
+}
+
 // Window control handlers
 ipcMain.handle('window:minimize', () => {
   BrowserWindow.getFocusedWindow()?.minimize();
