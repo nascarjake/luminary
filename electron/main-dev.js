@@ -80,8 +80,8 @@ ipcMain.handle('graph:save', async (_, baseDir, profileId, projectId, graphData)
       projectId,
       graphDataType: typeof graphData
     });
-
-    const graphPath = path.join(baseDir, `graph-${profileId}-${projectId}.json`);
+    const graphDir = path.join(baseDir, 'graphs');
+    const graphPath = path.join(graphDir, `graph-${profileId}-${projectId}.json`);
     console.log('Saving graph to:', graphPath, graphData);
     
     fs.writeFileSync(graphPath, JSON.stringify(graphData, null, 2));
@@ -95,10 +95,11 @@ ipcMain.handle('graph:save', async (_, baseDir, profileId, projectId, graphData)
 
 ipcMain.handle('graph:load', async (_, baseDir, profileId, projectId) => {
   try {
-    const graphPath = path.join(baseDir, `graph-${profileId}-${projectId}.json`);
+    const graphDir = path.join(baseDir, 'graphs');
+    const graphPath = path.join(graphDir, `graph-${profileId}-${projectId}.json`);
     if (!fs.existsSync(graphPath)) {
       // Try loading from old path format
-      const oldGraphPath = path.join(baseDir, `graph-${profileId}.json`);
+      const oldGraphPath = path.join(graphDir, `graph-${profileId}.json`);
       if (fs.existsSync(oldGraphPath)) {
         console.log('Found graph in old location, will migrate on next save');
         const content = fs.readFileSync(oldGraphPath, 'utf8');
@@ -172,9 +173,9 @@ ipcMain.handle('assistant:save', async (_, baseDir, profileId, projectId, assist
 });
 
 ipcMain.handle('assistant:load', async (_, baseDir, profileId, projectId, assistantId) => {
-  console.log('Loading assistant configuration:', { profileId, projectId, assistantId });
-  const filePath = path.join(baseDir, `assistant-${profileId}-${projectId}-${assistantId}.json`);
   
+  const filePath = path.join(baseDir, `assistant-${profileId}-${projectId}-${assistantId}.json`);
+  console.log('Loading assistant configuration:', { profileId, projectId, assistantId, filePath });
   try {
     if (!fs.existsSync(filePath)) {
       // Try loading from old path format

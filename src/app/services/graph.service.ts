@@ -135,7 +135,7 @@ export class GraphService {
     if (!project) throw new Error('No active project');
     
     const configDir = await window.electron.path.appConfigDir();
-    return window.electron.path.join(configDir, `graph-${profile.id}-${project.id}.json`);
+    return window.electron.path.join(configDir);
   }
 
   async saveGraph(): Promise<void> {
