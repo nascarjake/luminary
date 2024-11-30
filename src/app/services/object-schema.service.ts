@@ -172,7 +172,7 @@ export class ObjectSchemaService implements IObjectSchemaService {
     if (currentSchemas.length > 0) return;
 
     const defaultSchemas = [
-      {
+      /*{
         name: 'ScriptOutline',
         description: 'Outline for a script',
         fields: [
@@ -220,7 +220,7 @@ export class ObjectSchemaService implements IObjectSchemaService {
           { name: 'name', type: 'string' as const, description: 'Video name', required: true },
           { name: 'thumbnail', type: 'string' as const, description: 'Thumbnail path', required: true }
         ]
-      }
+      }*/
     ];
 
     for (const schema of defaultSchemas) {

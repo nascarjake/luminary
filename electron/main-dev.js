@@ -5,6 +5,8 @@ const os = require('os');
 const https = require('https');
 const url = require('url');
 const { spawn } = require('child_process');
+const archiver = require('archiver');
+const AdmZip = require('adm-zip');
 
 // Load package.json for version
 const packageJson = require('../package.json');
@@ -242,6 +244,214 @@ ipcMain.handle('download:file', async (_, fileUrl, filePath) => {
   });
 });
 console.log('Registered download:file handler');
+
+// Profile export/import handling
+ipcMain.handle('profile:export', async (_, profileId) => {
+  console.log('Exporting profile:', profileId);
+  const configDir = await getConfigDir();
+  
+  // Create a temporary directory for the export
+  const tempDir = path.join(configDir, 'temp-export');
+  if (!fs.existsSync(tempDir)) {
+    fs.mkdirSync(tempDir);
+  }
+
+  try {
+    // Read config file to get profile data
+    const configPath = path.join(configDir, 'config.json');
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    const profile = config.profiles.find(p => p.id === profileId);
+    
+    if (!profile) {
+      throw new Error('Profile not found');
+    }
+
+    // Create sanitized profile data
+    const exportProfile = {
+      ...profile,
+      openai: { apiKey: '' },  // Remove API key
+      threads: [],  // Remove threads
+      overlays: []  // Remove overlays
+    };
+
+    // Write profile data
+    fs.writeFileSync(
+      path.join(tempDir, 'profile.json'),
+      JSON.stringify({ version: '1.0.0', profile: exportProfile }, null, 2)
+    );
+
+    // Copy schemas file if exists
+    const schemasPath = path.join(configDir, `schemas-${profileId}.json`);
+    if (fs.existsSync(schemasPath)) {
+      fs.copyFileSync(schemasPath, path.join(tempDir, 'schemas.json'));
+    }
+
+    // Copy graph file if exists
+    const graphPath = path.join(configDir, 'graphs', `graph-${profileId}.json`);
+    if (fs.existsSync(graphPath)) {
+      fs.copyFileSync(graphPath, path.join(tempDir, 'graph.json'));
+    }
+
+    // Copy assistant files
+    const assistantFiles = fs.readdirSync(configDir)
+      .filter(f => f.startsWith(`assistant-${profileId}-`) && f.endsWith('.json'));
+    
+    const assistants = assistantFiles.map(file => {
+      const content = fs.readFileSync(path.join(configDir, file), 'utf8');
+      return {
+        id: file.match(/assistant-.*-(asst_[^.]+)/)?.[1],
+        config: JSON.parse(content)
+      };
+    });
+
+    fs.writeFileSync(
+      path.join(tempDir, 'assistants.json'),
+      JSON.stringify(assistants, null, 2)
+    );
+
+    // Create zip file
+    const zipPath = path.join(configDir, `profile-${profileId}-export.zip`);
+    await createZipArchive(tempDir, zipPath);
+
+    // Read zip file as buffer
+    const zipBuffer = fs.readFileSync(zipPath);
+
+    // Cleanup
+    fs.rmSync(tempDir, { recursive: true });
+    fs.unlinkSync(zipPath);
+
+    return zipBuffer;
+  } catch (error) {
+    console.error('Error exporting profile:', error);
+    // Cleanup on error
+    if (fs.existsSync(tempDir)) {
+      fs.rmSync(tempDir, { recursive: true });
+    }
+    throw error;
+  }
+});
+
+ipcMain.handle('profile:import', async (_, profileId, zipBuffer) => {
+  console.log('Importing profile:', profileId);
+  const configDir = await getConfigDir();
+  
+  // Create a temporary directory for the import
+  const tempDir = path.join(configDir, 'temp-import');
+  if (!fs.existsSync(tempDir)) {
+    fs.mkdirSync(tempDir);
+  }
+
+  try {
+    // Write zip buffer to temporary file
+    const zipPath = path.join(tempDir, 'import.zip');
+    fs.writeFileSync(zipPath, Buffer.from(zipBuffer));
+
+    // Extract zip file
+    await extractZipArchive(zipPath, tempDir);
+
+    // Read and validate profile data
+    const profilePath = path.join(tempDir, 'profile.json');
+    if (!fs.existsSync(profilePath)) {
+      throw new Error('Invalid export file: missing profile.json');
+    }
+
+    const exportData = JSON.parse(fs.readFileSync(profilePath, 'utf8'));
+    
+    // Import schemas if exists
+    const schemasPath = path.join(tempDir, 'schemas.json');
+    if (fs.existsSync(schemasPath)) {
+      fs.copyFileSync(
+        schemasPath,
+        path.join(configDir, `schemas-${profileId}.json`)
+      );
+    }
+
+    // Import graph if exists
+    const graphPath = path.join(tempDir, 'graph.json');
+    if (fs.existsSync(graphPath)) {
+      const graphsDir = path.join(configDir, 'graphs');
+      if (!fs.existsSync(graphsDir)) {
+        fs.mkdirSync(graphsDir);
+      }
+      fs.copyFileSync(
+        graphPath,
+        path.join(graphsDir, `graph-${profileId}.json`)
+      );
+    }
+
+    // Import assistants
+    const assistantsPath = path.join(tempDir, 'assistants.json');
+    if (fs.existsSync(assistantsPath)) {
+      const assistants = JSON.parse(fs.readFileSync(assistantsPath, 'utf8'));
+      
+      for (const assistant of assistants) {
+        if (!assistant.id || !assistant.config) continue;
+        
+        fs.writeFileSync(
+          path.join(configDir, `assistant-${profileId}-${assistant.id}.json`),
+          JSON.stringify(assistant.config, null, 2)
+        );
+      }
+    }
+
+    // Update config file
+    const configPath = path.join(configDir, 'config.json');
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    const profile = config.profiles.find(p => p.id === profileId);
+    
+    if (profile) {
+      // Merge imported profile data, preserving sensitive data
+      Object.assign(profile, {
+        ...exportData.profile,
+        openai: profile.openai,  // Preserve API key
+        threads: profile.threads,  // Preserve threads
+        overlays: profile.overlays  // Preserve overlays
+      });
+      
+      fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+    }
+
+    // Cleanup
+    fs.rmSync(tempDir, { recursive: true });
+    return true;
+  } catch (error) {
+    console.error('Error importing profile:', error);
+    // Cleanup on error
+    if (fs.existsSync(tempDir)) {
+      fs.rmSync(tempDir, { recursive: true });
+    }
+    throw error;
+  }
+});
+
+// Helper functions for zip operations
+async function createZipArchive(sourceDir, targetPath) {
+  return new Promise((resolve, reject) => {
+    const output = fs.createWriteStream(targetPath);
+    const archive = archiver('zip', { zlib: { level: 9 } });
+
+    output.on('close', () => resolve());
+    archive.on('error', err => reject(err));
+
+    archive.pipe(output);
+    archive.directory(sourceDir, false);
+    archive.finalize();
+  });
+}
+
+async function extractZipArchive(zipPath, targetDir) {
+  const zip = new AdmZip(zipPath);
+  zip.extractAllTo(targetDir, true);
+}
+
+// Helper function to get config directory
+async function getConfigDir() {
+  const dir = path.join(os.homedir(), '.gpt-assistant-ui');
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  return dir;
+}
 
 // Dialog handlers
 ipcMain.handle('dialog:showOpenDialog', async (event, options) => {
