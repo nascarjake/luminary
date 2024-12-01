@@ -80,21 +80,112 @@ export class AssistantsComponent implements OnInit {
 
   confirmDelete(assistant: OAAssistant) {
     this.confirmationService.confirm({
-      message: `Are you sure you want to delete the assistant "${assistant.name}"?`,
-      header: 'Confirm Delete',
+      message: 'What would you like to do with this assistant?',
+      header: 'Delete Options',
       icon: 'pi pi-exclamation-triangle',
-      accept: () => this.deleteAssistant(assistant)
+      accept: () => this.confirmRemoveFromProfile(assistant),
+      reject: () => this.confirmDeleteFromOpenAI(assistant),
+      acceptLabel: 'Remove from Profile',
+      rejectLabel: 'Delete from OpenAI',
+      acceptButtonStyleClass: 'p-button-warning',
+      rejectButtonStyleClass: 'p-button-danger',
+      acceptIcon: 'pi pi-user-minus',
+      rejectIcon: 'pi pi-trash',
+      closeOnEscape: true,
+      dismissableMask: true
     });
   }
 
-  async deleteAssistant(assistant: OAAssistant) {
+  confirmRemoveFromProfile(assistant: OAAssistant) {
+    setTimeout(() => this.confirmationService.confirm({
+      message: `Are you sure you want to remove "${assistant.name}" from this profile? The assistant will remain in your OpenAI account.`,
+      header: 'Confirm Remove from Profile',
+      icon: 'pi pi-exclamation-triangle',
+      accept: () => this.removeFromProfile(assistant),
+      acceptLabel: 'Yes, Remove',
+      rejectLabel: 'No, Cancel',
+      acceptButtonStyleClass: 'p-button-warning'
+    }), 300);
+  }
+
+  confirmDeleteFromOpenAI(assistant: OAAssistant) {
+    setTimeout(() => this.confirmationService.confirm({
+      message: `Are you completely sure you want to delete "${assistant.name}" from your OpenAI account?`,
+      header: 'First Warning',
+      icon: 'pi pi-exclamation-triangle',
+      accept: () => this.confirmDeleteFromOpenAISecond(assistant),
+      acceptLabel: 'Yes, Continue',
+      rejectLabel: 'No, Cancel',
+      acceptButtonStyleClass: 'p-button-danger'
+    }), 300);
+  }
+
+  confirmDeleteFromOpenAISecond(assistant: OAAssistant) {
+    setTimeout(() => this.confirmationService.confirm({
+      message: `This will permanently delete "${assistant.name}" from your OpenAI account. Are you absolutely sure?`,
+      header: 'Second Warning',
+      icon: 'pi pi-exclamation-triangle',
+      accept: () => this.confirmDeleteFromOpenAIFinal(assistant),
+      acceptLabel: 'Yes, Continue',
+      rejectLabel: 'No, Cancel',
+      acceptButtonStyleClass: 'p-button-danger'
+    }), 300);
+  }
+
+  confirmDeleteFromOpenAIFinal(assistant: OAAssistant) {
+    setTimeout(() => this.confirmationService.confirm({
+      message: `FINAL WARNING: This action cannot be undone. "${assistant.name}" will be permanently deleted from your OpenAI account. Do you want to proceed?`,
+      header: 'Final Warning',
+      icon: 'pi pi-exclamation-triangle',
+      accept: () => this.deleteAssistant(assistant),
+      acceptLabel: 'Yes, Delete Permanently',
+      rejectLabel: 'No, Cancel',
+      acceptButtonStyleClass: 'p-button-danger p-button-raised'
+    }), 300);
+  }
+
+  async removeFromProfile(assistant: OAAssistant) {
     try {
-      await this.openAiService.deleteAssistant(assistant.id);
+      const activeProfile = await this.configService.getActiveProfile();
+      const activeProject = await this.configService.getActiveProject();
+      
+      if (!activeProfile || !activeProject) {
+        throw new Error('No active profile or project');
+      }
+
+      // Remove the assistant file
+      const baseDir = await window.electron.path.appConfigDir();
+      const filePath = await window.electron.path.join(baseDir, `assistant-${activeProfile.id}-${assistant.id}.json`);
+      await window.electron.fs.removeTextFile(filePath);
+
       await this.loadAssistants();
       this.messageService.add({
         severity: 'success',
         summary: 'Success',
-        detail: 'Assistant deleted successfully'
+        detail: 'Assistant removed from profile successfully'
+      });
+    } catch (error) {
+      console.error('Error removing assistant from profile:', error);
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'Failed to remove assistant from profile'
+      });
+    }
+  }
+
+  async deleteAssistant(assistant: OAAssistant) {
+    try {
+      // First delete from OpenAI
+      await this.openAiService.deleteAssistant(assistant.id);
+      
+      // Then remove from profile
+      await this.removeFromProfile(assistant);
+      
+      this.messageService.add({
+        severity: 'success',
+        summary: 'Success',
+        detail: 'Assistant deleted successfully from OpenAI and removed from profile'
       });
     } catch (error) {
       console.error('Error deleting assistant:', error);
