@@ -215,33 +215,43 @@ ipcMain.handle('assistant:load', async (_, baseDir, profileId, projectId, assist
 });
 
 console.log('Registering download:file handler');
-ipcMain.handle('download:file', async (_, fileUrl, filePath) => {
-  console.log('Main Process: Downloading file:', fileUrl, 'to:', filePath);
-  return new Promise((resolve, reject) => {
-    const file = fs.createWriteStream(filePath);
-    console.log('Main Process: Created write stream');
-    
-    https.get(fileUrl, (response) => {
-      console.log('Main Process: Got response from server, status:', response.statusCode);
-      response.pipe(file);
+ipcMain.handle('download:file', async (event, fileUrl, filePath) => {
+  console.log('🔽 Download request received:', { fileUrl, filePath });
+  try {
+    if (!fileUrl || !filePath) {
+      console.error('❌ Missing required parameters:', { fileUrl, filePath });
+      throw new TypeError('The "url" and "path" arguments must be provided');
+    }
+    console.log('Main Process: Downloading file:', fileUrl, 'to:', filePath);
+    return new Promise((resolve, reject) => {
+      const file = fs.createWriteStream(filePath);
+      console.log('Main Process: Created write stream');
       
-      file.on('finish', () => {
-        console.log('Main Process: Download completed');
-        file.close();
-        resolve(true);
-      });
+      https.get(fileUrl, (response) => {
+        console.log('Main Process: Got response from server, status:', response.statusCode);
+        response.pipe(file);
+        
+        file.on('finish', () => {
+          console.log('Main Process: Download completed');
+          file.close();
+          resolve(true);
+        });
 
-      file.on('error', (err) => {
-        console.error('Main Process: File write error:', err);
+        file.on('error', (err) => {
+          console.error('Main Process: File write error:', err);
+          fs.unlink(filePath, () => {});
+          reject(err);
+        });
+      }).on('error', (err) => {
+        console.error('Main Process: HTTPS request error:', err);
         fs.unlink(filePath, () => {});
         reject(err);
       });
-    }).on('error', (err) => {
-      console.error('Main Process: HTTPS request error:', err);
-      fs.unlink(filePath, () => {});
-      reject(err);
     });
-  });
+  } catch (error) {
+    console.error('Error downloading file:', error);
+    throw error;
+  }
 });
 console.log('Registered download:file handler');
 
