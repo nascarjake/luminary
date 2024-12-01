@@ -653,13 +653,12 @@ app.whenReady().then(() => {
   });
 });
 
+// Quit when all windows are closed
+app.on('window-all-closed', () => {
+  app.quit();
+});
+
 // Handle creating/removing shortcuts on Windows when installing/uninstalling
 if (require('electron-squirrel-startup')) {
   app.quit();
 }
-
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
-});
