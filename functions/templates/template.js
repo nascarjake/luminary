@@ -1,5 +1,9 @@
 #!/usr/bin/env node
 
+function finalOutput(output) {
+  console.log('$%*%$Output:' + JSON.stringify(output));
+}
+
 async function main() {
   try {
     // Get all inputs as a single JSON object
@@ -20,8 +24,8 @@ async function main() {
       }
     };
 
-    // Always output JSON
-    console.log(JSON.stringify(result));
+    // Use finalOutput to return result
+    finalOutput(result);
   } catch (error) {
     // Always output errors as JSON
     console.error(JSON.stringify({
