@@ -639,28 +639,32 @@ ipcMain.handle('window:close', () => {
 app.whenReady().then(() => {
   console.log('Electron app is ready (DEV)');
 
-  // Register local-resource protocol handler
+  // Handle local resource requests
   protocol.registerFileProtocol('local-resource', (request, callback) => {
-    try {
-      const filePath = request.url.replace('local-resource://', '');
-      const decodedPath = decodeURIComponent(filePath);
-      
-      // Handle Windows paths that start with drive letter
-      const finalPath = process.platform === 'win32' && decodedPath.match(/^[a-zA-Z]/)
-        ? decodedPath.replace(/^([a-zA-Z])/, '$1:') // Add colon after drive letter
-        : decodedPath;
+    const filePath = request.url.replace('local-resource://', '');
+    callback({ path: filePath });
+  });
 
-      console.log('Local resource request:', {
-        original: request.url,
-        decoded: decodedPath,
-        final: finalPath,
-        exists: fs.existsSync(finalPath)
-      });
-
-      return callback(finalPath);
-    } catch (error) {
-      console.error('Error handling local-resource protocol:', error);
-    }
+  // Handle new windows for local resources
+  app.on('web-contents-created', (event, contents) => {
+    contents.setWindowOpenHandler(({ url }) => {
+      if (url.startsWith('local-resource://')) {
+        const filePath = url.replace('local-resource://', '');
+        const fileName = filePath.split('/').pop() || 'Media Preview';
+        
+        return {
+          action: 'allow',
+          overrideBrowserWindowOptions: {
+            title: fileName,
+            webPreferences: {
+              nodeIntegration: false,
+              contextIsolation: true
+            }
+          }
+        };
+      }
+      return { action: 'deny' };
+    });
   });
 
   createWindow();
