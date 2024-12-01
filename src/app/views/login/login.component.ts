@@ -34,8 +34,6 @@ import { ConfirmationService } from 'primeng/api';
     ConfirmDialogModule
   ],
   providers: [
-    MessageService,
-    ConfirmationService
   ],
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss'

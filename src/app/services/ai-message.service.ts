@@ -86,7 +86,9 @@ export class AiMessageService {
 
   // Re-initialize OpenAI client when API key changes
   public updateApiKey(apiKey: string) {
-    this.openAiApiService.setApiKey(apiKey);
+    if(this.openAiApiService.getApiKey() !== apiKey) {
+      this.openAiApiService.setApiKey(apiKey);
+    }
     this.openai = null; // Force re-initialization
   }
 
