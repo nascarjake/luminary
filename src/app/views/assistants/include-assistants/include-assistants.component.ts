@@ -16,61 +16,82 @@ import { Table } from 'primeng/table';
     PrimeNGModule
   ],
   template: `
-    <div class="card">
-      <p-table
-        #dt
-        [value]="assistants"
-        [loading]="loading"
-        [paginator]="true"
-        [rows]="10"
-        [showCurrentPageReport]="true"
-        currentPageReportTemplate="Showing {first} to {last} of {totalRecords} assistants"
-        [rowsPerPageOptions]="[10,25,50]"
-        [globalFilterFields]="['name','description']"
-      >
-        <ng-template pTemplate="caption">
-          <div class="flex justify-content-between align-items-center">
-            <h5 class="m-0">Available Assistants</h5>
-            <span class="p-input-icon-left">
-              <i class="pi pi-search"></i>
-              <input pInputText type="text" (input)="onGlobalFilter($event)" placeholder="Search assistants" />
-            </span>
-          </div>
-        </ng-template>
-        <ng-template pTemplate="header">
-          <tr>
-            <th pSortableColumn="name">Name <p-sortIcon field="name"></p-sortIcon></th>
-            <th pSortableColumn="description">Description <p-sortIcon field="description"></p-sortIcon></th>
-            <th pSortableColumn="model">Model <p-sortIcon field="model"></p-sortIcon></th>
-            <th style="width: 100px">Actions</th>
-          </tr>
-        </ng-template>
-        <ng-template pTemplate="body" let-assistant>
-          <tr>
-            <td>{{assistant.name}}</td>
-            <td>{{assistant.description}}</td>
-            <td>{{assistant.model}}</td>
-            <td>
-              <button pButton 
-                     icon="pi pi-plus" 
-                     class="p-button-rounded p-button-success" 
-                     (click)="includeAssistant(assistant)"
-                     [loading]="includingAssistant === assistant.id"
-                     pTooltip="Include in profile"></button>
-            </td>
-          </tr>
-        </ng-template>
-      </p-table>
+    <div class="assistants-page">
+      <p-card header="Available Assistants">
+        <p-table
+          #dt
+          [value]="assistants"
+          [loading]="loading"
+          [paginator]="true"
+          [rows]="10"
+          [showCurrentPageReport]="true"
+          currentPageReportTemplate="Showing {first} to {last} of {totalRecords} assistants"
+          [rowsPerPageOptions]="[10,25,50]"
+          [globalFilterFields]="['name','description']"
+        >
+          <ng-template pTemplate="caption">
+            <div class="flex justify-content-between align-items-center">
+              <span class="p-input-icon-left">
+                <i class="pi pi-search"></i>
+                <input pInputText type="text" (input)="onGlobalFilter($event)" placeholder="Search assistants" />
+              </span>
+              <p-button
+                icon="pi pi-refresh"
+                (onClick)="loadAssistants()"
+                [rounded]="true"
+                [text]="true"
+                pTooltip="Refresh"
+              ></p-button>
+            </div>
+          </ng-template>
+          <ng-template pTemplate="header">
+            <tr>
+              <th pSortableColumn="name">Name <p-sortIcon field="name"></p-sortIcon></th>
+              <th pSortableColumn="description">Description <p-sortIcon field="description"></p-sortIcon></th>
+              <th pSortableColumn="model">Model <p-sortIcon field="model"></p-sortIcon></th>
+              <th style="width: 100px">Actions</th>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="body" let-assistant>
+            <tr>
+              <td>{{assistant.name}}</td>
+              <td>{{assistant.description}}</td>
+              <td>{{assistant.model}}</td>
+              <td>
+                <div class="flex gap-1">
+                  <p-button
+                    icon="pi pi-plus"
+                    (onClick)="includeAssistant(assistant)"
+                    [loading]="includingAssistant === assistant.id"
+                    [rounded]="true"
+                    [text]="true"
+                    pTooltip="Include in profile"
+                  ></p-button>
+                </div>
+              </td>
+            </tr>
+          </ng-template>
+        </p-table>
+      </p-card>
     </div>
   `,
   styles: [`
-    :host ::ng-deep .p-datatable .p-datatable-header {
-      background: transparent;
-      border: none;
-      padding: 1.5rem 1rem;
+    .assistants-page {
+      padding: 1rem;
+      height: 100%;
+      overflow-y: auto;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    :host ::ng-deep .p-card {
+      margin: 0 auto;
+      max-width: 1200px;
+    }
+    :host ::ng-deep .p-card-content {
+      padding: 0;
     }
   `],
-  providers: [MessageService]
+  providers: []
 })
 export class IncludeAssistantsComponent implements OnInit {
   @ViewChild('dt') table!: Table;
