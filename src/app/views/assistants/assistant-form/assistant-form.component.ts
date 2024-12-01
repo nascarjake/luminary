@@ -1006,7 +1006,9 @@ export class AssistantFormComponent implements OnInit {
         arraySchemas: {
           inputs: [...this.arraySchemas.inputs],
           outputs: [...this.arraySchemas.outputs]
-        }
+        },
+        metadata: this.assistant?.metadata,
+        file_ids: this.assistant?.file_ids
       };
 
       // Only send the combined instructions to OpenAI
@@ -1026,13 +1028,16 @@ export class AssistantFormComponent implements OnInit {
             activeProfile.id,
             activeProject.id,
             this.assistant.id,
-            this.assistant.name,
+            assistantData.name,
             this.functions,
             this.instructionParts.coreInstructions.inputSchemas,
             this.instructionParts.coreInstructions.outputSchemas,
             this.instructionParts,
-            this.arraySchemas
+            this.arraySchemas,
+            assistantData
           );
+        } else {
+          throw new Error('No active profile or project');
         }
       }
 
@@ -1051,6 +1056,7 @@ export class AssistantFormComponent implements OnInit {
         saveData.outputSchemas = this.instructionParts.coreInstructions.outputSchemas;
         saveData.instructionParts = this.instructionParts;
         saveData.arraySchemas = this.arraySchemas;
+        saveData.openai = assistantData;
       }
 
       // Emit save event

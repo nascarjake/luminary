@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { AssistantFunctionImplementations, FunctionImplementation } from '../interfaces/function-implementations';
 import { FunctionDefinition } from '../components/function-editor/function-editor.component';
 import { ConfigService } from './config.service';
+import { OAAssistant } from '../../lib/entities/OAAssistant';
 
 interface AssistantConfig {
   functions: AssistantFunctionImplementations;
@@ -21,6 +22,7 @@ interface AssistantConfig {
       customFunctions: string;
     };
   };
+  openai?: Partial<OAAssistant>;
 }
 
 @Injectable({
@@ -43,7 +45,18 @@ export class FunctionImplementationsService {
     return this.baseDir;
   }
 
-  async saveFunctionImplementations(profileId: string, projectId: string, assistantId: string, assistantName: string, functions: FunctionDefinition[], inputSchemas: string[] = [], outputSchemas: string[] = [], instructionParts?: AssistantConfig['instructionParts'], arraySchemas?: any): Promise<void> {
+  async saveFunctionImplementations(
+    profileId: string,
+    projectId: string,
+    assistantId: string,
+    assistantName: string,
+    functions: FunctionDefinition[],
+    inputSchemas: string[] = [],
+    outputSchemas: string[] = [],
+    instructionParts?: AssistantConfig['instructionParts'],
+    arraySchemas?: any,
+    openaiConfig?: Partial<OAAssistant>
+  ): Promise<void> {
     try {
       const baseDir = await this.ensureBaseDir();
 
@@ -73,7 +86,11 @@ export class FunctionImplementationsService {
         outputs: outputSchemas,
         instructionParts,
         name: assistantName,
-        arraySchemas
+        arraySchemas,
+        openai: openaiConfig || {
+          id: assistantId,
+          name: assistantName
+        }
       });
     } catch (error) {
       console.error('Failed to save assistant configuration:', error);

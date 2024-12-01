@@ -33,6 +33,7 @@ declare module 'electron-api' {
       outputs: string[];
       name: string;
       arraySchemas: any;
+      openai: any;
       instructionParts?: {
         coreInstructions: {
           inputSchemas: string[];
@@ -53,6 +54,7 @@ declare module 'electron-api' {
       outputs: string[];
       name: string;
       arraySchemas: any;
+      openai: any;
       instructionParts?: {
         coreInstructions: {
           inputSchemas: string[];
