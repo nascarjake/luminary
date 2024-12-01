@@ -24,6 +24,9 @@ contextBridge.exposeInMainWorld('electron', {
     async createDir(path, options) {
       return ipcRenderer.invoke('fs:createDir', path, options);
     },
+    async mkdir(path, options) {
+      return ipcRenderer.invoke('fs:createDir', path, options);
+    },
     async readdir(path) {
       return ipcRenderer.invoke('fs:readdir', path);
     }
