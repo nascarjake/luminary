@@ -139,4 +139,26 @@ export class FunctionImplementationsService {
       };
     });
   }
+
+  async listProfileAssistantIds(profileId: string, projectId: string): Promise<string[]> {
+    try {
+      const baseDir = await this.ensureBaseDir();
+      if (!window.electron) {
+        throw new Error('Electron API not available');
+      }
+
+      const files = await window.electron.fs.readdir(baseDir);
+      const assistantFiles = files.filter(f => f.startsWith(`assistant-${profileId}-`) && f.endsWith('.json'));
+      
+      return assistantFiles
+        .map(file => {
+          const match = file.match(/assistant-.*-(asst_[^.]+)\.json/);
+          return match ? match[1] : null;
+        })
+        .filter((id): id is string => id !== null);
+    } catch (error) {
+      console.error('Failed to list profile assistant IDs:', error);
+      return [];
+    }
+  }
 }
