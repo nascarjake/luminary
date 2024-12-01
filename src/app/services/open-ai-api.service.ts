@@ -101,7 +101,7 @@ export class OpenAiApiService {
       .toPromise();
   }
 
-  public async listAssistants(): Promise<OAResponseList<OAAssistant>> {
+  public async listAssistants(showAll?: boolean, showInverse?: boolean): Promise<OAResponseList<OAAssistant>> {
     const response = await this.http.get<OAResponseList<OAAssistant>>(`${this.apiUrl}/assistants`, { headers: this.getHeaders() })
       .pipe(catchError(this.handleError))
       .toPromise();
@@ -118,7 +118,7 @@ export class OpenAiApiService {
       );
 
       // Filter assistants to only include those saved in the profile
-      response.data = response.data.filter(assistant => savedAssistantIds.includes(assistant.id));
+      response.data = showAll ? response.data : response.data.filter(assistant => showInverse ? !savedAssistantIds.includes(assistant.id) : savedAssistantIds.includes(assistant.id));
     }
 
     return response;
