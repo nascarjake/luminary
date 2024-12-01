@@ -9,6 +9,8 @@ import { OAThreadRun } from '../../lib/entities/OAThreadRun';
 import { OAResponseList } from '../../lib/objects/OAResponseList';
 import { AvailableFunctions, OARequiredAction } from '../../lib/entities/OAFunctionCall';
 import { Observable, Subject } from 'rxjs';
+import { FunctionImplementationsService } from './function-implementations.service';
+import { ConfigService } from './config.service';
 
 interface OAModel {
   id: string;
@@ -44,7 +46,11 @@ export class OpenAiApiService {
     }
   };
 
-  constructor(private http: HttpClient) {}
+  constructor(
+    private http: HttpClient,
+    private functionImplementationsService: FunctionImplementationsService,
+    private configService: ConfigService
+  ) {}
 
   public getApiKey(): string {
     if (!this.apiKey || this.apiKey === '<unknown>') {
@@ -95,10 +101,27 @@ export class OpenAiApiService {
       .toPromise();
   }
 
-  public listAssistants(): Promise<OAResponseList<OAAssistant>> {
-    return this.http.get<OAResponseList<OAAssistant>>(`${this.apiUrl}/assistants`, { headers: this.getHeaders() })
+  public async listAssistants(): Promise<OAResponseList<OAAssistant>> {
+    const response = await this.http.get<OAResponseList<OAAssistant>>(`${this.apiUrl}/assistants`, { headers: this.getHeaders() })
       .pipe(catchError(this.handleError))
       .toPromise();
+
+    // Get current profile and project
+    const activeProfile = await this.configService.getActiveProfile();
+    const activeProject = await this.configService.getActiveProject();
+
+    if (activeProfile && activeProject) {
+      // Get list of assistant IDs saved in the profile
+      const savedAssistantIds = await this.functionImplementationsService.listProfileAssistantIds(
+        activeProfile.id,
+        activeProject.id
+      );
+
+      // Filter assistants to only include those saved in the profile
+      response.data = response.data.filter(assistant => savedAssistantIds.includes(assistant.id));
+    }
+
+    return response;
   }
 
   public listThreads(): Promise<OAResponseList<OAThread>> {
