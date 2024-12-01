@@ -670,6 +670,32 @@ app.whenReady().then(() => {
     }
   });
 
+  protocol.registerFileProtocol('local-resource', (request, callback) => {
+    const filePath = request.url.replace('local-resource://', '');
+    callback({ path: filePath });
+  });
+
+  app.on('web-contents-created', (event, contents) => {
+    contents.setWindowOpenHandler(({ url }) => {
+      if (url.startsWith('local-resource://')) {
+        const filePath = url.replace('local-resource://', '');
+        const fileName = filePath.split('/').pop() || 'Media Preview';
+        
+        return {
+          action: 'allow',
+          overrideBrowserWindowOptions: {
+            title: fileName,
+            webPreferences: {
+              nodeIntegration: false,
+              contextIsolation: true
+            }
+          }
+        };
+      }
+      return { action: 'deny' };
+    });
+  });
+
   createWindow();
 
   app.on('activate', () => {
