@@ -259,7 +259,8 @@ export class AssistantsComponent implements OnInit {
           formData.inputSchemas,
           formData.outputSchemas,
           formData.instructionParts,
-          formData.arraySchemas
+          formData.arraySchemas,
+          formData.openai
         );
       }
 
