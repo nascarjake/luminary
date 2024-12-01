@@ -16,7 +16,11 @@ export const routes: Routes = [
   },
   {
     path: 'assistants',
-    loadComponent: () => import('./views/assistants/assistants.component').then(c => c.AssistantsComponent)
+    loadComponent: () => import('./views/assistants/assistants.component').then(m => m.AssistantsComponent)
+  },
+  {
+    path: 'include-assistants',
+    loadComponent: () => import('./views/assistants/include-assistants/include-assistants.component').then(m => m.IncludeAssistantsComponent)
   },
   {
     path: 'graph',

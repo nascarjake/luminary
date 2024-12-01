@@ -2,7 +2,8 @@ import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { Router, RouterModule, RouterOutlet } from '@angular/router';
 import { ToastModule } from 'primeng/toast';
-import { MessageService } from 'primeng/api';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { ConfirmationService, MessageService } from 'primeng/api';
 import { AuthService } from './services/auth.service';
 import { OpenAiApiService } from './services/open-ai-api.service';
 import { ConfigService } from './services/config.service';
@@ -27,11 +28,13 @@ import { firstValueFrom } from 'rxjs';
     TitleBarComponent,
     HeaderComponent,
     MainComponent,
-    ObjectSidebarComponent
+    ObjectSidebarComponent,
+    ConfirmDialogModule
   ],
   providers: [
     MessageService,
-    AuthService
+    AuthService,
+    ConfirmationService
   ],
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss'],

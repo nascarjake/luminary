@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { PrimeNGModule } from '../../shared/primeng.module';
+import { RouterModule } from '@angular/router';
 import { OpenAiApiService } from '../../services/open-ai-api.service';
 import { OAAssistant } from '../../../lib/entities/OAAssistant';
 import { AssistantFormComponent } from './assistant-form/assistant-form.component';
@@ -15,11 +16,12 @@ import { Profile, Project } from '../../../lib/entities/AppConfig';
   imports: [
     CommonModule,
     PrimeNGModule,
-    AssistantFormComponent
+    AssistantFormComponent,
+    RouterModule
   ],
   templateUrl: './assistants.component.html',
   styleUrls: ['./assistants.component.scss'],
-  providers: [ConfirmationService, MessageService]
+  providers: []
 })
 export class AssistantsComponent implements OnInit {
   assistants: OAAssistant[] = [];

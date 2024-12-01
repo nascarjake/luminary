@@ -24,7 +24,7 @@ import { Subscription, combineLatest, startWith } from 'rxjs';
     PrettyJsonPipe,
     TimeAgoPipe
   ],
-  providers: [ConfirmationService, MessageService],
+  providers: [],
   templateUrl: './object-sidebar.component.html',
   styleUrls: ['./object-sidebar.component.scss']
 })
@@ -188,23 +188,23 @@ export class ObjectSidebarComponent implements OnInit, OnDestroy {
     this.confirmationService.confirm({
       message: 'Are you sure you want to delete this object?',
       accept: async () => {
-        try {
-          await this.instanceService.deleteInstance(this.selectedNode!.data.instanceId);
-          this.messageService.add({
-            severity: 'success',
-            summary: 'Success',
-            detail: 'Object deleted successfully'
-          });
-          this.selectedNode = null;
-          this.selectedObject = null;
-        } catch (error) {
-          console.error('Failed to delete object:', error);
-          this.messageService.add({
-            severity: 'error',
-            summary: 'Error',
-            detail: 'Failed to delete object'
-          });
-        }
+    try {
+      await this.instanceService.deleteInstance(this.selectedNode!.data.instanceId);
+      this.messageService.add({
+        severity: 'success',
+        summary: 'Success',
+        detail: 'Object deleted successfully'
+      });
+      this.selectedNode = null;
+      this.selectedObject = null;
+    } catch (error) {
+      console.error('Failed to delete object:', error);
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'Failed to delete object'
+      });
+    }
       }
     });
   }
