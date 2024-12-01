@@ -15,7 +15,7 @@ import { InstanceEditorComponent } from '../instance-editor/instance-editor.comp
   host: {
     style: 'flex: 1; height: 100%; min-width: 0; display: flex; padding-right: 300px;'
   },
-  providers: [DialogService, ConfirmationService]
+  providers: [DialogService]
 })
 export class InstanceListComponent implements OnInit, OnDestroy {
   schema?: ObjectSchema;

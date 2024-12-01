@@ -1,17 +1,32 @@
 <div class="assistants-page">
   <p-toast></p-toast>
-  <p-confirmDialog></p-confirmDialog>
   
   <p-card header="Assistants">
-    <div class="card-header">
-      <div class="align-items-center gap-2">
-        <p-button
-          label="New Assistant"
-          icon="pi pi-plus"
-          (onClick)="createAssistant()"
-          [style]="{ marginBottom: '1rem' }"
-        ></p-button>
-        <p-button
+    <p-table
+      [value]="assistants"
+      [loading]="loading"
+      [paginator]="true"
+      [rows]="10"
+      [showCurrentPageReport]="true"
+      currentPageReportTemplate="Showing {first} to {last} of {totalRecords} assistants"
+      [rowsPerPageOptions]="[10,25,50]"
+      [globalFilterFields]="['name','description']"
+    >
+      <ng-template pTemplate="caption">
+        <div class="">
+          <div>
+            <button pButton 
+                   icon="pi pi-plus" 
+                   label="New Assistant"
+                   style="margin-right: 10px"
+                   (click)="createAssistant()"></button>
+            <button pButton 
+                   icon="pi pi-plus-circle" 
+                   label="Include Assistant"
+                   class="p-button-outlined mr-2"
+                   routerLink="/include-assistants"></button>
+            
+                   <p-button
           icon="pi pi-refresh"
           (onClick)="refreshAssistants()"
           [rounded]="true"
@@ -19,23 +34,22 @@
           pTooltip="Refresh"
           [style]="{'float': 'right'}"
         ></p-button>
-      </div>
-    </div>
-    
-    <p-table [value]="assistants" [tableStyle]="{ 'min-width': '50rem' }" [loading]="loading">
+          </div>
+        </div>
+      </ng-template>
       <ng-template pTemplate="header">
         <tr>
-          <th>Name</th>
-          <th>Model</th>
-          <th>Created</th>
-          <th>Actions</th>
+          <th pSortableColumn="name">Name <p-sortIcon field="name"></p-sortIcon></th>
+          <th pSortableColumn="description">Description <p-sortIcon field="description"></p-sortIcon></th>
+          <th pSortableColumn="model">Model <p-sortIcon field="model"></p-sortIcon></th>
+          <th style="width: 150px">Actions</th>
         </tr>
       </ng-template>
       <ng-template pTemplate="body" let-assistant>
         <tr>
-          <td>{{ assistant.name }}</td>
-          <td>{{ assistant.model }}</td>
-          <td>{{ assistant.created_at * 1000 | date:'medium' }}</td>
+          <td>{{assistant.name}}</td>
+          <td>{{assistant.description}}</td>
+          <td>{{assistant.model}}</td>
           <td>
             <div class="flex gap-1">
               <p-button
@@ -66,10 +80,19 @@
       </ng-template>
     </p-table>
   </p-card>
-</div>
 
-<app-assistant-form
-  [(visible)]="showDialog"
-  [assistant]="selectedAssistant"
-  (save)="onSave($event)"
-></app-assistant-form>
+
+  <p-dialog 
+    [(visible)]="showDialog" 
+    [style]="{width: '800px'}" 
+    [modal]="true" 
+    [draggable]="false" 
+    [resizable]="false">
+    <app-assistant-form
+      [assistant]="selectedAssistant"
+      (save)="onSave($event)"
+      [(visible)]="showDialog">
+    </app-assistant-form>
+  </p-dialog>
+
+</div>
