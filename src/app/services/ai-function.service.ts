@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, output } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { MessageService } from 'primeng/api';
 import { AvailableFunctions } from '../../lib/entities/OAFunctionCall';
@@ -11,6 +11,7 @@ import { ObjectSchemaService } from './object-schema.service';
 import { ObjectInstanceService } from './object-instance.service';
 import { GraphService } from './graph.service'; // Import GraphService
 import type { Electron } from 'electron-api';
+import type { Buffer } from 'buffer';
 
 declare global {
   interface Window {
@@ -356,6 +357,47 @@ export class AiFunctionService {
     }
   }
 
+  private async downloadMediaFields(instance, schemaId) {
+     // After creating instance, check for media fields and download them
+     const schema = await this.objectSchemaService.getSchema(schemaId);
+     if (schema) {
+       const mediaFields = schema.fields.filter(field => field.isMedia);
+       for (const field of mediaFields) {
+         const url = instance.data[field.name];
+         if (url && typeof url === 'string') {
+           try {
+             // Create a unique filename based on the field and instance
+             const ext = url.split('.').pop() || '';
+             const filename = `${field.name}-${instance.id}.${ext}`;
+             const filePath = await window.electron.path.join(
+               await window.electron.path.appConfigDir(),
+               'media',
+               filename
+             );
+
+             // Ensure media directory exists
+             const mediaDir = await window.electron.path.join(
+               await window.electron.path.appConfigDir(),
+               'media'
+             );
+             await window.electron.fs.mkdir(mediaDir, { recursive: true });
+
+             // Download the file directly using electron's download utility
+             await window.electron.download.downloadFile(url, filePath);
+
+             // Update instance with local file path
+             instance.data[field.name] = filePath;
+             await this.objectInstanceService.updateInstance(instance.id, instance.data);
+           } catch (error) {
+             console.error(`Failed to download media for field ${field.name}:`, error);
+             this.emitSystemMessage(`❌ Error: Failed to download media for field ${field.name}: ${error}`);
+             // Don't fail the whole operation if media download fails
+           }
+         }
+       }
+     }
+  }
+
   private async validateAndSaveInstance(data: any, schemaId: string): Promise<{ valid: boolean; instance?: any; errors?: string[] }> {
     try {
       // Validate data against schema
@@ -367,6 +409,7 @@ export class AiFunctionService {
 
       // Save validated instance
       const instance = await this.objectInstanceService.createInstance(schemaId, data);
+      await this.downloadMediaFields(instance, schemaId);
       return { valid: true, instance };
     } catch (error) {
       console.error('Error in validation:', error);
@@ -408,6 +451,34 @@ export class AiFunctionService {
     } catch (error) {
       return { success: false, errors: [error.message] };
     }
+  }
+
+  private parseOutputSchemaFromFunctionResult(functionResult: any, output: any, outputErrors: string[], errors: string[]): any {
+    const outputName = output?.name?.trim() || '';
+    if (!outputName) return false;
+
+    // Pre-compute all variations once
+    const noSpaces = outputName.replace(/ /g, '');
+    const variations = [
+      noSpaces.charAt(0).toLowerCase() + noSpaces.slice(1),  // camelCase (most common in JS/TS)
+      noSpaces.toLowerCase(),                                // lowercase no spaces
+      noSpaces,                                             // PascalCase
+      outputName.toLowerCase(),                             // lowercase with spaces
+      outputName                                            // original
+    ];
+
+    // Try each variation in order of likelihood
+    for (const variant of variations) {
+      const value = functionResult[variant];
+      if (value !== undefined) return value;
+    }
+
+    // No match found
+    const errorMsg = `No value found for output ${outputName}`;
+    console.error('❌ Error:', errorMsg);
+    outputErrors.push(`❌ Error: ${errorMsg}`);
+    errors.push(errorMsg);
+    return false;
   }
 
   async executeFunction(
@@ -568,10 +639,14 @@ export class AiFunctionService {
               continue;
             }
 
+            const outputErrors = [];
             // Check if functionResult has a key matching the output name
-            const outputValue = typeof functionResult === 'object' && functionResult[output.name] !== undefined
-              ? functionResult[output.name]
-              : (functionResult[output.name.toLowerCase()] !== undefined ? functionResult[output.name.toLowerCase()] : functionResult);
+            const parsedValue = typeof functionResult === 'object' ? this.parseOutputSchemaFromFunctionResult(functionResult, output, outputErrors, errors) : undefined;
+            const outputValue = parsedValue ? parsedValue : functionResult;
+
+            if(!outputValue && outputErrors.length > 0) {
+              this.emitSystemMessage(outputErrors.join('\n'));
+            }
 
             // Handle array of objects
             if (Array.isArray(outputValue)) {
@@ -626,19 +701,10 @@ export class AiFunctionService {
                 continue;
               }
 
-              let outputValue = functionResult[output.name];
-              if (outputValue === undefined) {
-                outputValue = functionResult[output.name.toLowerCase()];
-                if(outputValue === undefined) {
-                  const errorMsg = `No value found for output ${output.name}`;
-                  console.error('❌ Error:', errorMsg);
-                  outputErrors.push(`❌ Error: ${errorMsg}`);
-                  errors.push(errorMsg);
-                  continue;
-                }
-              }
-              passed = true;
-
+              const outputValue = this.parseOutputSchemaFromFunctionResult(functionResult, output, outputErrors, errors);
+              passed = !(outputValue === false);
+              if(!passed) continue;
+              
               console.log('✨ Validating output against schema:', output.name, output.schemaId);
               const validationResult = await this.validateAndSaveInstance(outputValue, output.schemaId);
               if (!validationResult.valid) {

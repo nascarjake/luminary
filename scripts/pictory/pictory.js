@@ -214,7 +214,7 @@ async function main() {
     };
     
     console.log('✨ Video generation complete!');
-    console.log('$%*%$Output:' + JSON.stringify({video: result}));
+    console.log('$%*%$Output:' + JSON.stringify({video: result, pictoryRender: renderStatus, pictoryJob: jobStatus}));
   } catch (error) {
     // Return error response
     console.error('❌ Error:', error.message);

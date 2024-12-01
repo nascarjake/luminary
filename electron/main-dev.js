@@ -474,6 +474,7 @@ ipcMain.handle('terminal:executeCommand', async (event, options) => {
 
     // Create environment variables object by merging process.env with custom env
     const environment = { ...process.env };
+    let finalOutputStarted = false;
     if (env) {
       Object.assign(environment, env);
     }
@@ -500,16 +501,20 @@ ipcMain.handle('terminal:executeCommand', async (event, options) => {
     child.stdout.on('data', (data) => {
       const str = data.toString();
       output += str;
-      if(!str.includes(flag)) {
+      if(!str.includes(flag) && !finalOutputStarted) {
         event.sender.send('terminal:output', str);
+      }else {
+        finalOutputStarted = true;
       }
     });
 
     child.stderr.on('data', (data) => {
       const str = data.toString();
       output += str;
-      if(!str.includes(flag)) {
+      if(!str.includes(flag) && !finalOutputStarted) {
         event.sender.send('terminal:output', str);
+      }else {
+        finalOutputStarted = true;
       }
     });
 
