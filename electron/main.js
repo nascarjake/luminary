@@ -568,11 +568,13 @@ function updateFunctionPaths(assistantConfig, newBasePath) {
 
   const updatedConfig = { ...assistantConfig };
   updatedConfig.functions.functions = assistantConfig.functions.functions.map(func => {
-    if (func.scriptFile) {
-      const scriptName = path.basename(func.scriptFile);
-      const scriptDir = path.dirname(func.scriptFile);
+    if (func.script) {
+      console.log('Updating script path for function:', func.script);
+      const scriptName = path.basename(func.script);
+      const scriptDir = path.dirname(func.script);
       const scriptDirName = path.basename(scriptDir);
-      func.scriptFile = path.join(newBasePath, scriptDirName, scriptName);
+      func.script = path.join(newBasePath, scriptDirName, scriptName);
+      console.log('New script path:', func.script);
     }
     return func;
   });
@@ -650,7 +652,7 @@ function createWindow() {
   });
 
   // Open DevTools
-  //win.webContents.openDevTools();
+  win.webContents.openDevTools();
 
   const appPath = path.join(__dirname, '../browser');
   console.log('App directory:', appPath);
