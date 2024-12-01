@@ -12,7 +12,7 @@ class PictoryClient {
   constructor(config) {
     this.config = config;
     this.authToken = null;
-    console.log('Pictory API URL:', config.apiUrl);
+    //console.log('Pictory API URL:', config.apiUrl);
     this.http = axios.create({
       baseURL: config.apiUrl
     });
@@ -57,7 +57,7 @@ class PictoryClient {
         throw new Error('Failed to create storyboard');
       }
 
-      console.log('✅ Pictory API request successful, job ID:', response.data.jobId);
+      //console.log('✅ Pictory API request successful, job ID:', response.data.jobId);
       return response.data;
     } catch (error) {
       throw new Error(`Failed to create storyboard: ${error.message}`);
@@ -156,16 +156,29 @@ class PictoryClient {
 }
 
 async function main() {
+  let inputData = undefined;
+  let content = undefined;
+  let outputDir = './output';
+  try{
+    inputData = JSON.parse(await new Promise(resolve => process.stdin.once('data', resolve)));
+  }catch(e){
+    // Return error response
+    console.error('❌ Error:', error.message);
+    const result = {
+      success: false,
+      error: error.message
+    };
+    
+    console.log(JSON.stringify({inputData}));
+    process.exit(1);
+  }
+
   try {
     // Get all inputs as a single JSON object with defaults
-    const { 
-      content,  
-      outputDir = './output' 
-    } = JSON.parse(await new Promise(resolve => process.stdin.once('data', resolve)));
+    content = inputData?.content;
+    outputDir = inputData?.outputDir || outputDir;
     const { videoName: title } = content;
-    console.log('🚀 Starting video generation:', {  
-      title 
-    });
+    console.log('🚀 Starting video generation: ' + title);
 
     // Load config from environment
     const config = {
@@ -214,7 +227,7 @@ async function main() {
     };
     
     console.log('✨ Video generation complete!');
-    console.log('$%*%$Output:' + JSON.stringify({video: result, pictoryRender: renderStatus, pictoryJob: jobStatus}));
+    console.log('$%*%$Output:' + JSON.stringify({video: result, pictoryRequest: content, pictoryRender: renderStatus, pictoryJob: jobStatus}));
   } catch (error) {
     // Return error response
     console.error('❌ Error:', error.message);
@@ -223,7 +236,7 @@ async function main() {
       error: error.message
     };
     
-    console.log(JSON.stringify(result));
+    console.log('$%*%$Output:' + JSON.stringify({pictoryRequest: content}));
     process.exit(1);
   }
 }
