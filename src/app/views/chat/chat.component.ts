@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, ViewChild } from '@angular/core';
+import { Component, OnDestroy, ViewChild, ChangeDetectorRef } from '@angular/core';
 import { Subscription, interval } from 'rxjs';
 import { OAThread } from '../../../lib/entities/OAThread';
 import { OAThreadMessage } from '../../../lib/entities/OAThreadMessage';
@@ -109,6 +109,7 @@ export class ChatComponent implements OnDestroy {
       run_id: null,
       metadata: {}
     });
+    this.changeDetectorRef.detectChanges();
   }
 
   constructor(
@@ -117,7 +118,8 @@ export class ChatComponent implements OnDestroy {
     private readonly aiFunctionService: AiFunctionService,
     private readonly messageService: MessageService,
     private readonly aiMessageService: AiMessageService,
-    private readonly systemMessageOverlay: SystemMessageOverlayService
+    private readonly systemMessageOverlay: SystemMessageOverlayService,
+    private readonly changeDetectorRef: ChangeDetectorRef
   ) {
     // Subscribe to system messages from AiMessageService
     this.aiMessageService.systemMessage$.subscribe(message => {

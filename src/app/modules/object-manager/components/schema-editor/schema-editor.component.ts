@@ -1,18 +1,29 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ViewChild, ElementRef, OnDestroy } from '@angular/core';
 import { FormArray, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { DynamicDialogConfig, DynamicDialogRef } from 'primeng/dynamicdialog';
 import { ObjectField, ObjectSchema } from '../../../../interfaces/object-system';
 import { MessageService } from 'primeng/api';
+import { EditorState } from '@codemirror/state';
+import { EditorView, keymap } from '@codemirror/view';
+import { json } from '@codemirror/lang-json';
+import { defaultKeymap } from '@codemirror/commands';
+import { basicSetup } from 'codemirror';
+import { oneDark } from '@codemirror/theme-one-dark';
 
 @Component({
   selector: 'app-schema-editor',
   templateUrl: './schema-editor.component.html',
   styleUrls: ['./schema-editor.component.scss']
 })
-export class SchemaEditorComponent implements OnInit {
+export class SchemaEditorComponent implements OnInit, OnDestroy {
+  @ViewChild('jsonEditorContainer') jsonEditorContainer: ElementRef;
+
   schemaForm: FormGroup;
   isEdit = false;
   saving = false;
+  showJsonEditor = false;
+  jsonEditorView: EditorView | null = null;
+
   fieldTypes = [
     { label: 'String', value: 'string' },
     { label: 'Number', value: 'number' },
@@ -56,6 +67,12 @@ export class SchemaEditorComponent implements OnInit {
       this.initializeForm(this.config.data.schema);
     } else {
       this.addField(); // Add one field by default for new schemas
+    }
+  }
+
+  ngOnDestroy() {
+    if (this.jsonEditorView) {
+      this.jsonEditorView.destroy();
     }
   }
 
@@ -205,5 +222,93 @@ export class SchemaEditorComponent implements OnInit {
 
   close() {
     this.ref.close();
+  }
+
+  showJsonExampleEditor() {
+    this.showJsonEditor = true;
+    setTimeout(() => {
+      if (this.jsonEditorContainer) {
+        this.initJsonEditor();
+      }
+    });
+  }
+
+  initJsonEditor() {
+    const startState = EditorState.create({
+      doc: '{\n  // Paste your JSON example here\n}',
+      extensions: [
+        basicSetup,
+        json(),
+        oneDark,
+        keymap.of(defaultKeymap),
+        EditorView.lineWrapping,
+        EditorState.tabSize.of(2),
+      ],
+    });
+
+    this.jsonEditorView = new EditorView({
+      state: startState,
+      parent: this.jsonEditorContainer.nativeElement,
+    });
+  }
+
+  convertJsonToSchema() {
+    try {
+      if (!this.jsonEditorView) return;
+      
+      const jsonContent = this.jsonEditorView.state.doc.toString();
+      const jsonObject = Function(`return ${jsonContent}`)();
+      
+      // Clear existing fields
+      while (this.fields.length) {
+        this.fields.removeAt(0);
+      }
+      
+      // Convert each property to a field
+      Object.entries(jsonObject).forEach(([key, value]) => {
+        const field = this.createFieldFormGroup({
+          name: key,
+          type: this.getTypeFromValue(value),
+          description: this.extractComment(jsonContent, key) || key,
+          required: false,
+          isMedia: false,
+          validation: {}
+        });
+        this.fields.push(field);
+      });
+      
+      this.showJsonEditor = false;
+      this.messageService.add({
+        severity: 'success',
+        summary: 'Success',
+        detail: 'JSON example converted to schema fields'
+      });
+    } catch (error) {
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'Failed to parse JSON example. Please check the syntax.'
+      });
+    }
+  }
+
+  private getTypeFromValue(value: any): string {
+    if (value === null) return 'string';
+    switch (typeof value) {
+      case 'string': return 'string';
+      case 'number': return 'number';
+      case 'boolean': return 'boolean';
+      case 'object': return 'object';
+      default: return 'string';
+    }
+  }
+
+  private extractComment(jsonContent: string, key: string): string | null {
+    const lines = jsonContent.split('\n');
+    const keyLine = lines.findIndex(line => line.includes(`"${key}"`) || line.includes(`${key}:`));
+    if (keyLine === -1) return null;
+
+    const commentMatch = lines[keyLine].match(/\/\/\s*(.+)$/);
+    return commentMatch ? commentMatch[1].trim() : null;
   }
 }

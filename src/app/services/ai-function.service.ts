@@ -499,7 +499,7 @@ export class AiFunctionService {
               functionResult = jsonData;
             } catch {
               // If not JSON, return as is
-              functionResult = { output };
+              functionResult = output;
             }
           } catch (execError) {
             this.emitSystemMessage(`❌ Execution Error: Failed to execute command "${command}": ${execError.message}`);
@@ -542,6 +542,7 @@ export class AiFunctionService {
       
       if (sourceNodes.length === 0) {
         console.log('ℹ️ No source nodes found, returning function result');
+        this.emitSystemMessage(`✅ Successfully executed function: ${functionName} for ${assistant.name}`);
         return { output: JSON.stringify(functionResult) };
       }
 
@@ -570,7 +571,7 @@ export class AiFunctionService {
             // Check if functionResult has a key matching the output name
             const outputValue = typeof functionResult === 'object' && functionResult[output.name] !== undefined
               ? functionResult[output.name]
-              : functionResult;
+              : (functionResult[output.name.toLowerCase()] !== undefined ? functionResult[output.name.toLowerCase()] : functionResult);
 
             // Handle array of objects
             if (Array.isArray(outputValue)) {
@@ -615,6 +616,9 @@ export class AiFunctionService {
               continue;
             }
 
+            const outputErrors = [];
+            let passed = false;
+
             for (const output of outputs) {
               if (!output.schemaId) {
                 console.warn('⚠️ No schema found for output:', output.name);
@@ -622,14 +626,18 @@ export class AiFunctionService {
                 continue;
               }
 
-              const outputValue = functionResult[output.name];
+              let outputValue = functionResult[output.name];
               if (outputValue === undefined) {
-                const errorMsg = `No value found for output ${output.name}`;
-                console.error('❌ Error:', errorMsg);
-                this.emitSystemMessage(`❌ Error: ${errorMsg}`);
-                errors.push(errorMsg);
-                continue;
+                outputValue = functionResult[output.name.toLowerCase()];
+                if(outputValue === undefined) {
+                  const errorMsg = `No value found for output ${output.name}`;
+                  console.error('❌ Error:', errorMsg);
+                  outputErrors.push(`❌ Error: ${errorMsg}`);
+                  errors.push(errorMsg);
+                  continue;
+                }
               }
+              passed = true;
 
               console.log('✨ Validating output against schema:', output.name, output.schemaId);
               const validationResult = await this.validateAndSaveInstance(outputValue, output.schemaId);
@@ -643,6 +651,10 @@ export class AiFunctionService {
                 this.emitSystemMessage(`✅ Saved ${output.name}`);
                 results.push(validationResult.instance);
               }
+            }
+            
+            if(!passed && outputErrors.length > 0) {
+              this.emitSystemMessage(outputErrors.join('\n'));
             }
           }
         }

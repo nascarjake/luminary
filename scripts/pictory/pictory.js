@@ -160,10 +160,9 @@ async function main() {
     // Get all inputs as a single JSON object with defaults
     const { 
       content,  
-      title = '', 
       outputDir = './output' 
     } = JSON.parse(await new Promise(resolve => process.stdin.once('data', resolve)));
-
+    const { videoName: title } = content;
     console.log('🚀 Starting video generation:', {  
       title 
     });
@@ -199,25 +198,23 @@ async function main() {
     
     // Download video
     const videoName = title || `video-${renderStatus.job_id}`;
-    const videoPath = await client.downloadVideo(
+    /*const videoPath = await client.downloadVideo(
       renderStatus.data.videoURL,
       outputDir,
       videoName
-    );
+    );*/
     
     // Return success response
     const result = {
-      success: true,
-      output: JSON.stringify({
-        videoPath,
-        videoUrl: renderStatus.data.videoURL,
-        thumbnail: renderStatus.data.thumbnail,
-        duration: renderStatus.data.videoDuration
-      })
+      /*videoPath,*/
+      title: videoName,
+      videoUrl: renderStatus.data.videoURL,
+      thumbnail: renderStatus.data.thumbnail,
+      duration: renderStatus.data.videoDuration
     };
     
     console.log('✨ Video generation complete!');
-    console.log(JSON.stringify(result));
+    console.log('$%*%$Output:' + JSON.stringify({video: result}));
   } catch (error) {
     // Return error response
     console.error('❌ Error:', error.message);
@@ -226,7 +223,7 @@ async function main() {
       error: error.message
     };
     
-    console.error(JSON.stringify(result));
+    console.log(JSON.stringify(result));
     process.exit(1);
   }
 }

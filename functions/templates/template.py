@@ -3,6 +3,9 @@
 import json
 import sys
 
+def final_output(output):
+    print(r'$%*%$Output:' + json.dumps(output))
+
 def main():
     try:
         # Get all inputs as a single JSON object
@@ -21,8 +24,8 @@ def main():
             }
         }
         
-        # Always output JSON
-        print(json.dumps(result))
+        # Use final_output to return result
+        final_output(result)
     except Exception as e:
         # Always output errors as JSON
         print(json.dumps({

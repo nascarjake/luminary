@@ -490,6 +490,7 @@ ipcMain.handle('terminal:executeCommand', async (event, options) => {
       shell: true
     });
     let output = '';
+    const flag = '$%*%$Output:';
 
     if (stdin) {
       child.stdin.write(stdin);
@@ -499,13 +500,17 @@ ipcMain.handle('terminal:executeCommand', async (event, options) => {
     child.stdout.on('data', (data) => {
       const str = data.toString();
       output += str;
-      event.sender.send('terminal:output', str);
+      if(!str.includes(flag)) {
+        event.sender.send('terminal:output', str);
+      }
     });
 
     child.stderr.on('data', (data) => {
       const str = data.toString();
       output += str;
-      event.sender.send('terminal:output', str);
+      if(!str.includes(flag)) {
+        event.sender.send('terminal:output', str);
+      }
     });
 
     child.on('error', (error) => {
@@ -514,9 +519,27 @@ ipcMain.handle('terminal:executeCommand', async (event, options) => {
 
     child.on('close', (code) => {
       if (code === 0) {
-        resolve(output);
+        try {
+          // Try to parse the last line of output as JSON
+          const lastLine = output.substring(output.lastIndexOf(flag) + flag.length).trim();
+          if(typeof lastLine == 'object') resolve(lastLine);
+
+          try {
+            const jsonResult = JSON.parse(lastLine);
+            console.log('JSON result:', jsonResult);
+            resolve(jsonResult);
+          } catch {
+            console.log('Non-JSON output:', lastLine);
+            // If not JSON, return the last line as is
+            resolve(lastLine || true);
+          }
+        } catch (error) {
+          console.error('Error parsing terminal output:', error);
+          // If we can't get the output, just resolve with true for success
+          resolve(true);
+        }
       } else {
-        reject(new Error(`Command failed with code ${code}\n${output}`));
+        reject(new Error(`Process exited with code ${code}`));
       }
     });
   });

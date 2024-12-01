@@ -25,6 +25,59 @@
         width: 100%;
       }
     }
+
+    .editor-container {
+      height: 100%;
+      overflow: hidden;
+      border: 1px solid var(--surface-border);
+      border-radius: 6px;
+      
+      .cm-editor {
+        height: 100%;
+        
+        .cm-scroller {
+          font-family: monospace;
+          font-size: 14px;
+        }
+      }
+    }
+
+    .json-editor-container {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      
+      .editor-wrapper {
+        flex: 1;
+        min-height: 0;
+        margin: 1rem;
+        border: 1px solid var(--surface-border);
+        border-radius: 6px;
+        
+        .editor-content {
+          height: 100%;
+          overflow: hidden;
+          
+          .cm-editor {
+            height: 100%;
+            
+            .cm-scroller {
+              font-family: monospace;
+              font-size: 14px;
+            }
+          }
+        }
+      }
+      
+      .editor-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+        padding: 1rem;
+        background: var(--surface-ground);
+        border-top: 1px solid var(--surface-border);
+      }
+    }
   }
 
   // Field accordion styling

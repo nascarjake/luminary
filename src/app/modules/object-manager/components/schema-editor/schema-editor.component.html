@@ -318,14 +318,51 @@
       </p-accordion>
 
       <!-- Add Field Button -->
-      <p-button
-        icon="pi pi-plus"
-        label="Add Field"
-        (onClick)="addField()"
-        [outlined]="true"
-        class="mb-3">
-      </p-button>
+      <div class="flex justify-content-between align-items-center mt-3">
+        <p-button
+          icon="pi pi-code"
+          label="Import from JSON Example"
+          (onClick)="showJsonExampleEditor()"
+          [outlined]="true"
+          severity="secondary">
+        </p-button>
+        <p-button
+          icon="pi pi-plus"
+          label="Add Field"
+          (onClick)="addField()"
+          [outlined]="true">
+        </p-button>
+      </div>
     </div>
+
+    <!-- JSON Example Editor Dialog -->
+    <p-dialog 
+      [(visible)]="showJsonEditor"
+      [modal]="true"
+      header="JSON Example Editor"
+      [style]="{width: '800px', height: '90vh'}"
+      [contentStyle]="{'padding': '0', 'height': 'calc(90vh - 6rem)', 'overflow': 'hidden'}"
+      [draggable]="false"
+    >
+      <div class="json-editor-container">
+        <div class="editor-wrapper">
+          <div class="editor-content" #jsonEditorContainer></div>
+        </div>
+        <div class="editor-actions">
+          <p-button
+            label="Cancel"
+            (onClick)="showJsonEditor = false"
+            [outlined]="true"
+            severity="secondary">
+          </p-button>
+          <p-button
+            label="Convert to Schema"
+            (onClick)="convertJsonToSchema()"
+            severity="primary">
+          </p-button>
+        </div>
+      </div>
+    </p-dialog>
 
     <!-- Form Actions -->
     <div class="action-buttons">
