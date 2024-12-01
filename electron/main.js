@@ -12,6 +12,38 @@ const AdmZip = require('adm-zip');
 const packageJson = require('../package.json');
 app.setVersion(packageJson.version);
 
+// Logging setup
+const logFile = path.join(os.homedir(), '.luminary', 'luminary.log');
+console.log = (...args) => {
+  const timestamp = new Date().toISOString();
+  const logMessage = `[${timestamp}] ${args.map(arg => 
+    typeof arg === 'object' ? JSON.stringify(arg, null, 2) : arg
+  ).join(' ')}`;
+  
+  // Write to file
+  fs.appendFileSync(logFile, logMessage + '\n');
+  
+  // Also write to original console
+  process.stdout.write(logMessage + '\n');
+};
+
+console.error = (...args) => {
+  const timestamp = new Date().toISOString();
+  const logMessage = `[${timestamp}] ERROR: ${args.map(arg => 
+    typeof arg === 'object' ? JSON.stringify(arg, null, 2) : arg
+  ).join(' ')}`;
+  
+  // Write to file
+  fs.appendFileSync(logFile, logMessage + '\n');
+  
+  // Also write to original console
+  process.stderr.write(logMessage + '\n');
+};
+
+// Add a startup message
+console.log('Luminary starting up...');
+console.log('Log file location:', logFile);
+
 console.log('Starting Electron app');
 console.log('Current directory:', __dirname);
 
@@ -57,6 +89,11 @@ ipcMain.handle('path:appConfigDir', async () => {
   const dir = path.join(os.homedir(), '.luminary');
   console.log('Getting config dir:', dir);
   return dir;
+});
+
+ipcMain.handle('app:logfile', () => {
+  console.log('Getting log file location:', logFile);
+  return logFile;
 });
 
 ipcMain.handle('path:join', async (_, ...paths) => {
@@ -652,7 +689,7 @@ function createWindow() {
   });
 
   // Open DevTools
-  win.webContents.openDevTools();
+  mainWindow.webContents.openDevTools();
 
   const appPath = path.join(__dirname, '../browser');
   console.log('App directory:', appPath);
