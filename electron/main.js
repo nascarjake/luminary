@@ -389,17 +389,26 @@ ipcMain.handle('profile:export', async (_, profileId) => {
       fs.copyFileSync(graphPath, path.join(tempDir, 'graph.json'));
     }
 
-    // Copy assistant files
+    // Copy assistant files and their function scripts
     const assistantFiles = fs.readdirSync(configDir)
       .filter(f => f.startsWith(`assistant-${profileId}-`) && f.endsWith('.json'));
     
-    const assistants = assistantFiles.map(file => {
+    const assistants = [];
+    for (const file of assistantFiles) {
       const content = fs.readFileSync(path.join(configDir, file), 'utf8');
-      return {
+      const assistant = {
         id: file.match(/assistant-.*-(asst_[^.]+)/)?.[1],
         config: JSON.parse(content)
       };
-    });
+
+      if (assistant.id && assistant.config) {
+        // Copy function scripts for this assistant
+        await copyFunctionScripts(configDir, tempDir, assistant.config);
+        // Update paths to be relative
+        assistant.config = updateFunctionPaths(assistant.config, '');
+        assistants.push(assistant);
+      }
+    }
 
     fs.writeFileSync(
       path.join(tempDir, 'assistants.json'),
@@ -476,13 +485,18 @@ ipcMain.handle('profile:import', async (_, profileId, zipBuffer) => {
       );
     }
 
-    // Import assistants
+    // Import assistants and their function scripts
     const assistantsPath = path.join(tempDir, 'assistants.json');
     if (fs.existsSync(assistantsPath)) {
       const assistants = JSON.parse(fs.readFileSync(assistantsPath, 'utf8'));
       
       for (const assistant of assistants) {
         if (!assistant.id || !assistant.config) continue;
+        
+        // Copy function scripts for this assistant
+        await copyFunctionScripts(tempDir, configDir, assistant.config);
+        // Update paths to point to new location
+        assistant.config = updateFunctionPaths(assistant.config, configDir);
         
         fs.writeFileSync(
           path.join(configDir, `assistant-${profileId}-${assistant.id}.json`),
@@ -521,6 +535,71 @@ ipcMain.handle('profile:import', async (_, profileId, zipBuffer) => {
   }
 });
 
+// Helper functions for function script handling
+async function copyFunctionScripts(sourceDir, targetDir, assistantConfig) {
+  if (!assistantConfig?.functions?.functions) {
+    console.log('No functions found in assistant config');
+    return;
+  }
+
+  for (const func of assistantConfig.functions.functions) {
+    if (func.script) {
+      console.log('Copying function script for function:', func.script);
+      const scriptPath = path.resolve(sourceDir, func.script);
+      const scriptDir = path.dirname(scriptPath);
+      const scriptDirName = path.basename(scriptDir);
+      
+      // Create the target directory
+      const targetScriptDir = path.join(targetDir, scriptDirName);
+      if (!fs.existsSync(targetScriptDir)) {
+        fs.mkdirSync(targetScriptDir, { recursive: true });
+      }
+
+      // Copy the entire script directory
+      fs.cpSync(scriptDir, targetScriptDir, { recursive: true });
+    } else {
+      console.log('No script file found for function:', func);
+    }
+  }
+}
+
+function updateFunctionPaths(assistantConfig, newBasePath) {
+  if (!assistantConfig?.functions?.functions) return assistantConfig;
+
+  const updatedConfig = { ...assistantConfig };
+  updatedConfig.functions.functions = assistantConfig.functions.functions.map(func => {
+    if (func.scriptFile) {
+      const scriptName = path.basename(func.scriptFile);
+      const scriptDir = path.dirname(func.scriptFile);
+      const scriptDirName = path.basename(scriptDir);
+      func.scriptFile = path.join(newBasePath, scriptDirName, scriptName);
+    }
+    return func;
+  });
+
+  return updatedConfig;
+}
+
+// Helper functions for zip operations
+async function createZipArchive(sourceDir, targetPath) {
+  return new Promise((resolve, reject) => {
+    const output = fs.createWriteStream(targetPath);
+    const archive = archiver('zip', { zlib: { level: 9 } });
+
+    output.on('close', () => resolve());
+    archive.on('error', err => reject(err));
+
+    archive.pipe(output);
+    archive.directory(sourceDir, false);
+    archive.finalize();
+  });
+}
+
+async function extractZipArchive(zipPath, targetDir) {
+  const zip = new AdmZip(zipPath);
+  zip.extractAllTo(targetDir, true);
+}
+
 async function getConfigDir() {
   const dir = path.join(os.homedir(), '.luminary');
   if (!fs.existsSync(dir)) {
@@ -546,26 +625,6 @@ ipcMain.handle('window:maximize', () => {
 ipcMain.handle('window:close', () => {
   BrowserWindow.getFocusedWindow()?.close();
 });
-
-// Helper functions for zip operations
-async function createZipArchive(sourceDir, targetPath) {
-  return new Promise((resolve, reject) => {
-    const output = fs.createWriteStream(targetPath);
-    const archive = archiver('zip', { zlib: { level: 9 } });
-
-    output.on('close', () => resolve());
-    archive.on('error', err => reject(err));
-
-    archive.pipe(output);
-    archive.directory(sourceDir, false);
-    archive.finalize();
-  });
-}
-
-async function extractZipArchive(zipPath, targetDir) {
-  const zip = new AdmZip(zipPath);
-  zip.extractAllTo(targetDir, true);
-}
 
 // Keep old handlers for backward compatibility during transition
 
