@@ -6,7 +6,7 @@ import { ButtonModule } from 'primeng/button';
 import { Subscription, map, BehaviorSubject, switchMap, from, combineLatest } from 'rxjs';
 import { ObjectSchemaService } from '../../services/object-schema.service';
 import { ObjectInstanceService } from '../../services/object-instance.service';
-import { ObjectInstance, ObjectSchema } from '../../interfaces/object-system';
+import { ObjectInstance, ObjectSchema, ObjectField, MediaType } from '../../interfaces/object-system';
 
 interface OutputDisplay {
   instance: ObjectInstance;
@@ -46,14 +46,39 @@ interface OutputGroup {
             <tr>
               <td>{{ getOutputTitle(output.instance) }}</td>
               <td>{{ output.instance.createdAt | date:'medium' }}</td>
-              <td>
-                <p-button
-                  icon="pi pi-download"
-                  (onClick)="downloadOutput(output.instance)"
-                  [rounded]="true"
-                  [text]="true"
-                  [disabled]="!canDownload(output.instance)"
-                ></p-button>
+              <td class="flex gap-2">
+                <ng-container *ngIf="output.schema">
+                  <ng-container *ngFor="let field of getMediaFields(output.schema)">
+                    <ng-container *ngIf="output.instance.data[field.name]">
+                      <!-- Image button -->
+                      <p-button *ngIf="getMediaType(field) === 'image'"
+                        icon="pi pi-image"
+                        (onClick)="openMedia(output.instance.data[field.name])"
+                        [rounded]="true"
+                        [text]="true"
+                        pTooltip="View Image"
+                      ></p-button>
+                      
+                      <!-- Video button -->
+                      <p-button *ngIf="getMediaType(field) === 'video'"
+                        icon="pi pi-video"
+                        (onClick)="openMedia(output.instance.data[field.name])"
+                        [rounded]="true"
+                        [text]="true"
+                        pTooltip="View Video"
+                      ></p-button>
+                      
+                      <!-- Audio button -->
+                      <p-button *ngIf="getMediaType(field) === 'audio'"
+                        icon="pi pi-volume-up"
+                        (onClick)="openMedia(output.instance.data[field.name])"
+                        [rounded]="true"
+                        [text]="true"
+                        pTooltip="Play Audio"
+                      ></p-button>
+                    </ng-container>
+                  </ng-container>
+                </ng-container>
               </td>
             </tr>
           </ng-template>
@@ -77,6 +102,12 @@ interface OutputGroup {
     h3:first-child {
       margin-top: 0;
     }
+    .flex {
+      display: flex;
+    }
+    .gap-2 {
+      gap: 0.5rem;
+    }
   `]
 })
 export class OutputListComponent implements OnInit, OnDestroy {
@@ -99,27 +130,17 @@ export class OutputListComponent implements OnInit, OnDestroy {
         // Get final output schemas
         const finalOutputSchemas = schemas.filter(schema => schema.isFinalOutput);
         
-        // Create groups for each schema
-        const groups: OutputGroup[] = [];
-        
-        for (const schema of finalOutputSchemas) {
-          // Get instances for this schema
-          const schemaInstances = instances
+        // Group instances by schema
+        return finalOutputSchemas.map(schema => ({
+          schemaName: schema.name,
+          outputs: instances
             .filter(instance => instance.schemaId === schema.id)
-            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-          
-          if (schemaInstances.length > 0) {
-            groups.push({
-              schemaName: schema.name,
-              outputs: schemaInstances.map(instance => ({
-                instance,
-                schema
-              }))
-            });
-          }
-        }
-        
-        return groups;
+            .map(instance => ({
+              instance,
+              schema
+            }))
+            .sort((a, b) => new Date(b.instance.createdAt).getTime() - new Date(a.instance.createdAt).getTime())
+        }));
       })
     ).subscribe(groups => {
       this.outputGroups$.next(groups);
@@ -130,37 +151,48 @@ export class OutputListComponent implements OnInit, OnDestroy {
     this.subscription?.unsubscribe();
   }
 
+  getOutputTitle(instance: ObjectInstance): string {
+    return instance.data.title || instance.data.name || instance.id;
+  }
+
+  getMediaFields(schema: ObjectSchema): ObjectField[] {
+    return schema.fields.filter(field => field.isMedia);
+  }
+
+  getMediaType(field: ObjectField): MediaType | undefined {
+    return field.validation?.mediaType;
+  }
+
+  openMedia(path: string) {
+    window.electron.fs.exists(path).then(exists => {
+      if (exists) {
+        const a = document.createElement('a');
+        a.href = this.getLocalResourceUrl(path);
+        a.target = '_blank';
+        a.click();
+      }
+    });
+  }
+
+  private getLocalResourceUrl(filePath: string): string {
+    if (!filePath) return '';
+    
+    // Remove any existing protocol
+    filePath = filePath.replace(/^(file|local-resource):\/\//, '');
+    
+    // On Windows, remove the colon after drive letter if present
+    if (navigator.platform.startsWith('Win')) {
+      filePath = filePath.replace(/^([a-zA-Z]):/, '$1');
+    }
+    
+    return `local-resource://${filePath}`;
+  }
+
   show() {
     this.visible = true;
   }
 
   hide() {
     this.visible = false;
-  }
-
-  getOutputTitle(output: ObjectInstance): string {
-    if (typeof output.data === 'object') {
-      return output.data.title || output.data.name || 'Untitled Output';
-    }
-    return 'Untitled Output';
-  }
-
-  canDownload(output: ObjectInstance): boolean {
-    if (typeof output.data !== 'object') return false;
-    return !!(output.data.content || output.data.file || output.data.url);
-  }
-
-  async downloadOutput(output: ObjectInstance) {
-    if (!this.canDownload(output)) return;
-
-    try {
-      const data = output.data;
-      const source = data.url || data.file || data.content;
-      const title = this.getOutputTitle(output);
-      
-      await window.electron.download.downloadFile(source, title);
-    } catch (error) {
-      console.error('Error downloading output:', error);
-    }
   }
 }
