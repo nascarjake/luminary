@@ -357,45 +357,54 @@ export class AiFunctionService {
     }
   }
 
-  private async downloadMediaFields(instance, schemaId) {
-     // After creating instance, check for media fields and download them
-     const schema = await this.objectSchemaService.getSchema(schemaId);
-     if (schema) {
-       const mediaFields = schema.fields.filter(field => field.isMedia);
-       for (const field of mediaFields) {
-         const url = instance.data[field.name];
-         if (url && typeof url === 'string') {
-           try {
-             // Create a unique filename based on the field and instance
-             const ext = url.split('.').pop() || '';
-             const filename = `${field.name}-${instance.id}.${ext}`;
-             const filePath = await window.electron.path.join(
-               await window.electron.path.appConfigDir(),
-               'media',
-               filename
-             );
+  private async downloadMediaFields(instance: any, schemaId: string): Promise<void> {
+    const schema = await this.objectSchemaService.getSchema(schemaId);
+    if (!schema || !schema.fields) {
+      console.error('❌ Invalid schema:', schema);
+      return;
+    }
+    
+    const mediaFields = schema.fields.filter(field => field.isMedia);
+    console.log('🔍 Media fields to process:', mediaFields);
+    for (const field of mediaFields) {
+      const url = instance.data[field.name];
+      console.log(`📦 Processing media field ${field.name}:`, { url, fieldData: instance.data[field.name] });
+      if (url && typeof url === 'string') {
+        try {
+          // Create a unique filename based on the field and instance
+          const ext = url.split('.').pop() || '';
+          const filename = `${field.name}-${instance.id}.${ext}`;
+          const filePath = await window.electron.path.join(
+            await window.electron.path.appConfigDir(),
+            'media',
+            filename
+          );
+          console.log(`🎯 Generated file path:`, { filename, filePath });
 
-             // Ensure media directory exists
-             const mediaDir = await window.electron.path.join(
-               await window.electron.path.appConfigDir(),
-               'media'
-             );
-             await window.electron.fs.mkdir(mediaDir, { recursive: true });
+          // Ensure media directory exists
+          const mediaDir = await window.electron.path.join(
+            await window.electron.path.appConfigDir(),
+            'media'
+          );
+          console.log(`📁 Creating media directory:`, mediaDir);
+          await window.electron.fs.mkdir(mediaDir, { recursive: true });
 
-             // Download the file directly using electron's download utility
-             await window.electron.download.downloadFile(url, filePath);
+          // Download the file directly using electron's download utility
+          console.log(`⬇️ Attempting to download from ${url} to ${filePath}`);
+          await window.electron.download.downloadFile(url, filePath);
 
-             // Update instance with local file path
-             instance.data[field.name] = filePath;
-             await this.objectInstanceService.updateInstance(instance.id, instance.data);
-           } catch (error) {
-             console.error(`Failed to download media for field ${field.name}:`, error);
-             this.emitSystemMessage(`❌ Error: Failed to download media for field ${field.name}: ${error}`);
-             // Don't fail the whole operation if media download fails
-           }
-         }
-       }
-     }
+          // Update instance with local file path
+          console.log(`✅ Download complete, updating instance with path:`, filePath);
+          this.emitSystemMessage(`✅ Downloaded media for ${field.name} of ${instance.name || instance.tile || instance.key || instance.id}`);
+          instance.data[field.name] = filePath;
+          await this.objectInstanceService.updateInstance(instance.id, instance.data);
+        } catch (error) {
+          console.error(`Failed to download media for field ${field.name}:`, error);
+          this.emitSystemMessage(`❌ Error: Failed to download media for field ${field.name}: ${error}`);
+          // Don't fail the whole operation if media download fails
+        }
+      }
+    }
   }
 
   private async validateAndSaveInstance(data: any, schemaId: string): Promise<{ valid: boolean; instance?: any; errors?: string[] }> {
@@ -667,7 +676,7 @@ export class AiFunctionService {
                 }
               }
             } else {
-              console.log('✨ Validating single output against schema:', output.schemaId);
+              console.log('✨ Validating single output against schema:', output.schemaId, outputValue);
               const validationResult = await this.validateAndSaveInstance(outputValue, output.schemaId);
               if (!validationResult.valid) {
                 const errorMsg = `Validation failed for ${output.name}: ${validationResult.errors?.join(', ')}`;
@@ -714,7 +723,7 @@ export class AiFunctionService {
                 errors.push(errorMsg);
               } else {
                 console.log('✅ Validation successful for:', output.name);
-                this.emitSystemMessage(`✅ Saved ${output.name}`);
+                this.emitSystemMessage(`✅ Saved ${output.name} ${outputValue.name || outputValue.title || outputValue.label || outputValue.key || outputValue.text || outputValue.id}`);
                 results.push(validationResult.instance);
               }
             }

@@ -165,7 +165,7 @@ export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
     if (this.canvas) {
       this.canvas.background_image = null;
       this.canvas.render_shadows = false;
-      this.canvas.render_connection_arrows = true;
+      this.canvas.render_connection_arrows = false;
       this.canvas.connections_width = 3;
       this.canvas.always_render_background = true;
       this.canvas.default_link_color = "#9CA3AF";

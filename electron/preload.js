@@ -68,7 +68,10 @@ contextBridge.exposeInMainWorld('electron', {
     }
   },
   download: {
-    downloadFile: (url, filePath) => ipcRenderer.invoke('download:file', { url, filePath })
+    downloadFile(url, filePath) {
+      console.log(' Preload: Forwarding download request:', { url, filePath });
+      return ipcRenderer.invoke('download:file', url, filePath);
+    }
   },
   terminal: {
     executeCommand: async (options) => {
