@@ -61,10 +61,12 @@ export class ObjectInstanceService implements IObjectInstanceService {
 
   private async getInstancesFilePath(): Promise<string> {
     const profile = this.configService.getActiveProfile();
+    const project = this.configService.getActiveProject();
     if (!profile) throw new Error('No active profile');
+    if (!project) throw new Error('No active project');
     
     const configDir = await window.electron.path.appConfigDir();
-    return window.electron.path.join(configDir, `instances-${profile.id}.json`);
+    return window.electron.path.join(configDir, `instances-${profile.id}-${project.id}.json`);
   }
 
   private async loadInstances(): Promise<void> {
