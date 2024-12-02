@@ -10,6 +10,7 @@ import { PictoryUtils, PictoryJobResponse, PictoryJobStatus } from '../utils/pic
 import { ObjectSchemaService } from './object-schema.service';
 import { ObjectInstanceService } from './object-instance.service';
 import { GraphService } from './graph.service'; // Import GraphService
+import { ConfigService } from './config.service'; // Import ConfigService
 import type { Electron } from 'electron-api';
 import type { Buffer } from 'buffer';
 
@@ -61,7 +62,8 @@ export class AiFunctionService {
     private aiCommunicationService: AiCommunicationService,
     private objectSchemaService: ObjectSchemaService,
     private objectInstanceService: ObjectInstanceService,
-    private graphService: GraphService 
+    private graphService: GraphService,
+    private configService: ConfigService
   ) {
     this.pictoryUtils = new PictoryUtils(http);
   }
@@ -504,7 +506,11 @@ export class AiFunctionService {
 
       // Get app config directory and load assistant implementation
       const baseDir = await window.electron.path.appConfigDir();
-      const profileId = '97980360-679d-45ed-83fa-2dda2e21fc72'; // TODO: Get this from service
+      const profile = this.configService.getActiveProfile();
+      if (!profile) {
+        throw new Error('No active profile found');
+      }
+      const profileId = profile.id;
       const assistantPath = await window.electron.path.join(baseDir, `assistant-${profileId}-${assistantId}.json`);
       
       // Initialize function result with args as fallback

@@ -442,7 +442,7 @@ ipcMain.handle('profile:export', async (_, profileId) => {
         // Copy function scripts for this assistant
         await copyFunctionScripts(configDir, tempDir, assistant.config);
         // Update paths to be relative
-        assistant.config = updateFunctionPaths(assistant.config, '');
+        assistant.config = updateFunctionPaths(assistant.config, '', assistant.id, assistant.id);
         assistants.push(assistant);
       }
     }
@@ -532,8 +532,13 @@ ipcMain.handle('profile:import', async (_, profileId, zipBuffer) => {
         
         // Copy function scripts for this assistant
         await copyFunctionScripts(tempDir, configDir, assistant.config);
-        // Update paths to point to new location
-        assistant.config = updateFunctionPaths(assistant.config, configDir);
+        // Update paths to point to new location and update assistant IDs
+        assistant.config = updateFunctionPaths(
+          assistant.config, 
+          configDir,
+          assistant.id,  // Old assistant ID
+          assistant.id   // New assistant ID (same in this case)
+        );
         
         fs.writeFileSync(
           path.join(configDir, `assistant-${profileId}-${assistant.id}.json`),
@@ -586,32 +591,47 @@ async function copyFunctionScripts(sourceDir, targetDir, assistantConfig) {
       const scriptDir = path.dirname(scriptPath);
       const scriptDirName = path.basename(scriptDir);
       
-      // Create the target directory
-      const targetScriptDir = path.join(targetDir, scriptDirName);
-      if (!fs.existsSync(targetScriptDir)) {
-        fs.mkdirSync(targetScriptDir, { recursive: true });
-      }
+      try {
+        // Create the target directory
+        const targetScriptDir = path.join(targetDir, scriptDirName);
+        if (!fs.existsSync(targetScriptDir)) {
+          fs.mkdirSync(targetScriptDir, { recursive: true });
+        }
 
-      // Copy the entire script directory
-      fs.cpSync(scriptDir, targetScriptDir, { recursive: true });
+        // Copy the entire script directory
+        console.log('Copying from:', scriptDir, 'to:', targetScriptDir);
+        fs.cpSync(scriptDir, targetScriptDir, { recursive: true });
+        
+        // Update the script path to be relative to the target directory
+        const scriptName = path.basename(func.script);
+        func.script = path.join(scriptDirName, scriptName);
+        console.log('Updated script path to:', func.script);
+      } catch (err) {
+        console.error('Error copying function script:', err);
+        // Don't throw, just log the error and continue
+      }
     } else {
       console.log('No script file found for function:', func);
     }
   }
 }
 
-function updateFunctionPaths(assistantConfig, newBasePath) {
+function updateFunctionPaths(assistantConfig, newBasePath, oldAssistantId, newAssistantId) {
   if (!assistantConfig?.functions?.functions) return assistantConfig;
 
   const updatedConfig = { ...assistantConfig };
   updatedConfig.functions.functions = assistantConfig.functions.functions.map(func => {
     if (func.script) {
       console.log('Updating script path for function:', func.script);
-      const scriptName = path.basename(func.script);
-      const scriptDir = path.dirname(func.script);
-      const scriptDirName = path.basename(scriptDir);
-      func.script = path.join(newBasePath, scriptDirName, scriptName);
+      // The script path should already be relative from the export
+      // Just join it with the new base path
+      func.script = path.join(newBasePath, func.script);
       console.log('New script path:', func.script);
+    }
+    // Update assistant ID if it's referenced in the function
+    if (func.assistant === oldAssistantId) {
+      console.log(`Updating assistant ID from ${oldAssistantId} to ${newAssistantId}`);
+      func.assistant = newAssistantId;
     }
     return func;
   });
@@ -689,7 +709,7 @@ function createWindow() {
   });
 
   // Open DevTools
-  mainWindow.webContents.openDevTools();
+  //mainWindow.webContents.openDevTools();
 
   const appPath = path.join(__dirname, '../browser');
   console.log('App directory:', appPath);
