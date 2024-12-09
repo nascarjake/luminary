@@ -7,6 +7,9 @@ declare module 'electron-api' {
     mkdir: (path: string, options?: { recursive: boolean }) => Promise<void>;
     createDir: (path: string, options?: { recursive: boolean }) => Promise<void>;
     readdir: (path: string) => Promise<string[]>;
+    rmdir: (path: string) => Promise<void>;
+    unlink: (path: string) => Promise<void>;
+    stat: (path: string) => Promise<any>;
   }
 
   interface ElectronProfile {
@@ -18,6 +21,8 @@ declare module 'electron-api' {
     join: (...args: string[]) => Promise<string>;
     appConfigDir: () => Promise<string>;
     relative: (from: string, to: string) => Promise<string>;
+    dirname: (path: string) => Promise<string>;
+    basename: (path: string) => Promise<string>;
   }
 
   interface ElectronFunctions {
@@ -109,10 +114,13 @@ declare module 'electron-api' {
     close(): Promise<void>;
   }
 
-  interface IpcRenderer {
+  interface ElectronIpcRenderer {
     invoke(channel: string, ...args: any[]): Promise<any>;
     on(channel: string, listener: (event: any, ...args: any[]) => void): void;
+    once(channel: string, listener: (event: any, ...args: any[]) => void): void;
+    send(channel: string, ...args: any[]): void;
     removeListener(channel: string, listener: (event: any, ...args: any[]) => void): void;
+    removeAllListeners(channel: string): void;
   }
 
   interface Electron {
@@ -125,7 +133,7 @@ declare module 'electron-api' {
     terminal: ElectronTerminal;
     graph: ElectronGraph;
     dialog: ElectronDialog;
-    ipcRenderer: IpcRenderer;
+    ipcRenderer: ElectronIpcRenderer;
     profile: ElectronProfile;
     app: {
       getVersion(): Promise<string>;

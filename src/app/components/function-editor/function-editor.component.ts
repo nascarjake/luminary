@@ -14,7 +14,9 @@ import { InputNumberModule } from 'primeng/inputnumber';
 import { CheckboxModule } from 'primeng/checkbox';
 import { DropdownModule } from 'primeng/dropdown';
 import { TableModule } from 'primeng/table';
+import { MultiSelectModule } from 'primeng/multiselect'; // Add this import
 import { ObjectSchema } from '../../interfaces/object-system';
+import { ObjectSchemaService } from '../../services/object-schema.service';
 
 export interface FunctionDefinition {
   name: string;
@@ -35,6 +37,8 @@ export interface FunctionDefinition {
     outputSchema?: string;
     environmentVariables?: Record<string, string>;
   };
+  inputs?: string[];
+  outputs?: string[];
 }
 
 const DEFAULT_FUNCTION: FunctionDefinition = {
@@ -45,7 +49,7 @@ const DEFAULT_FUNCTION: FunctionDefinition = {
     type: 'object',
     properties: {},
     required: [],
-    additionalProperties: false,
+    additionalProperties: false
   },
   implementation: {
     command: '',
@@ -70,7 +74,8 @@ const DEFAULT_FUNCTION: FunctionDefinition = {
     InputNumberModule,
     CheckboxModule,
     DropdownModule,
-    TableModule
+    TableModule,
+    MultiSelectModule  // Add this import
   ],
   template: `
     <p-dialog 
@@ -84,15 +89,57 @@ const DEFAULT_FUNCTION: FunctionDefinition = {
     >
       <div class="function-editor">
         <div class="editor-sections">
-          <div class="definition-section">
+          <div class="standalone-section" *ngIf="standalone">
+            <h3>Function Details</h3>
+            <p class="section-description">Define the basic properties of your function</p>
+            <div class="implementation-form">
+              <div class="form-field">
+                <label>Function Name</label>
+                <input type="text" pInputText [(ngModel)]="functionName" 
+                       [style]="{'width': '100%'}"
+                       placeholder="e.g., Process Video, Generate Thumbnail">
+                <small>A descriptive name that explains what this function does</small>
+              </div>
+
+              <div class="form-field">
+                <label>Input Schemas</label>
+                <p-multiSelect
+                  [options]="availableSchemas"
+                  [(ngModel)]="selectedInputs"
+                  [style]="{'width': '100%'}"
+                  optionLabel="name"
+                  optionValue="id"
+                  placeholder="Select input schemas"
+                  [filter]="true"
+                ></p-multiSelect>
+                <small>Select the schemas that this function accepts as input</small>
+              </div>
+
+              <div class="form-field">
+                <label>Output Schemas</label>
+                <p-multiSelect
+                  [options]="availableSchemas"
+                  [(ngModel)]="selectedOutputs"
+                  [style]="{'width': '100%'}"
+                  optionLabel="name"
+                  optionValue="id"
+                  placeholder="Select output schemas"
+                  [filter]="true"
+                ></p-multiSelect>
+                <small>Select the schemas that this function produces as output</small>
+              </div>
+            </div>
+          </div>
+
+          <div class="definition-section" *ngIf="!standalone">
             <h3>Function Definition</h3>
             <p class="section-description">Define how the AI should call this function</p>
             <div class="editor-container" #editorContainer></div>
             <div *ngIf="error" class="error-message">{{ error }}</div>
           </div>
 
-          <div class="">
-            <div class="p-field-checkbox" *ngIf="functionImpl">
+          <div class="output-section" *ngIf="functionImpl && !standalone">
+            <div class="p-field-checkbox">
               <p-checkbox [(ngModel)]="functionImpl.isOutput" [binary]="true" inputId="isOutput"></p-checkbox>
               <label for="isOutput" class="p-checkbox-label">Is Output Function</label>
             </div>
@@ -194,6 +241,7 @@ const DEFAULT_FUNCTION: FunctionDefinition = {
         </div>
       </div>
       <div class="dialog-footer">
+        <div *ngIf="error" class="error-message" style="color: red">{{ error }}</div>
         <p-button 
           label="Cancel" 
           (onClick)="onCancel()" 
@@ -202,7 +250,6 @@ const DEFAULT_FUNCTION: FunctionDefinition = {
         <p-button 
           label="Save" 
           (onClick)="onSave()"
-          [disabled]="!!error"
         ></p-button>
       </div>
     </p-dialog>
@@ -246,19 +293,18 @@ const DEFAULT_FUNCTION: FunctionDefinition = {
       display: flex;
       justify-content: flex-end;
       gap: 0.5rem;
+      padding: 1rem;
+      border-top: 1px solid var(--surface-border);
+      background-color: var(--surface-section);
     }
 
-    /* Environment Variables Styles */
     .p-inputgroup {
-      margin-top: 0.5rem;
       display: flex;
-      gap: 0.5rem;
+      align-items: center;
     }
-
-    .p-inputgroup input {
-      flex: 1;
+    .p-inputgroup .p-button {
+      margin-left: 4px;
     }
-
     :host ::ng-deep {
       .p-table {
         margin-bottom: 0.5rem;
@@ -293,6 +339,37 @@ const DEFAULT_FUNCTION: FunctionDefinition = {
           color: var(--text-color-secondary);
           font-size: 0.875rem;
           margin: 0.5rem 0 1rem;
+        }
+
+        .standalone-section {
+          background: var(--surface-section);
+          border-radius: 6px;
+          padding: 1rem;
+
+          .implementation-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+
+            .form-field {
+              display: flex;
+              flex-direction: column;
+              gap: 0.5rem;
+
+              label {
+                font-weight: 500;
+                color: var(--text-color);
+              }
+
+              small {
+                color: var(--text-color-secondary);
+              }
+
+              input {
+                width: 100%;
+              }
+            }
+          }
         }
 
         .definition-section {
@@ -393,6 +470,7 @@ export class FunctionEditorComponent implements AfterViewInit, OnDestroy, OnChan
   @Input() function: FunctionDefinition | null = null;
   @Input() outputSchemas: ObjectSchema[] = []; 
   @Input() arraySchemas: { inputs: string[], outputs: string[] } = { inputs: [], outputs: [] };
+  @Input() standalone = false;
   @Output() visibleChange = new EventEmitter<boolean>();
   @Output() save = new EventEmitter<FunctionDefinition>();
   @Output() cancel = new EventEmitter<void>();
@@ -401,7 +479,7 @@ export class FunctionEditorComponent implements AfterViewInit, OnDestroy, OnChan
   error: string | null = null;
   isEditing = false;
   functionImpl: FunctionDefinition['implementation'] | null = null;
-  availableSchemas: any[] = [];
+  availableSchemas: { id: string; name: string }[] = [];
   envVars: { key: string, value: string }[] = [];
   newEnvVar = { key: '', value: '' };
   private editorExtensions = [
@@ -420,8 +498,26 @@ export class FunctionEditorComponent implements AfterViewInit, OnDestroy, OnChan
     })
   ];
 
-  constructor() {
+  selectedInputs: string[] = [];
+  selectedOutputs: string[] = [];
+
+  constructor(
+    private objectSchemaService: ObjectSchemaService
+  ) {
     console.log('FunctionEditor constructor');
+  }
+
+  private async loadSchemas() {
+    try {
+      const schemas = await this.objectSchemaService.listSchemas();
+      this.availableSchemas = (schemas || []).map(schema => ({
+        id: schema.id,
+        name: schema.name
+      }));
+    } catch (error) {
+      console.error('Failed to load schemas:', error);
+      this.availableSchemas = [];
+    }
   }
 
   ngOnChanges(changes: SimpleChanges) {
@@ -434,21 +530,32 @@ export class FunctionEditorComponent implements AfterViewInit, OnDestroy, OnChan
         ? { ...initialFunction.implementation } 
         : { ...DEFAULT_FUNCTION.implementation! };
       this.isEditing = !!this.function;
-
-      // Initialize environment variables from function implementation
-      this.envVars = Object.entries(this.functionImpl.environmentVariables || {})
-        .map(([key, value]) => ({ key, value }));
-
-      // If this is an output function, find and select the matching schema
-      if (this.functionImpl?.isOutput && this.functionImpl?.outputSchema) {
-        const selectedSchema = this.outputSchemas.find(s => s.id === this.functionImpl?.outputSchema);
-        if (selectedSchema) {
-          this.functionImpl.outputSchema = selectedSchema.id;
-        }
+      this.functionName = initialFunction.name;
+      
+      // Initialize selected inputs/outputs if in standalone mode
+      if (this.standalone && initialFunction.inputs && initialFunction.outputs) {
+        this.selectedInputs = initialFunction.inputs;
+        this.selectedOutputs = initialFunction.outputs;
       }
-
-      console.log('Initialized functionImpl:', this.functionImpl);
     }
+
+
+    this.loadSchemas();
+    
+
+    // Initialize environment variables from function implementation
+    this.envVars = Object.entries(this.functionImpl?.environmentVariables || {})
+      .map(([key, value]) => ({ key, value }));
+
+    // If this is an output function, find and select the matching schema
+    if (this.functionImpl?.isOutput && this.functionImpl?.outputSchema) {
+      const selectedSchema = this.outputSchemas.find(s => s.id === this.functionImpl?.outputSchema);
+      if (selectedSchema) {
+        this.functionImpl.outputSchema = selectedSchema.id;
+      }
+    }
+
+    console.log('Initialized functionImpl:', this.functionImpl);
   }
 
   @Input()
@@ -466,6 +573,7 @@ export class FunctionEditorComponent implements AfterViewInit, OnDestroy, OnChan
       this.functionImpl = initialFunction.implementation 
         ? { ...initialFunction.implementation } 
         : { ...DEFAULT_FUNCTION.implementation! };
+      this.functionName = initialFunction.name;
       console.log('Set functionImpl:', this.functionImpl);
       this.isEditing = !!this.function;
 
@@ -481,9 +589,7 @@ export class FunctionEditorComponent implements AfterViewInit, OnDestroy, OnChan
         }
       }
 
-      // Update available schemas when dialog opens
-      this.availableSchemas = this.outputSchemas;
-
+      this.loadSchemas();
       // Initialize editor after view is ready
       setTimeout(() => {
         this.initializeEditor();
@@ -500,6 +606,7 @@ export class FunctionEditorComponent implements AfterViewInit, OnDestroy, OnChan
   }
 
   private _visible = false;
+  functionName = '';
 
   ngAfterViewInit() {
     // Remove editor initialization from ngAfterViewInit
@@ -538,33 +645,29 @@ export class FunctionEditorComponent implements AfterViewInit, OnDestroy, OnChan
   }
 
   private validateJson(jsonString: string): boolean {
+    if (this.standalone) {
+      // Skip JSON validation in standalone mode
+      return true;
+    }
     try {
       const parsed = JSON.parse(jsonString);
-      
       // Validate required fields
-      if (!parsed.name || typeof parsed.name !== 'string') {
-        throw new Error('Function must have a name');
+      if (!parsed.name) {
+        this.error = 'Name is required';
+        return false;
       }
-      if (!parsed.description || typeof parsed.description !== 'string') {
-        throw new Error('Function must have a description');
+      if (!parsed.description) {
+        this.error = 'Description is required';
+        return false;
       }
       if (!parsed.parameters || typeof parsed.parameters !== 'object') {
-        throw new Error('Function must have parameters object');
+        this.error = 'Parameters must be an object';
+        return false;
       }
-      if (!parsed.parameters.type || parsed.parameters.type !== 'object') {
-        throw new Error('Parameters must have type: "object"');
-      }
-      if (!parsed.parameters.properties || typeof parsed.parameters.properties !== 'object') {
-        throw new Error('Parameters must have properties object');
-      }
-      if (!Array.isArray(parsed.parameters.required)) {
-        throw new Error('Parameters must have required array');
-      }
-
       this.error = null;
       return true;
     } catch (e) {
-      this.error = e.message;
+      this.error = 'Invalid JSON';
       return false;
     }
   }
@@ -718,29 +821,60 @@ export class FunctionEditorComponent implements AfterViewInit, OnDestroy, OnChan
   }
 
   onSave() {
-    if (!this.editor) return;
-    
-    const jsonString = this.editor.state.doc.toString();
-    if (this.validateJson(jsonString)) {
-      const functionDef = JSON.parse(jsonString);
-      // Merge the implementation details with the function definition
-      const fullFunction: FunctionDefinition = {
-        ...functionDef,
-        implementation: this.functionImpl || undefined
-      };
+    if (!this.functionImpl) return;
 
-      // Convert envVars array to object
-      if (this.functionImpl) {
-        this.functionImpl.environmentVariables = this.envVars.reduce((acc, { key, value }) => {
-          acc[key] = value;
-          return acc;
-        }, {} as Record<string, string>);
+    if (this.standalone) {
+      if (!this.functionName.trim()) {
+        this.error = 'Function name is required';
+        return;
       }
-
-      this.save.emit(fullFunction);
-      this.visible = false;
-      this.visibleChange.emit(false);
+      if (!this.functionImpl.command?.trim()) {
+        this.error = 'Command is required';
+        return;
+      }
+      if (!this.functionImpl.script?.trim()) {
+        this.error = 'Script is required';
+        return;
+      }
     }
+
+    // Update environment variables in implementation
+    this.functionImpl.environmentVariables = this.envVars.reduce((acc, { key, value }) => {
+      if (key && value) acc[key] = value;
+      return acc;
+    }, {} as Record<string, string>);
+
+    let functionToSave: FunctionDefinition;
+
+    if (this.standalone) {
+      // In standalone mode, we only care about the implementation details
+      functionToSave = {
+        name: this.functionName.trim(),
+        description: '',
+        parameters: {
+          type: 'object',
+          properties: {},
+          required: [],
+          additionalProperties: false
+        },
+        implementation: this.functionImpl,
+        inputs: this.selectedInputs,  // Add selected inputs
+        outputs: this.selectedOutputs  // Add selected outputs
+      };
+    } else {
+      // In normal mode, parse the JSON editor content
+      try {
+        const editorContent = this.editor?.state.doc.toString() || '{}';
+        functionToSave = JSON.parse(editorContent);
+        functionToSave.implementation = this.functionImpl;
+      } catch (e) {
+        this.error = 'Invalid JSON in editor';
+        return;
+      }
+    }
+
+    this.save.emit(functionToSave);
+    this.visible = false;
   }
 
   onCancel() {
