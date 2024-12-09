@@ -1,6 +1,7 @@
 import { Component, ElementRef, OnInit, OnDestroy, ViewChild, NgZone, HostListener, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AssistantLibraryComponent } from '../../components/assistant-library/assistant-library.component';
+import { FunctionLibraryComponent } from '../../components/function-library/function-library.component';
 import { GraphService } from '../../services/graph.service';
 import { ConfigService } from '../../services/config.service';
 import { FunctionImplementationsService } from '../../services/function-implementations.service';
@@ -27,10 +28,13 @@ declare global {
 @Component({
   selector: 'app-graph-editor',
   standalone: true,
-  imports: [CommonModule, AssistantLibraryComponent],
+  imports: [CommonModule, AssistantLibraryComponent, FunctionLibraryComponent],
   template: `
     <div class="graph-editor-container">
-      <app-assistant-library style="z-index: 3; background: rgb(24 24 24);"></app-assistant-library>
+      <div class="sidebar" style="z-index: 3; background: rgb(24 24 24);">
+        <app-assistant-library></app-assistant-library>
+        <app-function-library></app-function-library>
+      </div>
       <canvas 
         class="graph-canvas" 
         #graphCanvas
@@ -43,7 +47,45 @@ declare global {
       </div>
     </div>
   `,
-  styleUrls: ['./graph-editor.component.scss']
+  styles: [`
+    .graph-editor-container {
+      display: flex;
+      height: 100%;
+      width: 100%;
+      position: relative;
+    }
+
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      width: 250px;
+      border-right: 1px solid var(--surface-border);
+    }
+
+    .graph-canvas {
+      flex: 1;
+      height: 100%;
+    }
+
+    .toolbar {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+    }
+
+    .save-button {
+      padding: 0.5rem 1rem;
+      background: var(--primary-color);
+      border: none;
+      border-radius: 4px;
+      color: white;
+      cursor: pointer;
+      
+      &:hover {
+        background: var(--primary-600);
+      }
+    }
+  `]
 })
 export class GraphEditorComponent implements OnInit, OnDestroy, AfterViewInit {
   @ViewChild('graphCanvas', { static: true }) canvasRef!: ElementRef<HTMLCanvasElement>;

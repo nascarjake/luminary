@@ -140,6 +140,17 @@ contextBridge.exposeInMainWorld('electron', {
     minimize: () => ipcRenderer.invoke('window:minimize'),
     maximize: () => ipcRenderer.invoke('window:maximize'),
     close: () => ipcRenderer.invoke('window:close'),
+  },
+  functionNodes: {
+    save: async (baseDir, profileId, config) => {
+      return await ipcRenderer.invoke('function-nodes:save', baseDir, profileId, config);
+    },
+    load: async (baseDir, profileId) => {
+      return await ipcRenderer.invoke('function-nodes:load', baseDir, profileId);
+    },
+    delete: async (baseDir, profileId) => {
+      return await ipcRenderer.invoke('function-nodes:delete', baseDir, profileId);
+    }
   }
 });
 

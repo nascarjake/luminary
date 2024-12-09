@@ -151,6 +151,55 @@ ipcMain.handle('graph:load', async (_, baseDir, profileId, projectId) => {
   }
 });
 
+// Function nodes handling
+ipcMain.handle('function-nodes:save', async (_, baseDir, profileId, config) => {
+  console.log('Saving function nodes configuration:', { profileId });
+  const filePath = path.join(baseDir, `function-nodes-${profileId}.json`);
+  
+  try {
+    fs.writeFileSync(filePath, JSON.stringify(config, null, 2));
+    return true;
+  } catch (error) {
+    console.error('Error saving function nodes configuration:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('function-nodes:load', async (_, baseDir, profileId) => {
+  console.log('Loading function nodes configuration:', { profileId });
+  const filePath = path.join(baseDir, `function-nodes-${profileId}.json`);
+  
+  try {
+    const content = fs.readFileSync(filePath, 'utf8');
+    return JSON.parse(content);
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      // Return empty config if file doesn't exist
+      return {
+        profileId,
+        functions: [],
+        version: '1.0.0',
+        lastModified: new Date().toISOString()
+      };
+    }
+    console.error('Error loading function nodes configuration:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('function-nodes:delete', async (_, baseDir, profileId) => {
+  console.log('Deleting function nodes configuration:', { profileId });
+  const filePath = path.join(baseDir, `function-nodes-${profileId}.json`);
+  
+  try {
+    fs.unlinkSync(filePath);
+    return true;
+  } catch (error) {
+    console.error('Error deleting function nodes configuration:', error);
+    throw error;
+  }
+});
+
 // Function implementations directory handling
 ipcMain.handle('functions:ensureDir', async (_, baseDir) => {
   console.log('Ensuring functions directory exists');
@@ -423,7 +472,10 @@ ipcMain.handle('profile:export', async (_, profileId) => {
     // Copy graph file if exists
     const graphPath = path.join(configDir, 'graphs', `graph-${profileId}.json`);
     if (fs.existsSync(graphPath)) {
-      fs.copyFileSync(graphPath, path.join(tempDir, 'graph.json'));
+      fs.copyFileSync(
+        graphPath,
+        path.join(tempDir, 'graph.json')
+      );
     }
 
     // Copy assistant files and their function scripts
