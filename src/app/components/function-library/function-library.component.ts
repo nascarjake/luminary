@@ -1,15 +1,18 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ButtonModule } from 'primeng/button';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { ConfirmationService } from 'primeng/api';
 import { FunctionNodesService } from '../../services/function-nodes.service';
 import { FunctionNode } from '../../interfaces/function-nodes';
 import { FunctionEditorComponent, FunctionDefinition } from '../function-editor/function-editor.component';
-import { ConfigService } from '../../services/config.service'; // Import ConfigService
+import { ConfigService } from '../../services/config.service';
 
 @Component({
   selector: 'app-function-library',
   standalone: true,
-  imports: [CommonModule, ButtonModule, FunctionEditorComponent],
+  imports: [CommonModule, ButtonModule, FunctionEditorComponent, ConfirmDialogModule],
+  providers: [],
   template: `
     <div class="function-library">
       <div class="header">
@@ -41,7 +44,7 @@ import { ConfigService } from '../../services/config.service'; // Import ConfigS
             ></p-button>
             <p-button 
               icon="pi pi-trash" 
-              (onClick)="deleteFunction(func)"
+              (onClick)="confirmDelete(func)"
               styleClass="p-button-text p-button-danger p-button-sm"
               size="small"
             ></p-button>
@@ -131,7 +134,11 @@ export class FunctionLibraryComponent implements OnInit {
   functionEditorVisible = false;
   selectedFunction: FunctionNode | null = null;
 
-  constructor(private functionNodesService: FunctionNodesService, private configService: ConfigService) {} // Inject ConfigService
+  constructor(
+    private functionNodesService: FunctionNodesService, 
+    private configService: ConfigService,
+    private confirmationService: ConfirmationService
+  ) {}
 
   ngOnInit() {
     this.loadFunctions();
@@ -155,9 +162,18 @@ export class FunctionLibraryComponent implements OnInit {
     this.functionEditorVisible = true;
   }
 
+  confirmDelete(func: FunctionNode) {
+    this.confirmationService.confirm({
+      message: `Are you sure you want to delete the function "${func.name}"?`,
+      accept: () => {
+        this.deleteFunction(func);
+      }
+    });
+  }
+
   async deleteFunction(func: FunctionNode) {
     try {
-      const profile = this.configService.getActiveProfile(); // Use configService here
+      const profile = this.configService.getActiveProfile();
       if (!profile) {
         console.error('No active profile found');
         return;

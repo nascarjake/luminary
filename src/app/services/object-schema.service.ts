@@ -21,18 +21,21 @@ export class ObjectSchemaService implements IObjectSchemaService {
   private initialized = false;
 
   constructor(private configService: ConfigService) {
+    console.log('[ObjectSchemaService] Constructor called');
     // Subscribe to project changes
     this.configService.activeProject$.subscribe(project => {
+      console.log('[ObjectSchemaService] Active project changed:', project?.name);
       if (project && this.initialized) {
-        console.log('Active project changed, reloading schemas...');
+        console.log('[ObjectSchemaService] Reloading schemas due to project change');
         this.loadSchemas();
       }
     });
 
     // Subscribe to profile changes
     this.configService.activeProfile$.subscribe(profile => {
+      console.log('[ObjectSchemaService] Active profile changed:', profile?.name);
       if (profile && this.initialized) {
-        console.log('Active profile changed, reloading schemas...');
+        console.log('[ObjectSchemaService] Reloading schemas due to profile change');
         this.loadSchemas();
       }
     });
@@ -65,6 +68,7 @@ export class ObjectSchemaService implements IObjectSchemaService {
   }
 
   private async loadSchemas(): Promise<void> {
+    console.log('[ObjectSchemaService] Loading schemas...');
     try {
       const filePath = await this.getSchemasFilePath();
       console.log('Loading schemas from:', filePath);
@@ -78,10 +82,10 @@ export class ObjectSchemaService implements IObjectSchemaService {
 
       const content = await window.electron.fs.readTextFile(filePath);
       const stored: StoredSchemas = JSON.parse(content);
-      console.log('Loaded schemas:', stored.schemas.length);
+      console.log('[ObjectSchemaService] Loaded schemas:', stored.schemas.length);
       this.schemas$.next(stored.schemas);
     } catch (error) {
-      console.error('Failed to load schemas:', error);
+      console.error('[ObjectSchemaService] Error loading schemas:', error);
       this.schemas$.next([]);
     }
   }
@@ -96,11 +100,12 @@ export class ObjectSchemaService implements IObjectSchemaService {
       
       await window.electron.fs.writeTextFile(filePath, JSON.stringify(stored, null, 2));
     } catch (error) {
-      console.error('Failed to save schemas:', error);
+      console.error('[ObjectSchemaService] Error saving schemas:', error);
     }
   }
 
   async createSchema(schema: Omit<ObjectSchema, 'id' | 'version' | 'createdAt' | 'updatedAt'>): Promise<ObjectSchema> {
+    console.log('[ObjectSchemaService] Creating new schema:', schema.name);
     const now = new Date().toISOString();
     const newSchema: ObjectSchema = {
       ...schema,
@@ -118,6 +123,7 @@ export class ObjectSchemaService implements IObjectSchemaService {
   }
 
   async updateSchema(id: string, updates: Partial<ObjectSchema>): Promise<ObjectSchema> {
+    console.log('[ObjectSchemaService] Updating schema:', id);
     const schemas = this.schemas$.value;
     const index = schemas.findIndex(s => s.id === id);
     
@@ -141,6 +147,7 @@ export class ObjectSchemaService implements IObjectSchemaService {
   }
 
   async deleteSchema(id: string): Promise<void> {
+    console.log('[ObjectSchemaService] Deleting schema:', id);
     const schemas = this.schemas$.value.filter(s => s.id !== id);
     this.schemas$.next(schemas);
     await this.saveSchemas();
