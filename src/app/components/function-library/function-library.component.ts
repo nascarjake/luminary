@@ -220,11 +220,22 @@ export class FunctionLibraryComponent implements OnInit {
 
   onDragStart(event: DragEvent, func: FunctionNode) {
     if (event.dataTransfer) {
-      event.dataTransfer.setData('application/json', JSON.stringify({
-        type: 'function',
+      const nodeData = {
+        type: 'function/node',
         id: func.id,
-        name: func.name
-      }));
+        name: func.name,
+        inputs: func.inputs.map(input => ({
+          name: input,
+          schemaId: input,
+          type: input
+        })),
+        outputs: func.outputs.map(output => ({
+          name: output,
+          schemaId: output,
+          type: output
+        }))
+      };
+      event.dataTransfer.setData('application/json', JSON.stringify(nodeData));
     }
   }
 }
