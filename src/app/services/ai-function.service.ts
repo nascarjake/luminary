@@ -11,6 +11,7 @@ import { ObjectSchemaService } from './object-schema.service';
 import { ObjectInstanceService } from './object-instance.service';
 import { GraphService } from './graph.service'; // Import GraphService
 import { ConfigService } from './config.service'; // Import ConfigService
+import { FunctionNodesService } from './function-nodes.service'; // Import FunctionNodesService
 import type { Electron } from 'electron-api';
 import type { Buffer } from 'buffer';
 
@@ -63,7 +64,8 @@ export class AiFunctionService {
     private objectSchemaService: ObjectSchemaService,
     private objectInstanceService: ObjectInstanceService,
     private graphService: GraphService,
-    private configService: ConfigService
+    private configService: ConfigService,
+    private functionNodesService: FunctionNodesService
   ) {
     this.pictoryUtils = new PictoryUtils(http);
   }
@@ -445,15 +447,30 @@ export class AiFunctionService {
         
         for (const item of dataItems) {
           try {
-            // Route message through communication service
-            this.aiCommunicationService.routeMessage({
-              message: JSON.stringify(item),
-              assistantId: targetNode.assistantId
-            });
-            this.emitSystemMessage(`🔄 Starting next assistant: ${targetNode.name}`);
+            if (targetNode.functionId) {
+              // Handle function node
+              const result = await this.runFunctionNode(targetNode, item);
+              if (!result.success) {
+                console.error(`Error running function node ${targetNode.name}:`, result.errors);
+                this.emitSystemMessage(`❌ Error in function node ${targetNode.name}: ${result.errors?.join(', ')}`);
+                continue;
+              }
+              if (result.output) {
+                await this.routeToNextAssistants(targetNode.id, result.output);
+              }
+            } else if (targetNode.assistantId) {
+              // Handle assistant node
+              this.aiCommunicationService.routeMessage({
+                message: JSON.stringify(item),
+                assistantId: targetNode.assistantId
+              });
+              this.emitSystemMessage(`🔄 Starting next assistant: ${targetNode.name}`);
+            } else {
+              console.warn(`Node ${targetNode.name} has neither functionId nor assistantId`);
+            }
           } catch (error) {
-            console.error(`Error routing to assistant ${targetNode.assistantId}:`, error);
-            this.emitSystemMessage(`❌ Error routing to next assistant (${targetNode.name}): ${error}`);
+            console.error(`Error routing to node ${targetNode.name}:`, error);
+            this.emitSystemMessage(`❌ Error routing to node ${targetNode.name}: ${error}`);
           }
         }
       }
@@ -490,6 +507,70 @@ export class AiFunctionService {
     outputErrors.push(`❌ Error: ${errorMsg}`);
     errors.push(errorMsg);
     return false;
+  }
+
+  private async executeTerminalCommand(
+    implementation: any,
+    args: any,
+    baseDir: string
+  ): Promise<any> {
+    if (!implementation?.command || !implementation?.script) {
+      return args;
+    }
+
+    const { command, script, workingDir } = implementation;
+    
+    // Process any paths in the arguments to be platform-independent
+    const processedArgs: Record<string, any> = {};
+    for (const [key, value] of Object.entries(args)) {
+      if (typeof value === 'string') {
+        try {
+          // First try to parse as JSON
+          processedArgs[key] = JSON.parse(value);
+        } catch {
+          // If it's a path-like string (contains / or \), normalize it
+          if (value.includes('/') || value.includes('\\')) {
+            // If it's not absolute, make it relative to baseDir
+            const isAbsolute = value.startsWith('/') || /^[A-Za-z]:/.test(value);
+            processedArgs[key] = isAbsolute ? value : await window.electron.path.join(baseDir, value);
+          } else {
+            processedArgs[key] = value;
+          }
+        }
+      } else {
+        processedArgs[key] = value;
+      }
+    }
+
+    // Normalize working directory path
+    const normalizedWorkingDir = workingDir ? (
+      workingDir.startsWith('/') || /^[A-Za-z]:/.test(workingDir)
+        ? workingDir 
+        : await window.electron.path.join(baseDir, workingDir)
+    ) : baseDir;
+
+    // Execute the command with output handling
+    console.log('🖥️ Executing terminal command:', command);
+    try {
+      const output = await window.electron.terminal.executeCommand({
+        command,
+        args: [script],
+        cwd: normalizedWorkingDir,
+        stdin: JSON.stringify(processedArgs),
+        env: implementation.environmentVariables
+      });
+
+      try {
+        // Try to parse as JSON
+        return JSON.parse(output);
+      } catch {
+        // If not JSON, return as is
+        return output;
+      }
+    } catch (execError) {
+      this.emitSystemMessage(`❌ Execution Error: Failed to execute command "${command}": ${execError.message}`);
+      throw execError;
+    }
   }
 
   async executeFunction(
@@ -536,62 +617,8 @@ export class AiFunctionService {
         }
 
         // Execute terminal command if present
-        if (implementation?.command && implementation?.script) {
-          const { command, script, workingDir } = implementation;
-          
-          // Process any paths in the arguments to be platform-independent
-          const processedArgs: Record<string, any> = {};
-          for (const [key, value] of Object.entries(args)) {
-            if (typeof value === 'string') {
-              try {
-                // First try to parse as JSON
-                processedArgs[key] = JSON.parse(value);
-              } catch {
-                // If it's a path-like string (contains / or \), normalize it
-                if (value.includes('/') || value.includes('\\')) {
-                  // If it's not absolute, make it relative to baseDir
-                  const isAbsolute = value.startsWith('/') || /^[A-Za-z]:/.test(value);
-                  processedArgs[key] = isAbsolute ? value : await window.electron.path.join(baseDir, value);
-                } else {
-                  processedArgs[key] = value;
-                }
-              }
-            } else {
-              processedArgs[key] = value;
-            }
-          }
+        functionResult = await this.executeTerminalCommand(implementation, args, baseDir);
 
-          // Normalize working directory path
-          const normalizedWorkingDir = workingDir ? (
-            workingDir.startsWith('/') || /^[A-Za-z]:/.test(workingDir)
-              ? workingDir 
-              : await window.electron.path.join(baseDir, workingDir)
-          ) : baseDir;
-
-          // Execute the command with output handling
-          console.log('🖥️ Executing terminal command:', command);
-          try {
-            const output = await window.electron.terminal.executeCommand({
-              command,
-              args: [script],
-              cwd: normalizedWorkingDir,
-              stdin: JSON.stringify(processedArgs),
-              env: implementation.environmentVariables
-            });
-
-            try {
-              // Try to parse as JSON
-              const jsonData = JSON.parse(output);
-              functionResult = jsonData;
-            } catch {
-              // If not JSON, return as is
-              functionResult = output;
-            }
-          } catch (execError) {
-            this.emitSystemMessage(`❌ Execution Error: Failed to execute command "${command}": ${execError.message}`);
-            throw execError;
-          }
-        }
       } catch (error) {
         console.warn('⚠️ Failed to load/execute assistant function:', error);
         this.emitSystemMessage(`⚠️ Function Error: ${error.message}`);
@@ -794,6 +821,44 @@ export class AiFunctionService {
     } catch (error) {
       console.error('❌ Error executing function:', error);
       throw error;
+    }
+  }
+
+  private async runFunctionNode(
+    node: any,
+    data: any
+  ): Promise<{ success: boolean; output?: any; errors?: string[] }> {
+    try {
+      // Get app config directory
+      const baseDir = await window.electron.path.appConfigDir();
+      const profile = this.configService.getActiveProfile();
+      if (!profile) {
+        throw new Error('No active profile found');
+      }
+
+      // Load function node configuration
+      const functionConfig = await this.functionNodesService.getFunctionNode(profile.id, node.functionId);
+      if (!functionConfig) {
+        throw new Error(`Function node ${node.functionId} not found`);
+      }
+
+      // Execute the function's terminal command
+      const output = await this.executeTerminalCommand(functionConfig, data, baseDir);
+
+      // Validate output against the function's output schema
+      if (node.outputs?.length > 0) {
+        const outputSchema = node.outputs[0].schemaId;
+        const validationResult = await this.validateAndSaveInstance(output, outputSchema);
+        if (!validationResult.valid) {
+          return { success: false, errors: validationResult.errors };
+        }
+        return { success: true, output: validationResult.instance };
+      }
+
+      return { success: true, output };
+    } catch (error) {
+      console.error('Error running function node:', error);
+      return { success: false, errors: [error.message] };
     }
   }
 }
