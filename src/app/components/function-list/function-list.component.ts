@@ -65,7 +65,6 @@ import { ObjectSchema } from '../../interfaces/object-system';
     <app-function-editor
       [(visible)]="showEditor"
       [function]="selectedFunction"
-      [outputSchemas]="outputSchemas"
       [arraySchemas]="arraySchemas"
       (save)="onFunctionSave($event)"
       (cancel)="hideEditor()"
