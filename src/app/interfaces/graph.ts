@@ -9,7 +9,8 @@ export interface IGraphNodeIO {
 
 export interface IAssistantNode {
   id: string;
-  assistantId: string;
+  assistantId?: string;  // Optional for function nodes
+  functionId?: string;   // Optional for assistant nodes
   name: string;
   inputs: IGraphNodeIO[];
   outputs: IGraphNodeIO[];
