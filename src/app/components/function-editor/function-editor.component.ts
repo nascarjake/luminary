@@ -1,11 +1,11 @@
-import { Component, ElementRef, ViewChild, Input, Output, EventEmitter, AfterViewInit, OnDestroy, SimpleChanges, OnChanges } from '@angular/core';
+import { Component, ElementRef, ViewChild, Input, Output, EventEmitter, AfterViewInit, OnDestroy, SimpleChanges, OnChanges, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { EditorState } from '@codemirror/state';
 import { EditorView, keymap } from '@codemirror/view';
+import { minimalSetup } from 'codemirror';
 import { json } from '@codemirror/lang-json';
 import { defaultKeymap } from '@codemirror/commands';
-import { basicSetup } from 'codemirror';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { DialogModule } from 'primeng/dialog';
 import { ButtonModule } from 'primeng/button';
@@ -14,9 +14,11 @@ import { InputNumberModule } from 'primeng/inputnumber';
 import { CheckboxModule } from 'primeng/checkbox';
 import { DropdownModule } from 'primeng/dropdown';
 import { TableModule } from 'primeng/table';
-import { MultiSelectModule } from 'primeng/multiselect'; // Add this import
+import { MultiSelectModule } from 'primeng/multiselect';
 import { ObjectSchema } from '../../interfaces/object-system';
 import { ObjectSchemaService } from '../../services/object-schema.service';
+import { FunctionNode } from '../../interfaces/function-nodes';
+import { Subject, takeUntil } from 'rxjs';
 
 export interface FunctionDefinition {
   name: string;
@@ -75,7 +77,7 @@ const DEFAULT_FUNCTION: FunctionDefinition = {
     CheckboxModule,
     DropdownModule,
     TableModule,
-    MultiSelectModule  // Add this import
+    MultiSelectModule  
   ],
   template: `
     <p-dialog 
@@ -465,10 +467,9 @@ const DEFAULT_FUNCTION: FunctionDefinition = {
     }
   `]
 })
-export class FunctionEditorComponent implements AfterViewInit, OnDestroy, OnChanges {
+export class FunctionEditorComponent implements OnInit, AfterViewInit, OnDestroy, OnChanges {
   @ViewChild('editorContainer') private editorContainer!: ElementRef;
-  @Input() function: FunctionDefinition | null = null;
-  @Input() outputSchemas: ObjectSchema[] = []; 
+  @Input() function: any| null = null;
   @Input() arraySchemas: { inputs: string[], outputs: string[] } = { inputs: [], outputs: [] };
   @Input() standalone = false;
   @Output() visibleChange = new EventEmitter<boolean>();
@@ -476,14 +477,15 @@ export class FunctionEditorComponent implements AfterViewInit, OnDestroy, OnChan
   @Output() cancel = new EventEmitter<void>();
 
   private editor?: EditorView;
+  private destroy$ = new Subject<void>();
   error: string | null = null;
   isEditing = false;
   functionImpl: FunctionDefinition['implementation'] | null = null;
-  availableSchemas: { id: string; name: string }[] = [];
+  availableSchemas: ObjectSchema[] = [];
   envVars: { key: string, value: string }[] = [];
   newEnvVar = { key: '', value: '' };
   private editorExtensions = [
-    basicSetup,
+    minimalSetup,
     json(),
     keymap.of(defaultKeymap),
     oneDark,
@@ -501,30 +503,30 @@ export class FunctionEditorComponent implements AfterViewInit, OnDestroy, OnChan
   selectedInputs: string[] = [];
   selectedOutputs: string[] = [];
 
-  constructor(
-    private objectSchemaService: ObjectSchemaService
-  ) {
-    console.log('FunctionEditor constructor');
+  constructor(private objectSchemaService: ObjectSchemaService) {
+    console.log('[FunctionEditor] Constructor called');
   }
 
-  private async loadSchemas() {
-    try {
-      const schemas = await this.objectSchemaService.listSchemas();
-      this.availableSchemas = (schemas || []).map(schema => ({
-        id: schema.id,
-        name: schema.name
-      }));
-    } catch (error) {
-      console.error('Failed to load schemas:', error);
-      this.availableSchemas = [];
-    }
+  ngOnInit() {
+    console.log('[FunctionEditor] ngOnInit called');
+    this.loadSchemas();
+  }
+
+  private loadSchemas() {
+    console.log('[FunctionEditor] loadSchemas called');
+    this.objectSchemaService.schemas
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(schemas => {
+        console.log('[FunctionEditor] Received schemas update:', schemas.length);
+        this.availableSchemas = schemas;
+      });
   }
 
   ngOnChanges(changes: SimpleChanges) {
-    console.log('FunctionEditor changes:', changes);
+    console.log('[FunctionEditor] ngOnChanges called with changes:', Object.keys(changes));
+    
     if (changes['function'] && !changes['function'].firstChange) {
-      console.log('Function changed:', changes['function'].currentValue);
-      // Initialize implementation form when function changes
+      console.log('[FunctionEditor] Function changed:', changes['function'].currentValue);
       const initialFunction = this.function || DEFAULT_FUNCTION;
       this.functionImpl = initialFunction.implementation 
         ? { ...initialFunction.implementation } 
@@ -532,30 +534,32 @@ export class FunctionEditorComponent implements AfterViewInit, OnDestroy, OnChan
       this.isEditing = !!this.function;
       this.functionName = initialFunction.name;
       
-      // Initialize selected inputs/outputs if in standalone mode
       if (this.standalone && initialFunction.inputs && initialFunction.outputs) {
         this.selectedInputs = initialFunction.inputs;
         this.selectedOutputs = initialFunction.outputs;
       }
-    }
 
+      // Initialize environment variables from function implementation
+      this.envVars = Object.entries(this.functionImpl?.environmentVariables || {})
+        .map(([key, value]) => ({ key, value }));
 
-    this.loadSchemas();
-    
-
-    // Initialize environment variables from function implementation
-    this.envVars = Object.entries(this.functionImpl?.environmentVariables || {})
-      .map(([key, value]) => ({ key, value }));
-
-    // If this is an output function, find and select the matching schema
-    if (this.functionImpl?.isOutput && this.functionImpl?.outputSchema) {
-      const selectedSchema = this.outputSchemas.find(s => s.id === this.functionImpl?.outputSchema);
-      if (selectedSchema) {
-        this.functionImpl.outputSchema = selectedSchema.id;
+      // If this is an output function, find and select the matching schema
+      if (this.functionImpl?.isOutput && this.functionImpl?.outputSchema) {
+        const selectedSchema = this.availableSchemas.find(s => s.id === this.functionImpl?.outputSchema);
+        if (selectedSchema) {
+          this.functionImpl.outputSchema = selectedSchema.id;
+        }
       }
     }
+  }
 
-    console.log('Initialized functionImpl:', this.functionImpl);
+  ngOnDestroy() {
+    console.log('[FunctionEditor] ngOnDestroy called');
+    this.destroy$.next();
+    this.destroy$.complete();
+    if (this.editor) {
+      this.editor.destroy();
+    }
   }
 
   @Input()
@@ -583,13 +587,12 @@ export class FunctionEditorComponent implements AfterViewInit, OnDestroy, OnChan
 
       // If this is an output function, find and select the matching schema
       if (this.functionImpl?.isOutput && this.functionImpl?.outputSchema) {
-        const selectedSchema = this.outputSchemas.find(s => s.id === this.functionImpl?.outputSchema);
+        const selectedSchema = this.availableSchemas.find(s => s.id === this.functionImpl?.outputSchema);
         if (selectedSchema) {
           this.functionImpl.outputSchema = selectedSchema.id;
         }
       }
 
-      this.loadSchemas();
       // Initialize editor after view is ready
       setTimeout(() => {
         this.initializeEditor();
@@ -610,10 +613,6 @@ export class FunctionEditorComponent implements AfterViewInit, OnDestroy, OnChan
 
   ngAfterViewInit() {
     // Remove editor initialization from ngAfterViewInit
-  }
-
-  ngOnDestroy() {
-    this.editor?.destroy();
   }
 
   private initializeEditor() {
@@ -770,7 +769,7 @@ export class FunctionEditorComponent implements AfterViewInit, OnDestroy, OnChan
   // Watch for changes to output schema selection
   onOutputSchemaChange() {
     if (this.functionImpl?.isOutput && this.functionImpl?.outputSchema && this.editor) {
-      const selectedSchema = this.outputSchemas.find(s => s.id === this.functionImpl?.outputSchema);
+      const selectedSchema = this.availableSchemas.find(s => s.id === this.functionImpl?.outputSchema);
       if (selectedSchema) {
         // Get current function definition
         let currentDef;
