@@ -215,7 +215,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
       if (this.mainNavItems[0].styleClass) {
         this.mainNavItems[0].styleClass += ' active';
       }
-    } else if (url.includes('objects') || url.includes('assistants') || url.includes('graph')) {
+    } else if (url.includes('objects') || url.includes('assistants') || url.includes('graph') || url.includes('functions')) {
       if (this.mainNavItems[1].styleClass) {
         this.mainNavItems[1].styleClass += ' active';
       }
@@ -254,6 +254,11 @@ export class HeaderComponent implements OnInit, OnDestroy {
             routerLink: '/assistants'
           },
           {
+            label: 'Functions',
+            icon: 'pi pi-code',
+            routerLink: '/functions'
+          },
+          {
             label: 'Graph',
             icon: 'pi pi-sitemap',
             routerLink: '/graph'
@@ -272,10 +277,36 @@ export class HeaderComponent implements OnInit, OnDestroy {
   }
 
   private updateSubNav(url: string): void {
-    if (url.includes('chat') || url.includes('outputs')) {
+    if (url.startsWith('/objects') || url.startsWith('/assistants') || url.startsWith('/functions') || url.startsWith('/graph')) {
+      this.showSubNav = true;
+      this.subNavItems = [
+        {
+          label: 'Objects',
+          icon: 'pi pi-box',
+          routerLink: '/objects',
+          command: () => this.updateActiveStyles()
+        },
+        {
+          label: 'Assistants',
+          icon: 'pi pi-users',
+          routerLink: '/assistants',
+          command: () => this.updateActiveStyles()
+        },
+        {
+          label: 'Functions',
+          icon: 'pi pi-code',
+          routerLink: '/functions',
+          command: () => this.updateActiveStyles()
+        },
+        {
+          label: 'Graph',
+          icon: 'pi pi-sitemap',
+          routerLink: '/graph',
+          command: () => this.updateActiveStyles()
+        }
+      ];
+    } else if (url.includes('chat') || url.includes('outputs')) {
       this.handleMainNavClick('execute');
-    } else if (url.includes('objects') || url.includes('assistants') || url.includes('graph')) {
-      this.handleMainNavClick('build');
     } else {
       this.showSubNav = false;
       this.subNavItems = [];

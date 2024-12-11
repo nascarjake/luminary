@@ -1,0 +1,65 @@
+<p-card [ngStyle]="{'margin-left':'auto', 'margin-right':'auto', 'margin-top': '20px'}">
+  <div class="container" style="padding-top:0px">
+    <div class="header">
+      <h1>Functions</h1>
+      <p-button
+        icon="pi pi-plus"
+        label="Create Function"
+        (onClick)="createFunction()"
+        [disabled]="loading"
+      ></p-button>
+    </div>
+
+    <p-table
+      [value]="functions"
+      [loading]="loading"
+      [tableStyle]="{ 'min-width': '50rem' }"
+      styleClass="p-datatable-sm"
+    >
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Name</th>
+          <th>Description</th>
+          <th>Command</th>
+          <th style="width: 8rem">Actions</th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-func>
+        <tr>
+          <td>{{ func.name }}</td>
+          <td>{{ func.description }}</td>
+          <td>{{ func.command }}</td>
+          <td>
+            <div class="flex gap-2 justify-content-end">
+              <button
+                pButton
+                pRipple
+                icon="pi pi-pencil"
+                class="p-button-rounded p-button-text"
+                (click)="editFunction(func)"
+              ></button>
+              <button
+                pButton
+                pRipple
+                icon="pi pi-trash"
+                class="p-button-rounded p-button-text p-button-danger"
+                (click)="deleteFunction(func)"
+              ></button>
+            </div>
+          </td>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="4" class="text-center p-4">
+            No functions found. Click "Create Function" to add one.
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+
+  <app-function-editor [function]="selectedFunction" [visible]="showDialog" (visibleChange)="showDialog = $event" (save)="onFunctionSave($event)"></app-function-editor>
+
+  <p-confirmDialog></p-confirmDialog>
+</p-card>

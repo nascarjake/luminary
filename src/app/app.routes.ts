@@ -23,6 +23,10 @@ export const routes: Routes = [
     loadComponent: () => import('./views/assistants/include-assistants/include-assistants.component').then(m => m.IncludeAssistantsComponent)
   },
   {
+    path: 'functions',
+    loadComponent: () => import('./views/functions/function-list-page.component').then(m => m.FunctionListPageComponent)
+  },
+  {
     path: 'graph',
     loadComponent: () => import('./views/graph-editor/graph-editor.component').then(c => c.GraphEditorComponent),
     canDeactivate: [LeaveGraphGuard]
