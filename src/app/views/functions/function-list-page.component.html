@@ -59,7 +59,7 @@
     </p-table>
   </div>
 
-  <app-function-editor [function]="selectedFunction" [visible]="showDialog" (visibleChange)="showDialog = $event" (save)="onFunctionSave($event)"></app-function-editor>
+  <app-function-editor [function]="selectedFunction" [visible]="showDialog" [standalone]="true" (visibleChange)="showDialog = $event" (save)="onFunctionSave($event)"></app-function-editor>
 
-  <p-confirmDialog></p-confirmDialog>
+
 </p-card>

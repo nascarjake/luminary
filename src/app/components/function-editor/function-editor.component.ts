@@ -528,12 +528,15 @@ export class FunctionEditorComponent implements OnInit, AfterViewInit, OnDestroy
     if (changes['function'] && !changes['function'].firstChange) {
       console.log('[FunctionEditor] Function changed:', changes['function'].currentValue);
       const initialFunction = this.function || DEFAULT_FUNCTION;
+      
+      // Always set implementation fields regardless of standalone mode
       this.functionImpl = initialFunction.implementation 
         ? { ...initialFunction.implementation } 
         : { ...DEFAULT_FUNCTION.implementation! };
       this.isEditing = !!this.function;
       this.functionName = initialFunction.name;
       
+      // Handle inputs and outputs in standalone mode
       if (this.standalone && initialFunction.inputs && initialFunction.outputs) {
         this.selectedInputs = initialFunction.inputs;
         this.selectedOutputs = initialFunction.outputs;
@@ -549,6 +552,14 @@ export class FunctionEditorComponent implements OnInit, AfterViewInit, OnDestroy
         if (selectedSchema) {
           this.functionImpl.outputSchema = selectedSchema.id;
         }
+      }
+
+      // Ensure all implementation fields are properly initialized
+      if (this.standalone) {
+        this.functionImpl = {
+          ...this.functionImpl,
+          ...initialFunction
+        };
       }
     }
   }

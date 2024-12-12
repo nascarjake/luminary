@@ -395,6 +395,7 @@ export class AiFunctionService {
 
           // Download the file directly using electron's download utility
           console.log(`⬇️ Attempting to download from ${url} to ${filePath}`);
+          this.emitSystemMessage(`⬇️ Downloading media for ${field.name} of ${instance.name || instance.tile || instance.key || instance.id}`);
           await window.electron.download.downloadFile(url, filePath);
 
           // Update instance with local file path
@@ -439,6 +440,11 @@ export class AiFunctionService {
       const connections = state.connections.filter(c => c.fromNode === sourceNodeId);
       
       for (const connection of connections) {
+        console.log('🔗 Processing connection:', {
+          from: connection.fromNode,
+          to: connection.toNode,
+          output: connection.fromOutput
+        });
         const targetNode = state.nodes.find(n => n.id === connection.toNode);
         if (!targetNode) continue;
 
@@ -758,6 +764,7 @@ export class AiFunctionService {
                 console.log('✅ Validation successful for:', output.name);
                 this.emitSystemMessage(`✅ Saved ${output.name} ${outputValue.name || outputValue.title || outputValue.label || outputValue.key || outputValue.text || outputValue.id || ''}`);
                 results.push(validationResult.instance);
+                await this.routeToNextAssistants(sourceNode.id, validationResult.instance);
               }
             }
             
@@ -774,7 +781,7 @@ export class AiFunctionService {
         }
           
         // Now handle connections for routing
-        const connections = state.connections.filter(c => c.fromNode === sourceNode.id);
+        /*const connections = state.connections.filter(c => c.fromNode === sourceNode.id);
         if (connections.length === 0) {
           console.log('ℹ️ No connections found for node:', sourceNode.id);
           continue;
@@ -808,7 +815,7 @@ export class AiFunctionService {
             console.error('❌ Error routing to next assistant:', error);
             errors.push(error.message);
           }
-        }
+        }*/
       }
 
       if (errors.length > 0) {

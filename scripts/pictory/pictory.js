@@ -82,14 +82,14 @@ class PictoryClient {
   }
 
   async pollJobUntilComplete(jobId) {
-    console.log('⏳ Waiting for video preview...');
+    console.log('⏳ Waiting for video job to complete...');
     while (true) {
       const status = await this.checkJobStatus(jobId);
       
       if (!status.success) {
         if (status.data?.error_message) {
           const error = status.data.error_message;
-          throw new Error(`Pictory Error: ${error.message || error.error_code || 'Unknown error'}`);
+          throw new Error(`Pictory Error: ${error.message || error.error_code || JSON.stringify(status) || 'Unknown error'}`);
         }
         throw new Error('Failed to get job status');
       }
