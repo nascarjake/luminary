@@ -11,6 +11,8 @@
 # Node
 /node_modules
 /scripts/pictory/node_modules
+/scripts/youtube/node_modules
+/scripts/node_modules
 npm-debug.log
 yarn-error.log
 

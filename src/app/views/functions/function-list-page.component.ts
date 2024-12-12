@@ -111,9 +111,9 @@ export class FunctionListPageComponent implements OnInit {
     this.loadFunctions(); // Reload functions after dialog close
   }
 
-  onFunctionSave(functionDefinition: FunctionDefinition) {
+  async onFunctionSave(functionDefinition: FunctionDefinition) {
     const functionNode: FunctionNode = {
-      id: functionDefinition.name.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now(), // Generate a unique ID
+      id: functionDefinition.name.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now(),
       name: functionDefinition.name,
       description: functionDefinition.description,
       command: functionDefinition.implementation?.command || '',
@@ -126,19 +126,32 @@ export class FunctionListPageComponent implements OnInit {
       parameters: functionDefinition.parameters,
     };
 
-    if (this.selectedFunction) {
-      // Update existing function
-      const index = this.functions.findIndex(fn => fn.id === this.selectedFunction.id);
-      if (index !== -1) {
-        this.functions[index] = functionNode;
+    try {
+      if (this.selectedFunction) {
+        // Update existing function
+        functionNode.id = this.selectedFunction.id; // Preserve the original ID when updating
+        await this.functionNodesService.updateFunctionNode(this.configService.getActiveProfile().id, functionNode);
+      } else {
+        // Create new function
+        await this.functionNodesService.addFunctionNode(this.configService.getActiveProfile().id, functionNode);
       }
-    } else {
-      // Create new function
-      this.functions.push(functionNode);
-    }
 
-    this.showDialog = false;
-    this.selectedFunction = null;
-    this.loadFunctions(); // Reload functions after save
+      this.messageService.add({
+        severity: 'success',
+        summary: 'Success',
+        detail: `Function ${this.selectedFunction ? 'updated' : 'created'} successfully`
+      });
+
+      this.showDialog = false;
+      this.selectedFunction = null;
+      await this.loadFunctions(); // Reload functions after save
+    } catch (error) {
+      console.error('Error saving function:', error);
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'Failed to save function'
+      });
+    }
   }
 }
