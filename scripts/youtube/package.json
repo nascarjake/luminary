@@ -7,8 +7,8 @@
       "start": "node uploadToYoutube.js"
     },
     "dependencies": {
-      "googleapis": "^39.2.0"
+      "googleapis": "^129.0.0"
     },
     "author": "JakeDoesDev",
     "license": "ISC"
-  }
+}

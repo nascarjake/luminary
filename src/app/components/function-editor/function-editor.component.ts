@@ -854,11 +854,12 @@ export class FunctionEditorComponent implements OnInit, AfterViewInit, OnDestroy
       return acc;
     }, {} as Record<string, string>);
 
-    let functionToSave: FunctionDefinition;
+    let functionToSave: any;
 
     if (this.standalone) {
       // In standalone mode, we only care about the implementation details
       functionToSave = {
+        id: this.function.id,
         name: this.functionName.trim(),
         description: '',
         parameters: {
