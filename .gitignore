@@ -46,4 +46,6 @@ testem.log
 Thumbs.db
 
 # Ignore release folder
-release/
+/release/*
+release/*
+/release/
