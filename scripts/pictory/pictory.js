@@ -5,6 +5,7 @@ import fs from 'fs/promises';
 import path from 'path';
 //import PictoryClient from './client.js';
 import dotenv from 'dotenv';
+import { input } from '@angular/core';
 
 dotenv.config();
 
@@ -158,7 +159,6 @@ class PictoryClient {
 async function main() {
   let inputData = undefined;
   let content = undefined;
-  let outputDir = './output';
   try{
     inputData = JSON.parse(await new Promise(resolve => process.stdin.once('data', resolve)));
   }catch(e){
@@ -176,7 +176,8 @@ async function main() {
   try {
     // Get all inputs as a single JSON object with defaults
     content = inputData?.content;
-    outputDir = inputData?.outputDir || outputDir;
+    if(!content && inputData?.videoName) content = inputData;
+
     const { videoName: title } = content;
     console.log('🚀 Starting video generation: ' + title);
 
