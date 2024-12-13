@@ -1,14 +1,14 @@
 {
-    "name": "youtube-upload",
-    "version": "1.0.0",
-    "description": "A script to upload videos to YouTube.",
-    "main": "uploadToYoutube.js",
-    "scripts": {
-      "start": "node uploadToYoutube.js"
-    },
-    "dependencies": {
-      "googleapis": "^129.0.0"
-    },
-    "author": "JakeDoesDev",
-    "license": "ISC"
+  "name": "youtube-upload",
+  "version": "1.0.0",
+  "description": "A script to upload videos to YouTube.",
+  "main": "uploadToYoutube.js",
+  "scripts": {
+    "start": "node uploadToYoutube.js"
+  },
+  "dependencies": {
+    "googleapis": "^129.0.0"
+  },
+  "author": "JakeDoesDev",
+  "license": "ISC"
 }

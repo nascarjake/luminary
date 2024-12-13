@@ -453,9 +453,9 @@ export class AiFunctionService {
         
         for (const item of dataItems) {
           try {
-            if (targetNode.functionId) {
+            if (targetNode.functionId && targetNode.inputs?.find(i => i.schemaId == data.schemaId)) {
               // Handle function node
-              const result = await this.runFunctionNode(targetNode, item);
+              const result = await this.runFunctionNode(targetNode, item?.data || item);
               if (!result.success) {
                 console.error(`Error running function node ${targetNode.name}:`, result.errors);
                 this.emitSystemMessage(`❌ Error in function node ${targetNode.name}: ${result.errors?.join(', ')}`);
@@ -464,10 +464,10 @@ export class AiFunctionService {
               if (result.output) {
                 await this.routeToNextAssistants(targetNode.id, result.output);
               }
-            } else if (targetNode.assistantId) {
+            } else if (targetNode.assistantId && targetNode.inputs?.find(i => i.schemaId == data.schemaId)) {
               // Handle assistant node
               this.aiCommunicationService.routeMessage({
-                message: JSON.stringify(item),
+                message: JSON.stringify(item?.data || item),
                 assistantId: targetNode.assistantId
               });
               this.emitSystemMessage(`🔄 Starting next assistant: ${targetNode.name}`);
