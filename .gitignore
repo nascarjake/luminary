@@ -5,7 +5,6 @@
 /tmp
 /out-tsc
 /bazel-out
-/release
 /build
 
 # Node
@@ -45,3 +44,6 @@ testem.log
 # System files
 .DS_Store
 Thumbs.db
+
+# Ignore release folder
+release/
