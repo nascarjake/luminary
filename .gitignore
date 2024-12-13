@@ -41,6 +41,8 @@ yarn-error.log
 testem.log
 /typings
 
+/scripts/youtube/creds.json
+
 # System files
 .DS_Store
 Thumbs.db
