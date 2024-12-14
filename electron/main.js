@@ -739,14 +739,28 @@ ipcMain.handle('window:close', () => {
 
 // Keep old handlers for backward compatibility during transition
 
-function createWindow() {
-  console.log('Creating window');
-  
-  const preloadPath = path.join(__dirname, 'preload.js');
-  console.log('Preload script path:', preloadPath);
-  console.log('Preload script exists:', fs.existsSync(preloadPath));
+let mainWindow;
+let splashScreen;
 
-  const mainWindow = new BrowserWindow({
+function createSplashScreen() {
+  splashScreen = new BrowserWindow({
+    width: 400,
+    height: 300,
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false
+    }
+  });
+
+  splashScreen.loadFile(path.join(__dirname, '..', 'src', 'splash.html'));
+}
+
+async function createWindow() {
+  // Create the browser window.
+  mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     frame: false,
@@ -756,9 +770,36 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: true,
-      preload: preloadPath
+      preload: path.join(__dirname, 'preload.js')
     }
   });
+
+  // Hide the main window initially
+  mainWindow.hide();
+
+  const startTime = Date.now();
+  const minimumSplashDuration = 3000; // 3 seconds
+
+  // Load the app
+  if (process.env.NODE_ENV === 'development') {
+    await mainWindow.loadURL('http://localhost:4200');
+  } else {
+    await mainWindow.loadFile(path.join(__dirname, '..', 'dist', 'browser', 'index.html'));
+  }
+
+  // Calculate remaining time to show splash screen
+  const elapsedTime = Date.now() - startTime;
+  const remainingTime = Math.max(0, minimumSplashDuration - elapsedTime);
+
+  // Wait for the remaining time if needed
+  await new Promise(resolve => setTimeout(resolve, remainingTime));
+
+  // Show main window and close splash screen
+  mainWindow.show();
+  if (splashScreen) {
+    splashScreen.close();
+    splashScreen = null;
+  }
 
   // Open DevTools
   //mainWindow.webContents.openDevTools();
@@ -768,7 +809,7 @@ function createWindow() {
   console.log('App directory exists:', fs.existsSync(appPath));
   
   // Load the built Angular app
-  mainWindow.loadFile(path.join(appPath, 'index.html'));
+  //mainWindow.loadFile(path.join(appPath, 'index.html'));
 
   // Log when window is ready
   mainWindow.webContents.on('did-finish-load', () => {
@@ -809,6 +850,12 @@ function createWindow() {
 
 app.whenReady().then(() => {
   console.log('Electron app is ready');
+
+  // Create splash screen first
+  createSplashScreen();
+
+  // Then create main window
+  createWindow();
 
   // Register protocol handler for serving local files
   protocol.registerFileProtocol('file', (request, callback) => {
@@ -865,8 +912,6 @@ app.whenReady().then(() => {
       return { action: 'deny' };
     });
   });
-
-  createWindow();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
