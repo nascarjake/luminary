@@ -4,6 +4,8 @@
 
 A visual development platform for creating AI pipelines using OpenAI assistants. Luminary provides tools for building workflows where multiple AI assistants can work together, with support for custom code integration.
 
+![Demo Video v0.0.7](https://www.youtube.com/watch?v=g46q1IjClz8)
+
 ## Overview
 
 Why use Luminary?
