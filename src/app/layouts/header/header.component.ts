@@ -18,7 +18,8 @@ import { Subscription } from 'rxjs';
         <p-menubar [model]="mainNavItems">
           <ng-template pTemplate="start">
             <div class="logo">
-              <span class="logo-text">Luminary</span>
+              <img src="assets/logo.png" alt="Luminary Logo" class="logo-image">
+              <!--<span class="logo-text">Luminary</span>-->
             </div>
           </ng-template>
         </p-menubar>
@@ -39,11 +40,10 @@ import { Subscription } from 'rxjs';
     .header {
       background-color: var(--surface-card);
       border-bottom: 1px solid var(--surface-border);
-      padding: 0;
     }
 
     .main-nav {
-      width: 100%;
+      padding: 0.5rem;
     }
 
     .sub-nav-container {
@@ -65,6 +65,25 @@ import { Subscription } from 'rxjs';
 
     .sub-nav {
       flex: 1;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding-right: 1rem;
+    }
+
+    .logo-image {
+      height: 32px;
+      width: auto;
+      object-fit: contain;
+    }
+
+    .logo-text {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--text-color);
     }
 
     :host ::ng-deep {
@@ -108,28 +127,6 @@ import { Subscription } from 'rxjs';
         .p-tabmenu-nav {
           border: none;
         }
-      }
-
-      .logo {
-        display: flex;
-        align-items: center;
-        margin-right: 2rem;
-        padding: 0 1rem;
-      }
-
-      .logo-text {
-        font-family: 'Space Grotesk', sans-serif;
-        font-weight: 500;
-        font-size: 1.75rem;
-        color: #34D399;
-        text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
-        letter-spacing: -0.02em;
-        cursor: pointer;
-        transition: color 0.2s ease;
-      }
-
-      .logo-text:hover {
-        color: #10B981;
       }
     }
   `]

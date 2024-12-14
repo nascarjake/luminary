@@ -1,3 +1,5 @@
+![Screenshot](https://raw.githubusercontent.com/nascarjake/luminary/main/logo.png)
+
 # Luminary
 
 A visual development platform for creating AI pipelines using OpenAI assistants. Luminary provides tools for building workflows where multiple AI assistants can work together, with support for custom code integration.
@@ -10,6 +12,10 @@ Many times when trying to create complex AI behavior, trying to train a single A
 Creating workflows that coordinate multiple AI assistants typically requires significant development effort and system architecture. Luminary aims to simplify this process through visual tools and a structured development environment.
 
 The platform enables AI assistants to communicate through a visual graph system. Developers can design workflows visually while retaining the ability to integrate custom code and extend functionality. This makes it suitable for various use cases, from content generation to data analysis workflows.
+
+![Screenshot](https://raw.githubusercontent.com/nascarjake/luminary/main/screen_graph.png)
+
+![Screenshot](https://raw.githubusercontent.com/nascarjake/luminary/main/screen_chat.png)
 
 ## Components
 
