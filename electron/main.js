@@ -12,8 +12,20 @@ const AdmZip = require('adm-zip');
 const packageJson = require('../package.json');
 app.setVersion(packageJson.version);
 
+// Helper function to get config directory
+function ensureConfigDir() {
+  const dir = path.join(os.homedir(), '.luminary');
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  return dir;
+}
+
+// Ensure config directory exists before setting up logging
+const configDir = ensureConfigDir();
+const logFile = path.join(configDir, 'luminary.log');
+
 // Logging setup
-const logFile = path.join(os.homedir(), '.luminary', 'luminary.log');
 console.log = (...args) => {
   const timestamp = new Date().toISOString();
   const logMessage = `[${timestamp}] ${args.map(arg => 
@@ -742,10 +754,10 @@ ipcMain.handle('window:close', () => {
 let mainWindow;
 let splashScreen;
 
-function createSplashScreen() {
+async function createSplashScreen() {
   splashScreen = new BrowserWindow({
-    width: 400,
-    height: 300,
+    width: 500,
+    height: 400,
     frame: false,
     transparent: true,
     alwaysOnTop: true,
@@ -755,7 +767,8 @@ function createSplashScreen() {
     }
   });
 
-  splashScreen.loadFile(path.join(__dirname, '..', 'src', 'splash.html'));
+  // Wait for the splash screen to load from the assets directory
+  await splashScreen.loadFile(path.join(__dirname, 'assets', 'splash.html'));
 }
 
 async function createWindow() {
@@ -779,13 +792,16 @@ async function createWindow() {
 
   const startTime = Date.now();
   const minimumSplashDuration = 3000; // 3 seconds
+  const appPath = path.join(__dirname, '../browser');
+  console.log('App directory:', appPath);
+  console.log('App directory exists:', fs.existsSync(appPath));
 
   // Load the app
-  if (process.env.NODE_ENV === 'development') {
-    await mainWindow.loadURL('http://localhost:4200');
-  } else {
-    await mainWindow.loadFile(path.join(__dirname, '..', 'dist', 'browser', 'index.html'));
-  }
+  try{
+
+      await mainWindow.loadFile(path.join(appPath, 'index.html'));
+    
+  }catch(e){}
 
   // Calculate remaining time to show splash screen
   const elapsedTime = Date.now() - startTime;
@@ -804,10 +820,6 @@ async function createWindow() {
   // Open DevTools
   //mainWindow.webContents.openDevTools();
 
-  const appPath = path.join(__dirname, '../browser');
-  console.log('App directory:', appPath);
-  console.log('App directory exists:', fs.existsSync(appPath));
-  
   // Load the built Angular app
   //mainWindow.loadFile(path.join(appPath, 'index.html'));
 
@@ -848,14 +860,14 @@ async function createWindow() {
   });
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   console.log('Electron app is ready');
 
-  // Create splash screen first
-  createSplashScreen();
+  // Create and wait for splash screen first
+  await createSplashScreen();
 
   // Then create main window
-  createWindow();
+  await createWindow();
 
   // Register protocol handler for serving local files
   protocol.registerFileProtocol('file', (request, callback) => {

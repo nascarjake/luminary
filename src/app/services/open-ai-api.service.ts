@@ -89,6 +89,44 @@ export class OpenAiApiService {
       .toPromise();
   }
 
+  public createAssistant(assistant: Partial<OAAssistant>): Promise<OAAssistant> {
+    console.log('Creating assistant with payload:', assistant);
+
+    // Ensure all required fields are present
+    const payload = {
+      name: assistant.name,
+      description: assistant.description || '',
+      model: assistant.model,
+      instructions: assistant.instructions || '',
+      tools: assistant.tools || [],
+      file_ids: assistant.file_ids || [],
+      metadata: assistant.metadata || {},
+    };
+
+    // Add optional fields if they are defined
+    if (assistant.response_format) {
+      payload['response_format'] = assistant.response_format;
+    }
+    
+    if (typeof assistant.temperature === 'number') {
+      payload['temperature'] = assistant.temperature;
+    }
+    
+    if (typeof assistant.top_p === 'number') {
+      payload['top_p'] = assistant.top_p;
+    }
+
+    return this.http.post<OAAssistant>(`${this.apiUrl}/assistants`, payload, { headers: this.getHeaders() })
+      .pipe(
+        catchError((error) => {
+          console.error('Error creating assistant:', error);
+          console.error('Error response:', error.error);
+          return this.handleError(error);
+        })
+      )
+      .toPromise();
+  }
+
   public getThread(id: string): Promise<OAThread> {
     return this.http.get<OAThread>(`${this.apiUrl}/threads/${id}`, { headers: this.getHeaders() })
       .pipe(catchError(this.handleError))
@@ -133,19 +171,6 @@ export class OpenAiApiService {
   public listThreadMessages(thread: Partial<OAThread>): Promise<OAResponseList<OAThreadMessage>> {
     return this.http.get<OAResponseList<OAThreadMessage>>(`${this.apiUrl}/threads/${thread.id}/messages`, { headers: this.getHeaders() })
       .pipe(catchError(this.handleError))
-      .toPromise();
-  }
-
-  public createAssistant(assistant: Partial<OAAssistant>): Promise<OAAssistant> {
-    console.log('Creating assistant with payload:', assistant);
-    return this.http.post<OAAssistant>(`${this.apiUrl}/assistants`, assistant, { headers: this.getHeaders() })
-      .pipe(
-        catchError((error) => {
-          console.error('Error creating assistant:', error);
-          console.error('Error response:', error.error);
-          return this.handleError(error);
-        })
-      )
       .toPromise();
   }
 

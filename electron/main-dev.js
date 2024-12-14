@@ -12,8 +12,20 @@ const AdmZip = require('adm-zip');
 const packageJson = require('../package.json');
 app.setVersion(packageJson.version);
 
+// Helper function to get config directory
+function ensureConfigDir() {
+  const dir = path.join(os.homedir(), '.luminary');
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  return dir;
+}
+
+// Ensure config directory exists before setting up logging
+const configDir = ensureConfigDir();
+const logFile = path.join(configDir, 'luminary.log');
+
 // Logging setup
-const logFile = path.join(os.homedir(), '.luminary', 'luminary.log');
 console.log = (...args) => {
   const timestamp = new Date().toISOString();
   const logMessage = `[${timestamp}] ${args.map(arg => 
@@ -731,10 +743,10 @@ ipcMain.handle('terminal:executeCommand', async (event, options) => {
 let mainWindow;
 let splashScreen;
 
-function createSplashScreen() {
+async function createSplashScreen() {
   splashScreen = new BrowserWindow({
-    width: 400,
-    height: 300,
+    width: 500,
+    height: 400,
     frame: false,
     transparent: true,
     alwaysOnTop: true,
@@ -744,7 +756,8 @@ function createSplashScreen() {
     }
   });
 
-  splashScreen.loadFile(path.join(__dirname, '..', 'src', 'splash.html'));
+  // Wait for the splash screen to load from the assets directory
+  await splashScreen.loadFile(path.join(__dirname, 'assets', 'splash.html'));
 }
 
 async function createWindow() {
