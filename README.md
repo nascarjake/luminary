@@ -224,7 +224,7 @@ Join our Discord for:
 
 ## Credits
 
-This project builds on the GPT Assistant UI by PaulWeinsberg, extending it into a development platform while maintaining open-source principles.
+This project builds on the [GPT Assistant UI by PaulWeinsberg](https://github.com/PaulWeinsberg/gpt-assistant-ui/), extending it into a development platform while maintaining open-source principles.
 
 ## License
 
