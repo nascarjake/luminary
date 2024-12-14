@@ -728,14 +728,32 @@ ipcMain.handle('terminal:executeCommand', async (event, options) => {
   });
 });
 
-function createWindow() {
-  const mainWindow = new BrowserWindow({
+let mainWindow;
+let splashScreen;
+
+function createSplashScreen() {
+  splashScreen = new BrowserWindow({
+    width: 400,
+    height: 300,
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false
+    }
+  });
+
+  splashScreen.loadFile(path.join(__dirname, '..', 'src', 'splash.html'));
+}
+
+async function createWindow() {
+  // Create the browser window.
+  mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     frame: false,
-    titleBarStyle: 'hidden',
-    transparent: true,
-    backgroundColor: '#00000000',
+    show: false,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: true,
@@ -743,69 +761,48 @@ function createWindow() {
     }
   });
 
-  // Open DevTools
+  const startTime = Date.now();
+  const minimumSplashDuration = 3000; // 3 seconds
+
+  // Load the app
+  try{
+  await mainWindow.loadURL('http://localhost:4200');
+  }catch(e){}
+
+  // Calculate remaining time to show splash screen
+  const elapsedTime = Date.now() - startTime;
+  const remainingTime = Math.max(0, minimumSplashDuration - elapsedTime);
+
+  // Wait for the remaining time if needed
+  await new Promise(resolve => setTimeout(resolve, remainingTime));
+
+  // Show main window and close splash screen
+  mainWindow.show();
+  if (splashScreen) {
+    splashScreen.close();
+    splashScreen = null;
+  }
+
+  // Open DevTools in development
   mainWindow.webContents.openDevTools();
 
-  // Load the Angular app from the dev server
-  mainWindow.loadURL('http://localhost:4200');
-
-  // Log when window is ready
   mainWindow.webContents.on('did-finish-load', () => {
-    console.log('Window finished loading');
+    console.log('Window loaded');
   });
 
-  // Handle window close
-  mainWindow.on('close', async (e) => {
-    try {
-      const hasUnsavedChanges = await mainWindow.webContents.executeJavaScript(`
-        window.graphEditor ? window.graphEditor.hasUnsavedChanges() : false
-      `);
-
-      if (hasUnsavedChanges) {
-        e.preventDefault();
-        const { response } = await dialog.showMessageBox(mainWindow, {
-          type: 'question',
-          buttons: ['Save', "Don't Save", 'Cancel'],
-          title: 'Unsaved Changes',
-          message: 'Do you want to save your changes before closing?'
-        });
-
-        if (response === 0) {  // Save
-          await mainWindow.webContents.executeJavaScript('document.querySelector("app-graph-editor").querySelector(".save-button").click()');
-          mainWindow.destroy();
-        } else if (response === 1) {  // Don't Save
-          mainWindow.destroy();
-        }
-        // If response === 2 (Cancel), do nothing and keep the window open
-      }
-    } catch (error) {
-      console.error('Error checking for unsaved changes:', error);
-      // If there's an error, allow the window to close
-      mainWindow.destroy();
-    }
+  mainWindow.on('closed', function () {
+    mainWindow = null;
   });
 }
 
-// Window control handlers
-ipcMain.handle('window:minimize', () => {
-  BrowserWindow.getFocusedWindow()?.minimize();
-});
-
-ipcMain.handle('window:maximize', () => {
-  const win = BrowserWindow.getFocusedWindow();
-  if (win?.isMaximized()) {
-    win.unmaximize();
-  } else {
-    win?.maximize();
-  }
-});
-
-ipcMain.handle('window:close', () => {
-  BrowserWindow.getFocusedWindow()?.close();
-});
-
 app.whenReady().then(() => {
   console.log('Electron app is ready (DEV)');
+
+  // Create splash screen first
+  createSplashScreen();
+
+  // Then create main window
+  createWindow();
 
   // Handle local resource requests
   protocol.registerFileProtocol('local-resource', (request, callback) => {
@@ -834,8 +831,6 @@ app.whenReady().then(() => {
       return { action: 'deny' };
     });
   });
-
-  createWindow();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

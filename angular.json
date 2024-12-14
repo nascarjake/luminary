@@ -29,6 +29,8 @@
             "assets": [
               "src/favicon.ico",
               "src/assets",
+              "src/splash.html",
+              "src/splash.png",
               {
                 "glob": "**/*",
                 "input": "src/assets/litegraph",
