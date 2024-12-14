@@ -1,0 +1,56 @@
+// Custom PrimeNG theme variables
+:root {
+    // Primary color and its shades
+    --primary-50: #F0FDF9;
+    --primary-100: #CCFBEF;
+    --primary-200: #99F6DE;
+    --primary-300: #5EEAD4;
+    --primary-400: #34D399; // Our main color
+    --primary-500: #10B981;
+    --primary-600: #4fa82a;
+    --primary-700: #047857;
+    --primary-800: #065F46;
+    --primary-900: #064E3B;
+
+
+    // Primary states
+    --primary-color: var(--primary-600);
+    --primary-color-text: #FFFFFF;
+    --focus-ring: 0 0 0 0.2rem rgba(52, 211, 153, 0.2);
+
+    // Component specific overrides
+    --highlight-bg: var(--primary-50);
+    --highlight-text-color: var(--primary-900);
+    
+    // Button states
+    --button-bg: var(--primary-700);
+    --button-text: #FFFFFF;
+    --button-border: var(--primary-600);
+    --button-hover-bg: var(--primary-500);
+    --button-hover-text: #FFFFFF;
+    --button-hover-border: var(--primary-500);
+    --button-active-bg: var(--primary-600);
+    --button-active-text: #FFFFFF;
+    --button-active-border: var(--primary-600);
+
+    // Menu
+    --menubar-bg: transparent;
+    --menubar-text: var(--text-color);
+    --menubar-border: var(--surface-border);
+    --menuitem-text: var(--text-color);
+    --menuitem-hover-bg: var(--surface-hover);
+    --menuitem-hover-text: var(--primary-900);
+}
+
+
+.p-tabmenu .p-tabmenu-nav .p-tabmenuitem.p-highlight .p-menuitem-link {
+    background: #1e1e1e;
+    border-color: #4fa82a;
+    color: #4fa82a;
+}
+
+.p-button.p-button-text {
+    background-color: transparent;
+    color: #4fa82a;
+    border-color: transparent;
+}
