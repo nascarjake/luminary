@@ -104,7 +104,7 @@
         "dmg",
         "zip"
       ],
-      "icon": "app-icon.png"
+      "icon": "build/assets/app-icon.png"
     },
     "win": {
       "target": [
@@ -115,7 +115,7 @@
           ]
         }
       ],
-      "icon": "app-icon.png"
+      "icon": "build/assets/app-icon.png"
     }
   }
 }
