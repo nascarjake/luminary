@@ -113,7 +113,7 @@ export class ProfileExportComponent {
       this.messageService.add({
         severity: 'error',
         summary: 'Error',
-        detail: 'Failed to import profile'
+        detail: 'Failed to import profile: ' + (error?.message || error)
       });
     } finally {
       this.isImporting = false;

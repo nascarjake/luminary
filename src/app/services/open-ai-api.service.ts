@@ -99,7 +99,6 @@ export class OpenAiApiService {
       model: assistant.model,
       instructions: assistant.instructions || '',
       tools: assistant.tools || [],
-      file_ids: assistant.file_ids || [],
       metadata: assistant.metadata || {},
     };
 

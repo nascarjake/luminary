@@ -74,6 +74,27 @@ declare module 'electron-api' {
         };
       };
     } | null>;
+    list(baseDir: string, profileId: string, projectId: string): Promise<Array<{
+      functions: any;
+      inputs: string[];
+      outputs: string[];
+      name: string;
+      arraySchemas: any;
+      openai: any;
+      instructionParts?: {
+        coreInstructions: {
+          inputSchemas: string[];
+          outputSchemas: string[];
+          defaultOutputFormat: string;
+          arrayHandling: string;
+        };
+        userInstructions: {
+          businessLogic: string;
+          processingSteps: string;
+          customFunctions: string;
+        };
+      };
+    }>>;
   }
 
   interface ElectronDownload {

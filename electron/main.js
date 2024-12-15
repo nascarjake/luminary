@@ -440,6 +440,33 @@ ipcMain.handle('assistant:load', async (_, baseDir, profileId, projectId, assist
   }
 });
 
+ipcMain.handle('assistant:list', async (_, baseDir, profileId, projectId) => {
+  console.log('Listing assistants:', { baseDir, profileId, projectId });
+  const assistantsDir = path.join(baseDir);
+  
+  if (!fs.existsSync(assistantsDir)) {
+    console.log('Assistants directory not found:', assistantsDir);
+    return [];
+  }
+  
+  const files = fs.readdirSync(assistantsDir);
+  const assistants = [];
+  
+  for (const file of files) {
+    if (file.startsWith('assistant-' + profileId) && file.endsWith('.json')) {
+      const filePath = path.join(assistantsDir, file);
+      try {
+        const assistant = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        assistants.push(assistant);
+      } catch (error) {
+        console.error('Error reading assistant file:', file, error);
+      }
+    }
+  }
+  
+  return assistants;
+});
+
 // Profile export/import handling
 ipcMain.handle('profile:export', async (_, profileId) => {
   console.log('Exporting profile:', profileId);
