@@ -64,7 +64,7 @@ export class ProfileExportService {
       }
     } catch (error) {
       console.error('Error importing profile:', error);
-      throw new Error(`Failed to import profile: ${error instanceof Error ? error.message : JSON.stringify(error)}`);
+      throw new Error(`Failed to import profile: ${error?.message ? error.message : JSON.stringify(error)}`);
     }
   }
 
