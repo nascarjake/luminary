@@ -89,7 +89,7 @@ export class OpenAiApiService {
       .toPromise();
   }
 
-  public createAssistant(assistant: Partial<OAAssistant>): Promise<OAAssistant> {
+  public async createAssistant(assistant: Partial<OAAssistant>): Promise<OAAssistant> {
     console.log('Creating assistant with payload:', assistant);
 
     // Ensure all required fields are present
@@ -115,7 +115,7 @@ export class OpenAiApiService {
       payload['top_p'] = assistant.top_p;
     }
 
-    return this.http.post<OAAssistant>(`${this.apiUrl}/assistants`, payload, { headers: this.getHeaders() })
+    const createdAssistant = await this.http.post<OAAssistant>(`${this.apiUrl}/assistants`, payload, { headers: this.getHeaders() })
       .pipe(
         catchError((error) => {
           console.error('Error creating assistant:', error);
@@ -124,6 +124,9 @@ export class OpenAiApiService {
         })
       )
       .toPromise();
+
+    console.log('Created assistant:', createdAssistant);
+    return createdAssistant;
   }
 
   public getThread(id: string): Promise<OAThread> {
