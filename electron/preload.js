@@ -52,12 +52,12 @@ contextBridge.exposeInMainWorld('electron', {
     }
   },
   assistant: {
-    async save(baseDir, profileId, projectId, assistantId, config) {
-      return ipcRenderer.invoke('assistant:save', baseDir, profileId, projectId, assistantId, config);
-    },
-    async load(baseDir, profileId, projectId, assistantId) {
-      return ipcRenderer.invoke('assistant:load', baseDir, profileId, projectId, assistantId);
-    }
+    save: (baseDir, profileId, projectId, assistantId, config) => 
+      ipcRenderer.invoke('assistant:save', baseDir, profileId, projectId, assistantId, config),
+    load: (baseDir, profileId, projectId, assistantId) => 
+      ipcRenderer.invoke('assistant:load', baseDir, profileId, projectId, assistantId),
+    list: (baseDir, profileId, projectId) =>
+      ipcRenderer.invoke('assistant:list', baseDir, profileId, projectId),
   },
   graph: {
     async save(baseDir, profileId, projectId, graphData) {

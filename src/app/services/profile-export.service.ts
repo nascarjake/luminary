@@ -7,10 +7,26 @@ import { Profile } from '../../lib/entities/AppConfig';
   providedIn: 'root'
 })
 export class ProfileExportService {
+  baseDir?: string;
+
   constructor(
     private configService: ConfigService,
     private openAiService: OpenAiApiService
-  ) {}
+  ) {
+    this.ensureBaseDir();
+  }
+
+  private async ensureBaseDir(): Promise<string> {
+    if (!this.baseDir) {
+      if (!window.electron) {
+        throw new Error('Electron API not available');
+      }
+
+      // Get the app config directory
+      this.baseDir = await window.electron.path.appConfigDir();
+    }
+    return this.baseDir;
+  }
 
   /**
    * Export a profile's configuration to a zip file
@@ -56,12 +72,23 @@ export class ProfileExportService {
    * Create imported assistants in OpenAI
    * @param profile The profile containing the assistants to create
    */
-  private async createAssistantsInOpenAI(profile: any): Promise<void> {
+  private async createAssistantsInOpenAI(profile: Profile): Promise<void> {
     try {
-      // Get the assistants configuration from the profile
-      const assistants = await window.electron.functions.load(profile.configDir, profile.id);
+      // Get the active project ID
+      const activeProjectId = profile.activeProjectId;
+      if (!activeProjectId) {
+        console.error('No active project found in profile');
+        return;
+      }
+
+      // Get all assistants for the project
+      const assistants = await window.electron.assistant.list(
+        this.baseDir, 
+        profile.id,
+        activeProjectId
+      );
       
-      if (!assistants) {
+      if (!assistants || assistants.length === 0) {
         console.log('No assistants found in imported profile');
         return;
       }
