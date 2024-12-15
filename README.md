@@ -46,6 +46,11 @@ The engine handles assistant communication and function execution, with document
 
 ## Installation
 
+### Requirements:
+
+- Installing Node.js is not required to run Luminary. However, if you import a profile which uses functions written in node.js, you will need to install Node.js to run the functions.
+- Installing Python is not required to run Luminary. However, if you import a profile which uses functions written in python, you will need to install Python to run the functions.
+
 To get started with Luminary, follow these steps:
 
 ### Desktop Application
@@ -58,6 +63,42 @@ To get started with Luminary, follow these steps:
 2. Run the installer for your platform:
    - Windows: Execute the installer and follow the prompts. Once complete, Luminary will be available in your Start Menu.
    - macOS: Open the `.dmg` file and drag Luminary to your Applications folder. The app is signed and notarized for security.
+
+## Building
+
+To build and run Luminary from source, use the following commands:
+
+### Development Mode
+Run the application in development mode:
+
+```
+npm run electron:dev
+```
+
+This command concurrently starts the Angular development server and launches Electron, allowing for real-time updates as you modify the code.
+
+### Production Builds
+
+#### Windows
+To create a production build for Windows:
+
+```
+npm run electron:build:win
+```
+
+This generates an installer in the `dist` folder.
+
+#### macOS
+For macOS, use:
+
+```
+npm run electron:build:mac
+```
+
+This creates a `.dmg` file in the `dist` folder.
+
+Note: Ensure you have the necessary development tools installed for your target platform before running these commands.
+
 
 ## OpenAI Integration
 
@@ -76,40 +117,50 @@ We are exploring integration with additional AI technologies to expand Luminary'
 
 ## Building a Pipeline
 
-Creating an AI pipeline in Luminary involves three main components:
+Creating an AI pipeline in Luminary involves a step-by-step process using three main components: Object Schemas, AI Assistants, and the Graph Pipeline. Here's a guide to building a pipeline, using a video generation workflow as an example:
 
-### 1. Object Schemas
+### 1. Define Object Schemas
 
-Object schemas define the structure and validation rules for data passing between assistants, ensuring type safety and data consistency throughout your workflow.
+Start by creating object schemas for all data types you'll pass between assistants:
 
-Key features of the schema system include:
-- Visual schema designer for rapid development
-- JSON import/export for existing schemas
-- Real-time validation and error checking
-- Support for complex nested structures
-- Automatic documentation generation
+1. Open the Schema Editor UI or prepare JSON schema definitions.
+2. Create schemas for each data type. For our video generation example:
+   - Outline schema
+   - Script schema
+   - Video schema
+3. Define properties and validation rules for each schema.
+4. Save your schemas for use in assistant configurations.
 
-### 2. AI Assistants
+### 2. Configure AI Assistants
 
-Each assistant in your pipeline can be configured for specific tasks. The configuration interface includes:
+Next, set up the assistants that will process your data:
 
-- **System Instructions**: Define instructions that guide assistant behavior
-- **Tool Integration**: Add custom functions and API capabilities
-- **Input/Output Mapping**: Define data handling using schemas
-- **Knowledge Base**: Add context and documentation
-- **Behavior Controls**: Adjust response patterns and decision-making
+1. Create a new assistant in the Assistant Configuration interface.
+2. Write system instructions to define the assistant's role and behavior.
+3. Attach necessary tool functions, which may include your custom scripts.
+4. Specify input and output object schemas:
+   - For an outline generator: No input, Outline schema as output
+   - For a script writer: Outline schema as input, Script schema as output
+   - For a video creator: Script schema as input, Video schema as output
+5. If you don't select an output function, Luminary will create one automatically.
+6. Repeat this process for each assistant in your pipeline.
 
-### 3. Graph Pipeline
+### 3. Build the Graph Pipeline
 
-The visual graph editor connects assistants and defines data flow through:
+Finally, create the visual workflow using the graph editor:
 
-- Drag-and-drop interface for placing assistants
-- Visual connection tools
-- Data flow validation
-- Debug tools
-- Support for branching and conditional flows
+1. Open the Graph Editor canvas.
+2. Drag assistant nodes from the left library panel onto the canvas.
+3. Arrange your nodes in the desired workflow order.
+4. Connect nodes by dragging from an output dot to an input dot:
+   - Outline Generator output to Script Writer input
+   - Script Writer output to Video Creator input
+5. Ensure connections are between compatible object schema types.
+6. Luminary will validate connections to prevent type mismatches.
+7. Add any branching or conditional flows as needed.
+8. Test your pipeline using the debug tools provided.
 
-The graph system validates connections using object schemas to prevent type mismatches.
+By following these steps, you'll create a fully functional AI pipeline in Luminary, with data flowing seamlessly between your custom assistants.
 
 ## Profiles
 
@@ -168,13 +219,114 @@ Functions can be used as:
 2. **Standalone Nodes**: Independent processing steps in your pipeline
 
 ### Function Development
-To create a custom function:
-1. Write code in any language that runs via command line
+To create a custom function in Luminary:
+
+1. Write your function code:
+   Choose any language that can be executed via command line. Here are examples in JavaScript and Python:
+
+   **JavaScript Example (function.js):**
+   ```javascript
+   #!/usr/bin/env node
+
+   function finalOutput(output) {
+     console.log('$%*%$Output:' + JSON.stringify(output));
+   }
+
+   async function main() {
+     try {
+       const inputs = JSON.parse(await new Promise(resolve => process.stdin.once('data', resolve)));
+       
+       const { title, content } = inputs;
+       
+       // Your function logic here
+       const processedContent = content.toUpperCase();
+       
+       const result = {
+         title: title,
+         processedContent: processedContent
+       };
+       
+       finalOutput(result);
+     } catch (error) {
+       console.error(JSON.stringify({ error: error.message }));
+       process.exit(1);
+     }
+   }
+
+   main();
+   ```
+
+   **Python Example (function.py):**
+   ```python
+   #!/usr/bin/env python3
+   import sys
+   import json
+
+   def final_output(output):
+       print('$%*%$Output:' + json.dumps(output))
+
+   try:
+       inputs = json.loads(sys.stdin.read())
+       
+       title = inputs['title']
+       content = inputs['content']
+       
+       # Your function logic here
+       processed_content = content.upper()
+       
+       result = {
+           'title': title,
+           'processedContent': processed_content
+       }
+       
+       final_output(result)
+   except Exception as e:
+       print(json.dumps({'error': str(e)}), file=sys.stderr)
+       sys.exit(1)
+   ```
+
 2. Set up the function in Luminary:
-   - Point to script file
-   - Set execution command
-   - Define input/output schemas
-3. Use built-in tools for testing
+   - Script File: Point to your script file (e.g., `function.js` or `function.py`).
+   - Execution Command: 
+     - For JavaScript: `node function.js`
+     - For Python: `python function.py`
+   - Define Input/Output Schemas:
+     Input Schema:
+     ```json
+     {
+       "type": "object",
+       "properties": {
+         "title": { "type": "string" },
+         "content": { "type": "string" }
+       },
+       "required": ["title", "content"]
+     }
+     ```
+     Output Schema:
+     ```json
+     {
+       "type": "object",
+       "properties": {
+         "title": { "type": "string" },
+         "processedContent": { "type": "string" }
+       },
+       "required": ["title", "processedContent"]
+     }
+     ```
+
+3. Important Factors:
+   - Use `$%*%$Output:` prefix for final output in both languages.
+   - Handle errors and output them as JSON to stderr.
+   - Parse input from stdin as JSON.
+   - Ensure your script has proper execute permissions (chmod +x for Unix-like systems).
+
+4. Testing:
+   Use Luminary's built-in tools to test your function:
+   - Provide sample inputs matching your input schema.
+   - Verify the output matches your output schema.
+   - Test error scenarios to ensure proper error handling.
+
+By following these steps, you can create custom functions that seamlessly integrate with Luminary's AI pipelines, allowing for powerful data processing and external system interactions.
 
 ### Runtime Communication
 Functions use standard streams:
@@ -188,6 +340,36 @@ Functions can output:
 - Single schema objects
 - Multiple objects by schema
 - Object arrays
+
+#### Single Schema Output Example
+```javascript
+console.log('$%*%$Output:' + JSON.stringify({
+  title: "My Processed Content",
+  processedContent: "THIS IS THE UPPERCASE CONTENT"
+}));
+```
+
+#### Multiple Schema Objects Output Example
+Schema names for this example are: Video, Pictory Request, Pictory Render, Pictory Job
+```javascript
+console.log('$%*%$Output:' + JSON.stringify({
+  video: { id: "123", url: "https://example.com/video.mp4" },
+  pictoryRequest: { content: "Original content here" },
+  pictoryRender: { status: "complete", progress: 100 },
+  pictoryJob: { id: "job123", status: "finished" }
+}));
+```
+
+#### Array Output Example
+```javascript 
+console.log('$%*%$Output:' + JSON.stringify({
+  processedItems: [
+    { id: 1, content: "FIRST ITEM" },
+    { id: 2, content: "SECOND ITEM" },
+    { id: 3, content: "THIRD ITEM" }
+  ]
+}));
+```
 
 ### Templates
 The `/functions/` directory includes:
