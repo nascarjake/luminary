@@ -115,7 +115,6 @@ export class ProfileExportService {
             model,
             instructions,
             tools,
-            file_ids,
             metadata,
             response_format,
             temperature,
@@ -123,23 +122,48 @@ export class ProfileExportService {
           } = assistant.openai;
 
           // Create the assistant with all OpenAI fields
-          await this.openAiService.createAssistant({
+          const createdAssistant = await this.openAiService.createAssistant({
             name,
             description,
             model,
             instructions,
             tools,
-            file_ids: file_ids || [],
             metadata,
             response_format,
             temperature,
             top_p
           });
+
+          // Get the old and new file paths
+          const oldAssistantId = assistant.openai.id;
+          const newAssistantId = createdAssistant.id;
+          const oldFilename = `assistant-${profile.id}-${oldAssistantId}.json`;
+          const newFilename = `assistant-${profile.id}-${newAssistantId}.json`;
+          
+          const oldPath = await window.electron.path.join(this.baseDir, oldFilename);
+          const newPath = await window.electron.path.join(this.baseDir, newFilename);
+
+          // Update the assistant's OpenAI ID
+          assistant.openai.id = newAssistantId;
+
+          // Save the updated assistant configuration
+          await window.electron.fs.writeTextFile(newPath, JSON.stringify(assistant, null, 2));
+
+          // Delete the old file
+          if (oldPath !== newPath) {
+            try {
+              await window.electron.fs.removeTextFile(oldPath);
+            } catch (error) {
+              console.error('Error removing old assistant file:', error);
+            }
+          }
+
+          console.log(`Assistant created with ID ${newAssistantId}`);
         }
       }
     } catch (error) {
       console.error('Error creating assistants in OpenAI:', error);
-      throw new Error(`Failed to create assistants in OpenAI: ${error instanceof Error ? error.message : String(error)}`);
+      throw error;
     }
   }
 }
