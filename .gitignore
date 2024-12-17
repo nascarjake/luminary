@@ -43,6 +43,10 @@ testem.log
 
 /scripts/youtube/creds.json
 
+# Environment files
+/src/environments/environment.ts
+/src/environments/environment.development.ts
+
 # System files
 .DS_Store
 Thumbs.db

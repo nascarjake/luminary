@@ -64,6 +64,21 @@ To get started with Luminary, follow these steps:
    - Windows: Execute the installer and follow the prompts. Once complete, Luminary will be available in your Start Menu.
    - macOS: Open the `.dmg` file and drag Luminary to your Applications folder. The app is signed and notarized for security.
 
+## Environment Setup
+
+The project uses environment files for configuration. We provide a public template (`environment_public.ts`) that gets committed to the repository. For local development:
+
+1. Run the setup script:
+   ```bash
+   ./scripts/setup-env.sh
+   ```
+
+2. Edit the generated files with your private settings:
+   - `src/environments/environment.ts`
+   - `src/environments/environment.development.ts`
+
+These local environment files are gitignored to keep private settings secure.
+
 ## Building
 
 To build and run Luminary from source, use the following commands:
