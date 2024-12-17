@@ -1,32 +1,26 @@
 <div class="object-sidebar">
   <div class="tree-container">
-    <div *ngIf="loading" class="loading-state">
-      <i class="pi pi-spin pi-spinner" style="font-size: 2rem"></i>
-      <span>Loading objects...</span>
-    </div>
     <p-tree 
-      *ngIf="!loading"
       [value]="treeData"
-      [(selection)]="selectedNode"
+      [loading]="loading"
       selectionMode="single"
+      [(selection)]="selectedNode"
       (onNodeSelect)="onNodeSelect($event)"
+      (contextMenu)="onNodeContextMenu($event)"
+      [contextMenu]="cm"
       styleClass="object-tree">
     </p-tree>
+    <p-contextMenu #cm [model]="contextMenuItems" appendTo="body"></p-contextMenu>
   </div>
 
-  <div class="object-details" *ngIf="selectedObject">
+  <p-confirmDialog></p-confirmDialog>
+
+  <div class="object-details" *ngIf="selectedNode?.data">
     <p-panel>
       <ng-template pTemplate="header">
         <div class="panel-header">
           <span>Object Details</span>
           <div class="panel-actions">
-            <button 
-              pButton 
-              icon="pi pi-trash" 
-              class="p-button-danger p-button-sm"
-              (click)="deleteSelectedObject()"
-              [disabled]="!selectedNode?.data?.instanceId">
-            </button>
             <button 
               pButton 
               icon="pi pi-copy" 

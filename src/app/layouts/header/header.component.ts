@@ -208,7 +208,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
     });
 
     const url = this.router.url;
-    if (url.includes('chat') || url.includes('outputs')) {
+    if (url.includes('chat') || url.includes('outputs') || url.includes('schedule')) {
       if (this.mainNavItems[0].styleClass) {
         this.mainNavItems[0].styleClass += ' active';
       }
@@ -228,6 +228,11 @@ export class HeaderComponent implements OnInit, OnDestroy {
             label: 'Chat',
             icon: 'pi pi-comments',
             routerLink: '/chat'
+          },
+          {
+            label: 'Schedule',
+            icon: 'pi pi-calendar',
+            routerLink: '/schedule'
           },
           {
             label: 'Outputs',
@@ -302,7 +307,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
           command: () => this.updateActiveStyles()
         }
       ];
-    } else if (url.includes('chat') || url.includes('outputs')) {
+    } else if (url.includes('chat') || url.includes('outputs') || url.includes('schedule')) {
       this.handleMainNavClick('execute');
     } else {
       this.showSubNav = false;

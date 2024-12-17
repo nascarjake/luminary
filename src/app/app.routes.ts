@@ -15,6 +15,10 @@ export const routes: Routes = [
     loadComponent: () => import('./views/chat/chat.component').then(c => c.ChatComponent)
   },
   {
+    path: 'schedule',
+    loadComponent: () => import('./views/schedule/schedule.component').then(c => c.ScheduleComponent)
+  },
+  {
     path: 'assistants',
     loadComponent: () => import('./views/assistants/assistants.component').then(m => m.AssistantsComponent)
   },

@@ -1,16 +1,22 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TreeModule } from 'primeng/tree';
 import { TreeNode } from 'primeng/api';
 import { PanelModule } from 'primeng/panel';
 import { ButtonModule } from 'primeng/button';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { ContextMenuModule } from 'primeng/contextmenu';
+import { MenuItem } from 'primeng/api';
 import { ConfirmationService, MessageService } from 'primeng/api';
+import { DialogService, DynamicDialogRef } from 'primeng/dynamicdialog';
 import { PrettyJsonPipe } from '../../pipes/pretty-json.pipe';
 import { TimeAgoPipe } from '../../pipes/time-ago.pipe';
 import { ObjectSchemaService, ObjectInstanceService } from '../../services/object-system.service';
 import { ObjectSchema, ObjectInstance, ObjectField, MediaType } from '../../interfaces/object-system';
 import { Subscription, combineLatest, startWith } from 'rxjs';
+import { InstanceEditorComponent } from '../../modules/object-manager/components/instance-editor/instance-editor.component';
+import { ScheduleDialogComponent } from '../schedule-dialog/schedule-dialog.component';
+import { OAAssistant } from '../../../lib/entities/OAAssistant';
 
 @Component({
   selector: 'app-object-sidebar',
@@ -21,10 +27,12 @@ import { Subscription, combineLatest, startWith } from 'rxjs';
     PanelModule,
     ButtonModule,
     ConfirmDialogModule,
+    ContextMenuModule,
+    ScheduleDialogComponent,
     PrettyJsonPipe,
     TimeAgoPipe
   ],
-  providers: [],
+  providers: [ConfirmationService, MessageService, DialogService],
   templateUrl: './object-sidebar.component.html',
   styleUrls: ['./object-sidebar.component.scss']
 })
@@ -35,13 +43,21 @@ export class ObjectSidebarComponent implements OnInit, OnDestroy {
   selectedSchema: ObjectSchema | null = null;
   loading = true;
   private subscriptions: Subscription[] = [];
+  contextMenuItems: MenuItem[] = [];
+  @Output() deleteNode = new EventEmitter<TreeNode>();
+  @Output() scheduleEvent = new EventEmitter<any>();
+  @Input() assistants: OAAssistant[] = [];
+  private dialogRef: DynamicDialogRef | null = null;
 
   constructor(
     private schemaService: ObjectSchemaService,
     private instanceService: ObjectInstanceService,
     private confirmationService: ConfirmationService,
-    private messageService: MessageService
-  ) {}
+    private messageService: MessageService,
+    private dialogService: DialogService
+  ) {
+    this.initContextMenu();
+  }
 
   ngOnInit() {
     this.subscribeToObjects();
@@ -49,6 +65,9 @@ export class ObjectSidebarComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.subscriptions.forEach(sub => sub.unsubscribe());
+    if (this.dialogRef) {
+      this.dialogRef.close();
+    }
   }
 
   private subscribeToObjects() {
@@ -168,7 +187,7 @@ export class ObjectSidebarComponent implements OnInit, OnDestroy {
     return 'image';
   }
 
-  onNodeSelect(event: any) {
+  onNodeSelect(event: { node: TreeNode }) {
     const node = event.node;
     if (node.data.type === 'instance') {
       this.selectedObject = node.data.instance;
@@ -182,31 +201,87 @@ export class ObjectSidebarComponent implements OnInit, OnDestroy {
     }
   }
 
-  async deleteSelectedObject() {
-    if (!this.selectedNode?.data.instanceId) return;
-
-    this.confirmationService.confirm({
-      message: 'Are you sure you want to delete this object?',
-      accept: async () => {
-    try {
-      await this.instanceService.deleteInstance(this.selectedNode!.data.instanceId);
-      this.messageService.add({
-        severity: 'success',
-        summary: 'Success',
-        detail: 'Object deleted successfully'
-      });
-      this.selectedNode = null;
-      this.selectedObject = null;
-    } catch (error) {
-      console.error('Failed to delete object:', error);
-      this.messageService.add({
-        severity: 'error',
-        summary: 'Error',
-        detail: 'Failed to delete object'
-      });
+  onNodeContextMenu(event: any) {
+    if (event && event.originalEvent && event.node) {
+      event.originalEvent.preventDefault();
+      this.selectedNode = event.node;
     }
+  }
+
+  private initContextMenu() {
+    this.contextMenuItems = [
+      {
+        label: 'Edit',
+        icon: 'pi pi-pencil',
+        command: () => this.editObject()
+      },
+      {
+        label: 'Schedule',
+        icon: 'pi pi-calendar',
+        command: () => this.scheduleObject()
+      },
+      {
+        label: 'Delete',
+        icon: 'pi pi-trash',
+        command: () => this.confirmDeleteNode()
+      }
+    ];
+  }
+
+  editObject() {
+    if (!this.selectedNode?.data) return;
+
+    const ref = this.dialogService.open(InstanceEditorComponent, {
+      header: 'Edit Object',
+      width: '80%',
+      data: {
+        instance: this.selectedNode.data.instance,
+        mode: 'edit'
       }
     });
+
+    ref.onClose.subscribe(async (result) => {
+      if (result) {
+        // Refresh the tree
+        // You'll need to implement this based on your data structure
+      }
+    });
+  }
+
+  async scheduleObject() {
+    if (!this.selectedNode?.data) return;
+
+    this.dialogRef = this.dialogService.open(ScheduleDialogComponent, {
+      header: 'Schedule Event',
+      width: '50%',
+      style: {
+        'max-height': '90vh'
+      },
+      data: {
+        assistants: this.assistants,
+        selectedObject: this.selectedNode.data.instance,
+        defaultEventType: 'object'
+      }
+    });
+
+    this.dialogRef.onClose.subscribe((result) => {
+      if (result) {
+        this.scheduleEvent.emit(result);
+      }
+    });
+  }
+
+  confirmDeleteNode() {
+    if (this.selectedNode) {
+      this.confirmationService.confirm({
+        message: 'Are you sure you want to delete this item?',
+        header: 'Delete Confirmation',
+        icon: 'pi pi-exclamation-triangle',
+        accept: () => {
+          this.deleteNode.emit(this.selectedNode);
+        }
+      });
+    }
   }
 
   getLocalResourceUrl(filePath: string): string {
