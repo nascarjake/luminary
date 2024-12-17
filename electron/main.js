@@ -803,10 +803,11 @@ async function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
-    frame: false,
-    titleBarStyle: 'hidden',
+    frame: false, // Use native frame on Windows, frameless on macOS
+    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'hidden', // Use hiddenInset on macOS for native buttons
     transparent: true,
     backgroundColor: '#00000000',
+    trafficLightPosition: { x: 10, y: 10 }, // Position for macOS window controls
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: true,
