@@ -25,6 +25,7 @@ import { ConfigService } from '../../services/config.service';
 import { OAAssistant } from '../../../lib/entities/OAAssistant';
 import { ObjectInstance, ObjectSchema } from '../../interfaces/object-system';
 import { EventService } from '../../services/event.service';
+import { ConfirmationService, MessageService } from 'primeng/api';
 
 @Component({
   selector: 'app-schedule',
@@ -49,6 +50,7 @@ import { EventService } from '../../services/event.service';
       <div class="header">
         <h1>Schedule</h1>
         <p-button label="Add Event" icon="pi pi-plus" (onClick)="showEventDialog()"></p-button>
+        <p-button icon="pi pi-trash" (onClick)="clearAllEvents()" styleClass="p-button-rounded p-button-text p-button-danger"></p-button>
       </div>
 
       <div class="calendar-container">
@@ -524,11 +526,15 @@ export class ScheduleComponent implements OnInit, OnDestroy {
     private objectSchemaService: ObjectSchemaService,
     private functionImplementationsService: FunctionImplementationsService,
     private configService: ConfigService,
-    private eventService: EventService
+    private eventService: EventService,
+    private confirmationService: ConfirmationService,
+    private messageService: MessageService
   ) {}
 
   async ngOnInit() {
     await this.loadAssistants();
+    await this.objectInstanceService.initialize();
+    await this.loadObjects();
     await this.eventService.loadEvents();
     this.subscriptions.push(
       this.eventService.events$.subscribe(events => {
@@ -539,6 +545,16 @@ export class ScheduleComponent implements OnInit, OnDestroy {
           events: [...events]
         };
         console.log('Calendar events after update:', this.calendarOptions.events);
+      })
+    );
+
+    // Subscribe to profile and project changes to reload objects
+    this.subscriptions.push(
+      this.configService.activeProfile$.subscribe(() => {
+        this.loadObjects();
+      }),
+      this.configService.activeProject$.subscribe(() => {
+        this.loadObjects();
       })
     );
   }
@@ -646,7 +662,27 @@ export class ScheduleComponent implements OnInit, OnDestroy {
     this.showEventDialog();
   }
 
-  showEventDialog() {
+  async showEventDialog() {
+    // If there's an assistant selected, load its inputs
+    if (this.newEvent.assistant) {
+      const profile = this.configService.getActiveProfile();
+      const project = this.configService.getActiveProject();
+      
+      if (profile && project) {
+        const config = await this.functionImplementationsService.loadFunctionImplementations(
+          profile.id,
+          project.id,
+          this.newEvent.assistant.id
+        );
+        this.selectedAssistantInputs = config.inputs || [];
+        this.filterObjectsByAssistantInputs();
+      }
+    } else {
+      // No assistant selected, show all objects
+      this.selectedAssistantInputs = [];
+      this.filteredObjects = [...this.objects];
+    }
+    
     this.showDialog = true;
   }
 
@@ -827,6 +863,31 @@ export class ScheduleComponent implements OnInit, OnDestroy {
   hideFullscreenEditor() {
     this.newEvent.message = this.fullscreenContent;
     this.showFullscreenDialog = false;
+  }
+
+  public clearAllEvents(): void {
+    this.confirmationService.confirm({
+      message: 'Are you sure you want to clear all scheduled events? This action cannot be undone.',
+      header: 'Clear All Events',
+      icon: 'pi pi-exclamation-triangle',
+      accept: async () => {
+        try {
+          await this.eventService.clearAllEvents();
+          this.messageService.add({
+            severity: 'success',
+            summary: 'Success',
+            detail: 'All events have been cleared'
+          });
+        } catch (error) {
+          console.error('Failed to clear events:', error);
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'Failed to clear events'
+          });
+        }
+      }
+    });
   }
 
   ngOnDestroy() {
