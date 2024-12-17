@@ -122,6 +122,7 @@ import { EventService } from '../../services/event.service';
             <p-calendar id="startDate" 
                        [(ngModel)]="newEvent.start" 
                        [showTime]="true"
+                       appendTo="body"
                        [showButtonBar]="true"
                        [hourFormat]="'12'"></p-calendar>
           </div>
@@ -149,6 +150,7 @@ import { EventService } from '../../services/event.service';
             <p-calendar id="until"
                        [(ngModel)]="newEvent.until"
                        [showTime]="true"
+                       appendTo="body"
                        [showButtonBar]="true"
                        [hourFormat]="'12'">
             </p-calendar>
@@ -319,10 +321,20 @@ export class ScheduleComponent implements OnInit, OnDestroy {
     editable: true,
     selectable: true,
     selectMirror: true,
-    dayMaxEvents: true,
-    events: this.events,
+    dayMaxEvents: 3,
+    events: [], // Initialize with empty array
     select: this.handleDateSelect.bind(this),
-    eventClick: this.handleEventClick.bind(this)
+    eventClick: this.handleEventClick.bind(this),
+    datesSet: (dateInfo) => {
+      console.log('Calendar view changed/updated. Events:', this.calendarOptions.events);
+      if (this.events.length !== this.calendarOptions.events) {
+        console.log('Event count mismatch - updating calendar');
+        this.calendarOptions = {
+          ...this.calendarOptions,
+          events: [...this.events] // Create new array reference
+        };
+      }
+    }
   };
 
   newEvent = {
@@ -356,8 +368,14 @@ export class ScheduleComponent implements OnInit, OnDestroy {
     await this.eventService.loadEvents();
     this.subscriptions.push(
       this.eventService.events$.subscribe(events => {
+        console.log('Events subscription update:', events.length, 'events');
         this.events = events;
-        this.calendarOptions.events = events;
+        // Create new calendar options object with new events array
+        this.calendarOptions = {
+          ...this.calendarOptions,
+          events: [...events]
+        };
+        console.log('Calendar events after update:', this.calendarOptions.events);
       })
     );
   }
@@ -624,7 +642,11 @@ export class ScheduleComponent implements OnInit, OnDestroy {
 
     console.log('Saving event data:', eventData);
 
-    await this.eventService.addEvent(eventData);
+    if (this.editingEventId) {
+      await this.eventService.updateEvent(eventData);
+    } else {
+      await this.eventService.addEvent(eventData);
+    }
 
     // Reset editing state
     this.editingEventId = null;
