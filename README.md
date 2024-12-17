@@ -121,7 +121,6 @@ The project uses environment files for configuration. We provide a public templa
 
 These local environment files are gitignored to keep private settings secure.
 
-
 ## OpenAI Integration
 
 Luminary is built around the OpenAI Assistants API, providing a structured interface for creating and managing AI workflows. The platform currently focuses exclusively on OpenAI's technology to ensure consistency across applications.
