@@ -354,6 +354,8 @@ import { EventService } from '../../services/event.service';
 
       /* Event styling */
       .fc-daygrid-event {
+        display: flex;
+        align-items: center;
         background-color: #2d4a22;
         border-color: #2d4a22;
         color: #e0e0e0;
@@ -362,6 +364,14 @@ import { EventService } from '../../services/event.service';
 
         &:hover {
           background-color: #3a5f2c;
+        }
+
+        &.completed {
+          opacity: 0.7;
+        }
+
+        &.failed {
+          border-left: 3px solid var(--red-500);
         }
       }
 
@@ -388,6 +398,27 @@ import { EventService } from '../../services/event.service';
           background-color: #333;
           color: #e0e0e0;
         }
+      }
+
+      /* Status indicators */
+      .status-dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        margin-right: 4px;
+      }
+
+      .status-pending {
+        background-color: #ffd700;
+      }
+
+      .status-completed {
+        background-color: #4caf50;
+      }
+
+      .status-failed {
+        background-color: var(--red-500);
       }
     }
   `],
@@ -426,6 +457,36 @@ export class ScheduleComponent implements OnInit, OnDestroy {
     expandRows: true,
     handleWindowResize: true,
     windowResizeDelay: 100,
+    eventDidMount: (info) => {
+      // Handle recurring event status
+      const eventDate = info.event.start?.toISOString();
+      const completedOccurrences = info.event.extendedProps?.completedOccurrences || [];
+      const isCompleted = info.event.extendedProps?.rrule 
+        ? completedOccurrences.includes(eventDate)
+        : info.event.extendedProps?.status === 'completed';
+      
+      // Create status dot
+      const dot = document.createElement('span');
+      dot.className = `status-dot status-${isCompleted ? 'completed' : (info.event.extendedProps?.status || 'pending')}`;
+      info.el.prepend(dot);
+
+      // Add tooltip with status and completion info
+      let tooltip = `Status: ${isCompleted ? 'completed' : (info.event.extendedProps?.status || 'pending')}`;
+      if (info.event.extendedProps?.lastRun) {
+        tooltip += `\nLast Run: ${new Date(info.event.extendedProps.lastRun).toLocaleString()}`;
+      }
+      if (info.event.extendedProps?.error) {
+        tooltip += `\nError: ${info.event.extendedProps.error}`;
+      }
+      info.el.title = tooltip;
+
+      // Style based on status
+      if (isCompleted) {
+        info.el.style.opacity = '0.7';
+      } else if (info.event.extendedProps?.status === 'failed') {
+        info.el.style.borderLeft = '3px solid var(--red-500)';
+      }
+    },
     select: this.handleDateSelect.bind(this),
     eventClick: this.handleEventClick.bind(this),
     datesSet: (dateInfo) => {
