@@ -233,7 +233,12 @@ import { EventService } from '../../services/event.service';
   `,
   styles: [`
     .schedule-container {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
       padding: 1rem;
+      background-color: #1e1e1e;
+      color: #e0e0e0;
     }
 
     .header {
@@ -292,7 +297,100 @@ import { EventService } from '../../services/event.service';
     :host ::ng-deep .p-dialog-maximized textarea {
       min-height: 300px;
     }
-  `]
+
+    :host ::ng-deep {
+      /* Calendar container */
+      .fc {
+        height: calc(100vh - 150px);
+        background-color: #1e1e1e;
+      }
+
+      /* Header styling */
+      .fc-toolbar {
+        padding: 1rem;
+        margin-bottom: 0 !important;
+      }
+
+      .fc-toolbar-title {
+        color: #e0e0e0 !important;
+      }
+
+      .fc-button {
+        background-color: #333 !important;
+        border-color: #444 !important;
+        color: #e0e0e0 !important;
+        
+        &:hover {
+          background-color: #444 !important;
+          border-color: #555 !important;
+        }
+
+        &:focus {
+          box-shadow: 0 0 0 2px rgba(255,255,255,0.1) !important;
+        }
+      }
+
+      .fc-button-active {
+        background-color: #444 !important;
+        border-color: #555 !important;
+      }
+
+      /* Calendar grid */
+      .fc-theme-standard td, 
+      .fc-theme-standard th,
+      .fc-theme-standard .fc-scrollgrid {
+        border-color: #333 !important;
+      }
+
+      .fc-day-today {
+        background-color: rgba(255,255,255,0.05) !important;
+      }
+
+      .fc-daygrid-day-number,
+      .fc-col-header-cell-cushion {
+        color: #e0e0e0;
+        text-decoration: none !important;
+      }
+
+      /* Event styling */
+      .fc-daygrid-event {
+        background-color: #2d4a22;
+        border-color: #2d4a22;
+        color: #e0e0e0;
+        margin-bottom: 2px;
+        padding: 2px 4px;
+
+        &:hover {
+          background-color: #3a5f2c;
+        }
+      }
+
+      .fc-daygrid-day-frame {
+        min-height: 100px;
+      }
+
+      .fc-daygrid-day-events {
+        margin-bottom: 0;
+      }
+
+      /* More events link */
+      .fc-daygrid-more-link {
+        color: #4caf50;
+        font-weight: bold;
+      }
+
+      /* Popover */
+      .fc-popover {
+        background-color: #2d2d2d;
+        border-color: #333;
+
+        .fc-popover-header {
+          background-color: #333;
+          color: #e0e0e0;
+        }
+      }
+    }
+  `],
 })
 export class ScheduleComponent implements OnInit, OnDestroy {
   showDialog = false;
@@ -321,8 +419,13 @@ export class ScheduleComponent implements OnInit, OnDestroy {
     editable: true,
     selectable: true,
     selectMirror: true,
-    dayMaxEvents: 3,
-    events: [], // Initialize with empty array
+    dayMaxEvents: false,
+    events: [],
+    height: '100%',
+    contentHeight: 'auto',
+    expandRows: true,
+    handleWindowResize: true,
+    windowResizeDelay: 100,
     select: this.handleDateSelect.bind(this),
     eventClick: this.handleEventClick.bind(this),
     datesSet: (dateInfo) => {
@@ -331,7 +434,7 @@ export class ScheduleComponent implements OnInit, OnDestroy {
         console.log('Event count mismatch - updating calendar');
         this.calendarOptions = {
           ...this.calendarOptions,
-          events: [...this.events] // Create new array reference
+          events: [...this.events]
         };
       }
     }
@@ -341,7 +444,7 @@ export class ScheduleComponent implements OnInit, OnDestroy {
     title: '',
     start: null,
     isRecurring: false,
-    recurrencePattern: 'weekly', // Default to weekly
+    recurrencePattern: 'weekly',
     until: null,
     type: 'message',
     message: '',
@@ -370,7 +473,6 @@ export class ScheduleComponent implements OnInit, OnDestroy {
       this.eventService.events$.subscribe(events => {
         console.log('Events subscription update:', events.length, 'events');
         this.events = events;
-        // Create new calendar options object with new events array
         this.calendarOptions = {
           ...this.calendarOptions,
           events: [...events]
@@ -386,18 +488,15 @@ export class ScheduleComponent implements OnInit, OnDestroy {
   }
 
   async loadObjects() {
-    // Load schemas first
     const schemas = await this.objectSchemaService.listSchemas();
     const schemaMap = new Map(schemas.map(s => [s.id, s]));
     
-    // Subscribe to instances and attach schema names
     this.objectInstanceService.instances.subscribe(instances => {
       this.objects = instances.map(instance => ({
         ...instance,
         schemaName: schemaMap.get(instance.schemaId)?.name || 'Unknown Schema',
         displayName: instance.data?.name || instance.data?.title || instance.data?.key || instance.data?.message || instance.id
       }))
-      // Sort by schema name first, then by display name
       .sort((a, b) => {
         const schemaCompare = a.schemaName.localeCompare(b.schemaName);
         if (schemaCompare !== 0) return schemaCompare;
@@ -421,14 +520,13 @@ export class ScheduleComponent implements OnInit, OnDestroy {
   }
 
   handleDateSelect(selectInfo: any) {
-    this.editingEventId = null; // Clear any previous editing state
-    this.resetNewEvent(); // Reset the form
+    this.editingEventId = null;
+    this.resetNewEvent();
     this.newEvent.start = selectInfo.start;
     this.showEventDialog();
   }
 
   parseRruleUntilDate(dateStr: string): Date {
-    // Convert "YYYYMMDDTHHMMSSZ" to "YYYY-MM-DDTHH:MM:SSZ"
     const formatted = dateStr.replace(
       /(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z/,
       '$1-$2-$3T$4:$5:$6Z'
@@ -442,13 +540,11 @@ export class ScheduleComponent implements OnInit, OnDestroy {
     console.log('Event def:', event._def);
     console.log('Event def extended props:', event._def.extendedProps);
     
-    // When saving, we store rrule directly in extendedProps, so let's look there
     const rrule = event._def.extendedProps?.rrule;
     console.log('Event rrule:', rrule);
     
     this.editingEventId = event.id;
     
-    // Parse recurring event settings if present
     let recurrenceSettings = {
       isRecurring: false,
       pattern: null,
@@ -468,7 +564,6 @@ export class ScheduleComponent implements OnInit, OnDestroy {
       console.log('Parsed recurrence settings:', recurrenceSettings);
     }
     
-    // Populate form with event data
     this.newEvent = {
       title: event.title,
       start: new Date(event.start),
@@ -483,7 +578,6 @@ export class ScheduleComponent implements OnInit, OnDestroy {
 
     console.log('Populated newEvent:', this.newEvent);
 
-    // If it's an object type event, update the selected object
     if (this.newEvent.type === 'object' && this.newEvent.object) {
       this.selectedObject = this.newEvent.object;
     }
@@ -533,13 +627,10 @@ export class ScheduleComponent implements OnInit, OnDestroy {
       const schemaName = obj.schemaName.toLowerCase();
       
       return searchTerms.every(term => {
-        // Check if the term matches the schema name
         const matchesSchema = schemaName.includes(term);
         
-        // Check if the term matches any of the name fields
         const matchesName = nameFields.some(field => field.includes(term));
         
-        // For each term, it must either match the schema OR any name field
         return matchesSchema || matchesName;
       });
     });
@@ -635,7 +726,6 @@ export class ScheduleComponent implements OnInit, OnDestroy {
 
       const rruleString = new RRule(rruleOptions).toString();
       eventData.rrule = rruleString;
-      // Also store in extendedProps to make it easier to access later
       eventData.extendedProps.rrule = rruleString;
       console.log('Generated rrule:', rruleString);
     }
@@ -648,7 +738,6 @@ export class ScheduleComponent implements OnInit, OnDestroy {
       await this.eventService.addEvent(eventData);
     }
 
-    // Reset editing state
     this.editingEventId = null;
     this.selectedObject = null;
     this.resetNewEvent();
@@ -660,7 +749,7 @@ export class ScheduleComponent implements OnInit, OnDestroy {
       title: '',
       start: null,
       isRecurring: false,
-      recurrencePattern: 'weekly', // Default to weekly
+      recurrencePattern: 'weekly',
       until: null,
       type: 'message',
       message: '',
