@@ -131,6 +131,7 @@ Luminary is built around the OpenAI Assistants API, providing a structured inter
 1. **API Key**: To use OpenAI assistants in Luminary, you need to have an OpenAI API key. You can obtain an API key from the OpenAI website. Once you have the key, you can set it in Luminary's settings.
 
 2. **API Usage Tier**: OpenAI has different pricing plans for API usage. Luminary supports using the API at any tier, but some models and features may be locked, and you may experience rate limit issues, depending on your usage tier. To get a higher usage tier, you need to add more funds to your OpenAI API Account. 
+
 (The video pipeline shown in the example video was made with a single $50 deposit into a blank OpenAI Api account. This allowed for 450k TPM and the use of a 16k token gpt4o model)
 
 ### Future AI Integration Plans
