@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
@@ -24,6 +24,7 @@ import { FunctionImplementationsService } from '../../services/function-implemen
 import { ConfigService } from '../../services/config.service';
 import { OAAssistant } from '../../../lib/entities/OAAssistant';
 import { ObjectInstance, ObjectSchema } from '../../interfaces/object-system';
+import { EventService } from '../../services/event.service';
 
 @Component({
   selector: 'app-schedule',
@@ -291,7 +292,7 @@ import { ObjectInstance, ObjectSchema } from '../../interfaces/object-system';
     }
   `]
 })
-export class ScheduleComponent implements OnInit {
+export class ScheduleComponent implements OnInit, OnDestroy {
   showDialog = false;
   showObjectSelectDialog = false;
   showFullscreenDialog = false;
@@ -305,6 +306,7 @@ export class ScheduleComponent implements OnInit {
   validationErrors: string[] = [];
   selectedAssistantInputs: string[] = [];
   editingEventId: string | null = null;
+  subscriptions: any[] = [];
 
   calendarOptions: CalendarOptions = {
     plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin, rrulePlugin],
@@ -345,12 +347,19 @@ export class ScheduleComponent implements OnInit {
     private objectInstanceService: ObjectInstanceService,
     private objectSchemaService: ObjectSchemaService,
     private functionImplementationsService: FunctionImplementationsService,
-    private configService: ConfigService
+    private configService: ConfigService,
+    private eventService: EventService
   ) {}
 
   async ngOnInit() {
     await this.loadAssistants();
-    await this.loadObjects();
+    await this.eventService.loadEvents();
+    this.subscriptions.push(
+      this.eventService.events$.subscribe(events => {
+        this.events = events;
+        this.calendarOptions.events = events;
+      })
+    );
   }
 
   async loadAssistants() {
@@ -394,6 +403,8 @@ export class ScheduleComponent implements OnInit {
   }
 
   handleDateSelect(selectInfo: any) {
+    this.editingEventId = null; // Clear any previous editing state
+    this.resetNewEvent(); // Reset the form
     this.newEvent.start = selectInfo.start;
     this.showEventDialog();
   }
@@ -468,6 +479,7 @@ export class ScheduleComponent implements OnInit {
 
   hideEventDialog() {
     this.showDialog = false;
+    this.editingEventId = null;
     this.resetNewEvent();
   }
 
@@ -571,7 +583,7 @@ export class ScheduleComponent implements OnInit {
     return this.validationErrors.length === 0;
   }
 
-  saveEvent() {
+  async saveEvent() {
     if (!this.validateForm()) {
       return;
     }
@@ -612,22 +624,7 @@ export class ScheduleComponent implements OnInit {
 
     console.log('Saving event data:', eventData);
 
-    if (this.editingEventId) {
-      // Update existing event
-      const eventIndex = this.events.findIndex(e => e.id === this.editingEventId);
-      if (eventIndex !== -1) {
-        this.events[eventIndex] = eventData;
-      }
-    } else {
-      // Add new event
-      this.events.push(eventData);
-    }
-
-    // Update the calendar with the new events
-    this.calendarOptions = {
-      ...this.calendarOptions,
-      events: [...this.events]  
-    };
+    await this.eventService.addEvent(eventData);
 
     // Reset editing state
     this.editingEventId = null;
@@ -658,5 +655,9 @@ export class ScheduleComponent implements OnInit {
   hideFullscreenEditor() {
     this.newEvent.message = this.fullscreenContent;
     this.showFullscreenDialog = false;
+  }
+
+  ngOnDestroy() {
+    this.subscriptions.forEach(sub => sub.unsubscribe());
   }
 }

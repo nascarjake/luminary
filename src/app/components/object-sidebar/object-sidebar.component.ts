@@ -12,6 +12,7 @@ import { DialogService, DynamicDialogRef } from 'primeng/dynamicdialog';
 import { PrettyJsonPipe } from '../../pipes/pretty-json.pipe';
 import { TimeAgoPipe } from '../../pipes/time-ago.pipe';
 import { ObjectSchemaService, ObjectInstanceService } from '../../services/object-system.service';
+import { EventService } from '../../services/event.service';
 import { ObjectSchema, ObjectInstance, ObjectField, MediaType } from '../../interfaces/object-system';
 import { Subscription, combineLatest, startWith } from 'rxjs';
 import { InstanceEditorComponent } from '../../modules/object-manager/components/instance-editor/instance-editor.component';
@@ -54,7 +55,8 @@ export class ObjectSidebarComponent implements OnInit, OnDestroy {
     private instanceService: ObjectInstanceService,
     private confirmationService: ConfirmationService,
     private messageService: MessageService,
-    private dialogService: DialogService
+    private dialogService: DialogService,
+    private eventService: EventService
   ) {
     this.initContextMenu();
   }
@@ -264,8 +266,9 @@ export class ObjectSidebarComponent implements OnInit, OnDestroy {
       }
     });
 
-    this.dialogRef.onClose.subscribe((result) => {
+    this.dialogRef.onClose.subscribe(async (result) => {
       if (result) {
+        await this.eventService.addEvent(result);
         this.scheduleEvent.emit(result);
       }
     });
