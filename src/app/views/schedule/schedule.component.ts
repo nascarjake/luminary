@@ -74,6 +74,7 @@ import { ConfirmationService, MessageService } from 'primeng/api';
                        [options]="assistants"
                        [(ngModel)]="newEvent.assistant"
                        optionLabel="name"
+                       appendTo="body"
                        placeholder="Select an Assistant"
                        (onChange)="onAssistantChange($event)">
             </p-dropdown>
@@ -142,6 +143,7 @@ import { ConfirmationService, MessageService } from 'primeng/api';
             <p-dropdown id="pattern"
                        [options]="recurrenceOptions"
                        [(ngModel)]="newEvent.recurrencePattern"
+                       appendTo="body"
                        optionLabel="label"
                        optionValue="value">
             </p-dropdown>
@@ -375,6 +377,41 @@ import { ConfirmationService, MessageService } from 'primeng/api';
         &.failed {
           border-left: 3px solid var(--red-500);
         }
+
+        /* Hide the default event dot */
+        .fc-event-dot {
+          display: none;
+        }
+      }
+
+      /* Hide default dot in list view */
+      .fc-list-event-dot {
+        display: none;
+      }
+
+      /* Custom status dot styling */
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        margin-right: 4px;
+        flex-shrink: 0;
+
+        &.status-completed {
+          background-color: #4caf50;
+        }
+
+        &.status-pending {
+          background-color: #ffc107;
+        }
+
+        &.status-failed {
+          background-color: #f44336;
+        }
+      }
+
+      .fc-daygrid-event-dot{
+        display:none;
       }
 
       .fc-daygrid-day-frame {
@@ -507,7 +544,7 @@ export class ScheduleComponent implements OnInit, OnDestroy {
     title: '',
     start: null,
     isRecurring: false,
-    recurrencePattern: 'weekly',
+    recurrencePattern: 'daily',
     until: null,
     type: 'message',
     message: '',
@@ -516,7 +553,9 @@ export class ScheduleComponent implements OnInit, OnDestroy {
   };
 
   recurrenceOptions = [
+    { label: 'Daily', value: 'daily' },
     { label: 'Weekly', value: 'weekly' },
+    { label: 'Bi-weekly', value: 'biweekly' },
     { label: 'Monthly', value: 'monthly' }
   ];
 
@@ -813,9 +852,16 @@ export class ScheduleComponent implements OnInit, OnDestroy {
     if (this.newEvent.isRecurring && this.newEvent.recurrencePattern) {
       console.log('Saving recurring event with pattern:', this.newEvent.recurrencePattern);
       const rruleOptions: any = {
-        freq: this.newEvent.recurrencePattern === 'weekly' ? Frequency.WEEKLY : Frequency.MONTHLY,
+        freq: this.newEvent.recurrencePattern === 'daily' ? Frequency.DAILY : 
+              this.newEvent.recurrencePattern === 'weekly' ? Frequency.WEEKLY : 
+              this.newEvent.recurrencePattern === 'biweekly' ? Frequency.WEEKLY : 
+              Frequency.MONTHLY,
         dtstart: new Date(this.newEvent.start)
       };
+
+      if (this.newEvent.recurrencePattern === 'biweekly') {
+        rruleOptions.interval = 2;
+      }
 
       if (this.newEvent.until) {
         rruleOptions.until = new Date(this.newEvent.until);
@@ -846,7 +892,7 @@ export class ScheduleComponent implements OnInit, OnDestroy {
       title: '',
       start: null,
       isRecurring: false,
-      recurrencePattern: 'weekly',
+      recurrencePattern: 'daily',
       until: null,
       type: 'message',
       message: '',

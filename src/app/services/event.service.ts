@@ -31,7 +31,7 @@ interface ScheduledEvent {
 export class EventService {
   private events = new BehaviorSubject<ScheduledEvent[]>([]);
   events$ = this.events.asObservable();
-  private eventTimers: Map<string, ReturnType<typeof setTimeout>> = new Map();
+  private eventTimers: Map<string, number> = new Map();
   private initialized = false;
   private isSchedulingInProgress = false;
 
@@ -183,28 +183,17 @@ export class EventService {
     console.log('✨ All events cleared successfully');
   }
 
-  private async scheduleAllEvents() {
-    if(this.isSchedulingInProgress) {
-      console.log('⌛️ Scheduling in progress, skipping...');
-      return;
-    }
-    this.isSchedulingInProgress = true;
-    console.log('🗓️ Scheduling all events...');
-    // Clear existing timers
-    this.eventTimers.forEach((timer, eventId) => this.clearEventTimer(eventId));
-    this.eventTimers.clear();
-
-    const currentEvents = this.events.value;
-    const now = new Date();
-
-    try{
+  private async processEvents(currentEvents: ScheduledEvent[]) {
+    try {
+      const now = new Date();
+      
       for (const event of currentEvents) {
         console.log(`📅 Processing event: ${event.title} (${event.id})`);
         
         if (event.rrule) {
           // Handle recurring events
           const rule = RRule.fromString(event.rrule);
-          const nextOccurrence = rule.after(now);
+          const nextOccurrence = this.getNextOccurrence(event);
           
           // Get the last occurrence before now
           const lastOccurrence = rule.before(now);
@@ -240,34 +229,72 @@ export class EventService {
           }
         }
       }
-    }catch(e){
-      console.error('Error scheduling events:', e);
+    } catch(e) {
+      console.error('Error processing events:', e);
     }
     this.isSchedulingInProgress = false;
+  }
+
+  private async scheduleAllEvents() {
+    if(this.isSchedulingInProgress) {
+      console.log('⌛️ Scheduling in progress, skipping...');
+      return;
+    }
+    this.isSchedulingInProgress = true;
+    console.log('🗓️ Scheduling all events...');
+    // Clear existing timers
+    this.eventTimers.forEach((timer, eventId) => this.clearEventTimer(eventId));
+    this.eventTimers.clear();
+
+    const currentEvents = this.events.value;
+    await this.processEvents(currentEvents);
+  }
+
+  private getNextOccurrence(event: ScheduledEvent): Date | null {
+    if (!event.rrule) {
+      const startDate = new Date(event.start);
+      return startDate > new Date() ? startDate : null;
+    }
+
+    const rule = RRule.fromString(event.rrule);
+    const now = new Date();
+
+    // For daily events, ensure we don't schedule multiple times in the same day
+    if (rule.options.freq === RRule.DAILY) {
+      const lastRun = event.extendedProps.lastRun ? new Date(event.extendedProps.lastRun) : null;
+      if (lastRun && lastRun.toDateString() === now.toDateString()) {
+        // Get the next occurrence after today
+        const tomorrow = new Date(now);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(0, 0, 0, 0);
+        return rule.after(tomorrow, true);
+      }
+    }
+
+    return rule.after(now, true);
   }
 
   private scheduleEvent(event: ScheduledEvent, date: Date) {
     const now = new Date();
     const delay = date.getTime() - now.getTime();
     
-    console.log(`🕐 Scheduling event ${event.title} to run in ${Math.floor(delay / 1000)} seconds`);
-    
-    const timer = setTimeout(async () => {
-      console.log(`⚡ Timer triggered for event: ${event.title}`);
+    const timerId = setTimeout(async () => {
+      console.log(`⏰ Executing scheduled event: ${event.title}`);
+      // Execute the event
       await this.executeEvent(event);
       
       // If it's a recurring event, schedule the next occurrence
       if (event.rrule) {
         const rule = RRule.fromString(event.rrule);
-        const nextOccurrence = rule.after(new Date());
+        const nextOccurrence = this.getNextOccurrence(event);
         if (nextOccurrence) {
           console.log(`🔄 Scheduling next occurrence for ${event.title}: ${nextOccurrence}`);
           this.scheduleEvent(event, nextOccurrence);
         }
       }
     }, delay);
-
-    this.eventTimers.set(event.id, timer);
+    
+    this.eventTimers.set(event.id, timerId);
   }
 
   private async executeEvent(event: ScheduledEvent): Promise<void> {

@@ -49,6 +49,7 @@ import { ConfigService } from '../../services/config.service';
         <p-dropdown id="assistant"
                    [options]="filteredAssistants"
                    [(ngModel)]="newEvent.assistant"
+                   appendTo="body"
                    optionLabel="name"
                    (onChange)="onAssistantChange($event)">
         </p-dropdown>
@@ -110,6 +111,7 @@ import { ConfigService } from '../../services/config.service';
         <label>Recurrence Pattern</label>
         <p-dropdown [options]="recurrenceOptions"
                    [(ngModel)]="newEvent.recurrencePattern"
+                   appendTo="body"
                    optionLabel="label"
                    optionValue="value">
         </p-dropdown>
@@ -188,7 +190,9 @@ import { ConfigService } from '../../services/config.service';
 export class ScheduleDialogComponent implements OnInit {
   validationErrors: string[] = [];
   recurrenceOptions = [
+    { label: 'Daily', value: 'daily' },
     { label: 'Weekly', value: 'weekly' },
+    { label: 'Bi-weekly', value: 'biweekly' },
     { label: 'Monthly', value: 'monthly' }
   ];
 
@@ -352,9 +356,16 @@ export class ScheduleDialogComponent implements OnInit {
 
     if (this.newEvent.isRecurring && this.newEvent.recurrencePattern) {
       const rruleOptions: any = {
-        freq: this.newEvent.recurrencePattern === 'weekly' ? Frequency.WEEKLY : Frequency.MONTHLY,
+        freq: this.newEvent.recurrencePattern === 'weekly' ? Frequency.WEEKLY : 
+              this.newEvent.recurrencePattern === 'biweekly' ? Frequency.WEEKLY : 
+              this.newEvent.recurrencePattern === 'monthly' ? Frequency.MONTHLY : 
+              Frequency.DAILY,
         dtstart: new Date(this.newEvent.start)
       };
+
+      if (this.newEvent.recurrencePattern === 'biweekly') {
+        rruleOptions.interval = 2;
+      }
 
       if (this.newEvent.until) {
         rruleOptions.until = new Date(this.newEvent.until);

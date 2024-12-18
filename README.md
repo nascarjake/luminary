@@ -96,10 +96,12 @@ To build and run Luminary from source, use the following commands:
 Run the application in development mode:
 
 ```
+npm install
 npm run electron:dev
 ```
 
 This command concurrently starts the Angular development server and launches Electron, allowing for real-time updates as you modify the code.
+**After the application loads and angular builds the app, you may have to hit ctrl+R to refresh, so the page will load.**
 
 ### Production Builds
 
