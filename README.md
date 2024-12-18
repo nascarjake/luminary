@@ -287,6 +287,12 @@ Functions can be used as:
 1. **Assistant Tools**: Code that assistants can execute
 2. **Standalone Nodes**: Independent processing steps in your pipeline
 
+### Output Functions
+Assistant tool functions have the option to be marked isOuptut. When this is set to true, the function will be used as the output function for the assistant. If no output function is set, Luminary will create one automatically, based on the outputs defined in the assistant's tool definition.
+
+### Media Management
+Object Schema fields can be marked as isMedia. When this is set to true, the field will be used to store media files. isMedia fields are automatically downloaded when outputted from AI assistants or assistant tool functions.
+
 ### Function Development
 To create a custom function in Luminary:
 
