@@ -127,7 +127,7 @@ Note: Ensure you have the necessary development tools installed for your target 
 
 ## Environment Setup
 
-This section is optional. The environments will be created automatically when running `npm run electron:dev`
+**This section is optional.** The environments will be created automatically when running `npm run electron:dev`. Normally you do not need to run either of the scripts listed below, manually.
 
 The project uses environment files for configuration. We provide a public template (`environment_public.ts`) that gets committed to the repository. For local development:
 
