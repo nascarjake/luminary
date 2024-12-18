@@ -125,7 +125,7 @@ This creates a `.dmg` file in the `dist` folder.
 
 Note: Ensure you have the necessary development tools installed for your target platform before running these commands.
 
-## Environment Setup
+## Environment Setup (Optional)
 
 **This section is optional.** The environments will be created automatically when running `npm run electron:dev`. Normally you do not need to run either of the scripts listed below, manually.
 
