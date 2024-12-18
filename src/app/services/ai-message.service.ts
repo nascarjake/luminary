@@ -52,6 +52,15 @@ export class AiMessageService {
   private systemMessageSource = new Subject<string>();
   systemMessage$ = this.systemMessageSource.asObservable();
 
+  // Event emitter for streaming messages
+  private streamingMessageSource = new Subject<{
+    threadId: string;
+    messageId: string;
+    content: string;
+    done: boolean;
+  }>();
+  streamingMessage$ = this.streamingMessageSource.asObservable();
+
   private emitSystemMessage(message: string) {
     this.systemMessageSource.next(message);
   }
@@ -220,7 +229,8 @@ export class AiMessageService {
   private async handleResponse(stream: any): Promise<OAThreadMessage> {
     let run_id = '';
     let thread_id = '';
-    let tool_outputs = [];
+    let message_id = '';
+    let currentContent = '';
     let output: OAThreadMessage | null = null;
 
     try {
@@ -229,8 +239,26 @@ export class AiMessageService {
           console.log('event', event.event);
         
         // Keep track of IDs for cleanup
-        if (event.data?.id) run_id = event.data.id;
+        if (event.data?.id) {
+          if (event.event === 'thread.message.created') {
+            message_id = event.data.id;
+          } else {
+            run_id = event.data.id;
+          }
+        }
         if (event.data?.thread_id) thread_id = event.data.thread_id;
+        
+        // Handle streaming content
+        if (event.event === 'thread.message.delta' && event.data?.delta?.content?.[0]?.text?.value) {
+          const delta = event.data.delta.content[0].text.value;
+          currentContent += delta;
+          this.streamingMessageSource.next({
+            threadId: thread_id,
+            messageId: message_id,
+            content: currentContent,
+            done: false
+          });
+        }
         
         if (event.event === 'thread.message.completed') {
           output = event.data as OAThreadMessage;
@@ -248,6 +276,14 @@ export class AiMessageService {
             };
             delete this.outputCache[event.data.thread_id];
           }
+          
+          // Emit final message
+          this.streamingMessageSource.next({
+            threadId: thread_id,
+            messageId: message_id,
+            content: output.content[0].text.value,
+            done: true
+          });
         } else if (event.event === 'thread.run.requires_action') {
           if (event.data.status === 'requires_action') {
             await this.handleRequiredAction(event.data);
