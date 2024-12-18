@@ -487,6 +487,8 @@ Luminary was created by Jake of JakeDoesDev.com
 
 This project builds on the [GPT Assistant UI by PaulWeinsberg](https://github.com/PaulWeinsberg/gpt-assistant-ui/), extending it into a development platform while maintaining open-source principles.
 
+Made with [Windsurf](https://codeium.com/windsurf)
+
 ## License
 
 MIT License. See LICENSE.md for details.
