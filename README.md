@@ -4,6 +4,8 @@
 
 A visual development platform for creating AI pipelines using OpenAI assistants. Luminary provides tools for building workflows where multiple AI assistants can work together, with support for custom code integration.
 
+🚀 [Download FREE](https://github.com/nascarjake/luminary/releases/latest)
+
 🎥 [Demo Video v0.0.7](https://www.youtube.com/watch?v=g46q1IjClz8)
 
 📊 [Overview Presentation](https://www.canva.com/design/DAGZZUBLnFc/-VlBs8UTq1k_2Hc5fHsC6Q/edit?utm_content=DAGZZUBLnFc&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton)
