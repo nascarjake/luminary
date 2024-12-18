@@ -6,6 +6,26 @@ A visual development platform for creating AI pipelines using OpenAI assistants.
 
 [Demo Video v0.0.7](https://www.youtube.com/watch?v=g46q1IjClz8)
 
+[JakeDoesDev Discord](https://jakedoesdev.com)
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Components](#components)
+- [Installation](#installation)
+- [Building](#building)
+- [Environment Setup](#environment-setup)
+- [OpenAI Integration](#openai-integration)
+- [Building a Pipeline](#building-a-pipeline)
+- [Profiles](#profiles)
+- [Projects](#projects)
+- [Scheduling](#scheduling)
+- [Functions](#functions)
+- [Roadmap](#roadmap)
+- [Community](#community)
+- [Credits](#credits)
+- [License](#license)
+
 ## Overview
 
 Why use Luminary?
@@ -18,6 +38,8 @@ The platform enables AI assistants to communicate through a visual graph system.
 ![Screenshot](https://raw.githubusercontent.com/nascarjake/luminary/main/screen_graph.png)
 
 ![Screenshot](https://raw.githubusercontent.com/nascarjake/luminary/main/screen_chat.png)
+
+![Screenshot](https://raw.githubusercontent.com/nascarjake/luminary/main/screen_schedule.png)
 
 ## Components
 
@@ -233,9 +255,30 @@ Through the settings menu, you can:
 - Set access controls
 - View activity logs
 
+## Scheduling
+
+Luminary includes a scheduling system complete with a calendar view for easy scheduling.
+You can schedule tasks to run at specific times; events can send new messages, or objects generated in the past.
+
+**Scheduling allows you to:**
+- Schedule tasks to run at specific times
+- Set up recurring tasks, weekly or monthly
+- Monitor task executions
+
+**Example usage:**
+- Generate a video, object is saved
+- Schedule object to be passed to the Upload To Youtube function/assistant in one week.
+
 ## Functions
 
-Functions allow custom code execution in your AI pipelines, enabling integration with external systems and data processing.
+Functions allow custom code execution in your AI pipelines, enabling integration with external systems and data processing. You can bring your own code for each function you create. Any language is supported as long as the script can be executed by a terminal command.
+
+**What is an AI Tool function?**
+AI Tool Functions = Actions performed by the AI
+
+Tool functions allow assistants to execute code. These functions can be used to perform tasks like data processing, data analysis, or data transformation. The code that is executed is code you write, or import. The code does not run in OpenAI's servers. Instead it runs within Luminary on your local machine. 
+
+In order for the AI to call your function you must setup a **tool definition**. Luminary helps you do this in the assistant editor. A **tool definition** is simply a JSON object that defines the input and output schemas for your function. This is what tells the AI how to call your function, what parameters are available, and what the function is used for.
 
 ### Integration Methods
 Functions can be used as:
@@ -407,10 +450,10 @@ The `/functions/` directory includes:
 Current development plans include:
 
 ### Upcoming Features
-- **Event Scheduling**: Automated pipeline execution
+- **Event Scheduling**: Automated pipeline execution (done)
 - **LangChain Integration**: Additional AI model support
-- **Building Tools**: Simplified assistant setup
-- **Development Tools**: Enhanced debugging
+- **AI Building Tools**: Simplified assistant setup
+- **Development Tools**: Enhanced debugging and code support
 
 ### Future Plans
 - More model options
@@ -431,6 +474,8 @@ Join our Discord for:
 [Discord Server](https://discord.gg/6BJTUpDSsE)
 
 ## Credits
+
+Luminary was created by Jake of JakeDoesDev.com
 
 This project builds on the [GPT Assistant UI by PaulWeinsberg](https://github.com/PaulWeinsberg/gpt-assistant-ui/), extending it into a development platform while maintaining open-source principles.
 
