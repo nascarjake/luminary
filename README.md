@@ -72,8 +72,9 @@ The engine handles assistant communication and function execution, with document
 
 ### Requirements:
 
-- Installing Node.js is not required to run Luminary. However, if you import a profile which uses functions written in node.js, you will need to install Node.js to run the functions.
-- Installing Python is not required to run Luminary. However, if you import a profile which uses functions written in python, you will need to install Python to run the functions.
+- Installing **Node.js** is not required to run Luminary Releases. However, Node.js is required to build Luminary. Also, while running a Luminary release, if you import a profile which uses functions written in node.js, you will need to install Node.js to run the functions.
+
+- Installing **Python** is not required to run Luminary Releases or build Luminary. However, if you import a profile which uses functions written in python, you will need to install Python to run the functions.
 
 To get started with Luminary, follow these steps:
 
@@ -90,13 +91,17 @@ To get started with Luminary, follow these steps:
 
 ## Building
 
-To build and run Luminary from source, use the following commands:
+Node.js 16 or higher is required.
+Clone the repo to a directory. Within that directory run:
+
+```
+npm install
+```
 
 ### Development Mode
 Run the application in development mode:
 
 ```
-npm install
 npm run electron:dev
 ```
 
