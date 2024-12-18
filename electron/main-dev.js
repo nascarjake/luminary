@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, protocol, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, protocol, dialog, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -884,4 +884,12 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   app.quit();
+});
+
+ipcMain.handle('window:minimize', () => mainWindow.minimize());
+ipcMain.handle('window:maximize', () => mainWindow.maximize());
+ipcMain.handle('window:close', () => mainWindow.close());
+
+ipcMain.handle('shell:openExternal', async (_, url) => {
+  await shell.openExternal(url);
 });

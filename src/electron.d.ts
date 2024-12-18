@@ -135,6 +135,10 @@ declare module 'electron-api' {
     close(): Promise<void>;
   }
 
+  interface ElectronShell {
+    openExternal(url: string): Promise<void>;
+  }
+
   interface ElectronIpcRenderer {
     invoke(channel: string, ...args: any[]): Promise<any>;
     on(channel: string, listener: (event: any, ...args: any[]) => void): void;
@@ -148,6 +152,7 @@ declare module 'electron-api' {
     path: ElectronPath;
     fs: ElectronFS;
     window: ElectronWindow;
+    shell: ElectronShell;
     functions: ElectronFunctions;
     assistant: ElectronAssistant;
     download: ElectronDownload;

@@ -137,9 +137,20 @@ contextBridge.exposeInMainWorld('electron', {
     removeListener: (channel, listener) => ipcRenderer.removeListener(channel, listener)
   },
   window: {
-    minimize: () => ipcRenderer.invoke('window:minimize'),
-    maximize: () => ipcRenderer.invoke('window:maximize'),
-    close: () => ipcRenderer.invoke('window:close'),
+    minimize() {
+      return ipcRenderer.invoke('window:minimize');
+    },
+    maximize() {
+      return ipcRenderer.invoke('window:maximize');
+    },
+    close() {
+      return ipcRenderer.invoke('window:close');
+    }
+  },
+  shell: {
+    openExternal(url) {
+      return ipcRenderer.invoke('shell:openExternal', url);
+    }
   },
   functionNodes: {
     save: async (baseDir, profileId, config) => {

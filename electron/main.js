@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, protocol, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, protocol, dialog, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -776,7 +776,13 @@ ipcMain.handle('window:close', () => {
   BrowserWindow.getFocusedWindow()?.close();
 });
 
-// Keep old handlers for backward compatibility during transition
+// Shell handlers
+ipcMain.handle('shell:openExternal', async (_, url) => {
+  await shell.openExternal(url);
+});
+
+// Profile handlers
+{{ ... }}
 
 let mainWindow;
 let splashScreen;

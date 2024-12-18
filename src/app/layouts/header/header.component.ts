@@ -26,7 +26,7 @@ import { Subscription } from 'rxjs';
       </div>
       <div class="sub-nav-container" *ngIf="showSubNav">
         <div class="version-container">
-          <div class="version-text">By Jake Clark</div>
+          <div class="version-text"><a href="#" style="color: white; text-decoration: none;" (click)="openExternalLink('https://JakeDoesDev.com')">By JakeDoesDev.com</a></div>
           <span class="version-text">v{{version}}</span>
         </div>
         <div class="sub-nav">
@@ -325,6 +325,10 @@ export class HeaderComponent implements OnInit, OnDestroy {
       this.showSubNav = false;
       this.activeSubNavItem = null;
     }
+  }
+
+  async openExternalLink(url: string) {
+    await window.electron.shell.openExternal(url);
   }
 
   ngOnDestroy() {
