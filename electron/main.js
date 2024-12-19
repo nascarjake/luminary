@@ -781,9 +781,6 @@ ipcMain.handle('shell:openExternal', async (_, url) => {
   await shell.openExternal(url);
 });
 
-// Profile handlers
-{{ ... }}
-
 let mainWindow;
 let splashScreen;
 
