@@ -232,7 +232,11 @@ A profile contains:
 - Graph layouts
 
 ### Storage and Management
-Profiles are stored in a `.luminary` file in your system's application data directory:
+Profiles and related files are stored in a `.luminary` file in your User directory:
+- Windows: `%userprofile%\.luminary`
+- macOS: `~/.luminary`
+
+Luminary is installed in the following directories:
 - Windows: `%AppData%/Luminary`
 - macOS: `~/Library/Application Support/Luminary`
 
