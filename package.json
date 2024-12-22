@@ -131,12 +131,9 @@
       "icon": "build/assets/app-icon.png"
     },
     "linux": {
-      "target": [
-        "AppImage",
-        "deb"
-      ],
-      "category": "Development",
-      "icon": "build/assets/app-icon.png"
+      "target": ["deb", "AppImage"],
+      "icon": "build/assets/app-icon.png",
+      "category": "Development"
     }
   }
 }
