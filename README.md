@@ -85,11 +85,28 @@ To get started with Luminary, follow these steps:
 1. Download the latest version for your platform from the GitHub releases page:
    - Windows: Download the `.exe` installer
    - macOS: Download the `.zip` file
-   - Linux: Support coming soon
+   - Linux: Download the `.deb` package
 
 2. Run the installer for your platform:
    - Windows: Execute the installer and follow the prompts. Once complete, Luminary will be available in your Start Menu.
-   - macOS: Extract the zip file, double-click on the `install.command` file. This will open the `.dmg` file. Drag Luminary to your Applications folder. The app is NOT signed and notarized for MacOS. The `install.command` will use the `xattr -c` command to bypass MacOS gatekeeper and install the app.
+   - macOS:
+     - Extract the zip file
+     - Double-click on the `install.command` file
+     - This will open the `.dmg` file
+     - Drag Luminary to your Applications folder
+     - Note: The app is NOT signed and notarized for MacOS
+     - The `install.command` uses `xattr -c` to bypass MacOS gatekeeper and install the app
+   - Linux:
+     - Install the package using the following command:
+       ```
+       sudo dpkg -i luminary_x.x.x_<arch>.deb
+       ```
+       Replace `<arch>` with either `arm64` or `amd64` based on your download
+     - If you encounter any dependency issues, run:
+       ```
+       sudo apt-get install -f
+       ```
+     - Once installed, you can launch Luminary from your applications menu or by running `luminary` in the terminal
 
 ## Building
 
