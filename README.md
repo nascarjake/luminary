@@ -129,8 +129,11 @@ npm run electron:build:mac
 ```
 
 This creates a `.dmg` file in the `dist` folder.
+Ensure you have the necessary development tools installed for your target platform before running these commands.
 
-Note: Ensure you have the necessary development tools installed for your target platform before running these commands.
+Note: Building for macOS requires signing the application using xcode. 
+At the moment I have not done this. Instead there is a `install.command` included in the mac release. This file will prompt you several times for permission.
+
 
 ## Environment Setup (Optional)
 

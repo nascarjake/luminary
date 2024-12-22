@@ -3,7 +3,8 @@
   "version": "0.1.1",
   "description": "AI Assistant Pipeline Builder - Create, connect, and orchestrate AI workflows",
   "author": {
-    "name": "Jacob Clark"
+    "name": "Jacob Clark",
+    "email": "n787msa11@gmail.com"
   },
   "main": "electron/main.js",
   "scripts": {
@@ -18,7 +19,8 @@
     "electron:build": "ng build && electron-builder",
     "electron:build:win": "ng build && electron-builder --win",
     "electron:build:win:debug": "ng build && electron-builder --win -c.asar=false",
-    "electron:build:mac": "ng build && electron-builder --mac"
+    "electron:build:mac": "ng build && electron-builder --mac --x64 --arm64",
+    "electron:build:linux": "ng build && electron-builder --linux --x64 --arm64"
   },
   "private": true,
   "dependencies": {
@@ -109,8 +111,10 @@
     "mac": {
       "category": "public.app-category.developer-tools",
       "target": [
-        "dmg",
-        "zip"
+        {
+          "target": "dmg",
+          "arch": ["x64", "arm64"]
+        }
       ],
       "icon": "build/assets/app-icon.png"
     },
@@ -119,10 +123,19 @@
         {
           "target": "nsis",
           "arch": [
-            "x64"
+            "x64",
+            "arm64"
           ]
         }
       ],
+      "icon": "build/assets/app-icon.png"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Development",
       "icon": "build/assets/app-icon.png"
     }
   }
