@@ -32,7 +32,8 @@ A visual development platform for creating AI pipelines using OpenAI assistants.
 
 ## Overview
 
-Why use Luminary?
+**Why use Luminary?**
+
 Many times when trying to create complex AI behavior, trying to train a single AI bot to complete the entire task can often lead to inconsistent results, errors and hallucinations. A common tactic to combat this is to split a large task into multiple AI assistants, each trained with a specific role and focus. 
 
 Creating workflows that coordinate multiple AI assistants typically requires significant development effort and system architecture. Luminary aims to simplify this process through visual tools and a structured development environment.
