@@ -212,11 +212,6 @@ async function main() {
     
     // Download video
     const videoName = title || `video-${renderStatus.job_id}`;
-    /*const videoPath = await client.downloadVideo(
-      renderStatus.data.videoURL,
-      outputDir,
-      videoName
-    );*/
     
     // Return success response
     const result = {

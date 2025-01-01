@@ -135,68 +135,41 @@ export class SystemMessageOverlayService {
         insertIndex = result.findIndex(m => m.id === sysMsg.insertAfterMessageId);
       }
 
-      // If we can't find the message to insert after and it's not an empty insertAfterMessageId
-      if (insertIndex === -1 && sysMsg.insertAfterMessageId) {
-        console.log(`Skipping system message "${sysMsg.content.slice(0, 20)}..." - parent message not found`);
-        continue;
-      }
+      // Always insert the system message after the specified insertion point
+      const newMessage: OAThreadMessage = {
+        id: `system-${Date.now()}-${Math.random()}`,
+        created_at: Date.now(),
+        thread_id: threadId,
+        role: 'system' as const,
+        object: 'thread.message',
+        content: [{
+          type: 'text',
+          text: {
+            value: sysMsg.content,
+            annotations: []
+          }
+        }],
+        file_ids: [],
+        assistant_id: null,
+        run_id: null,
+        metadata: {}
+      };
 
-      // Find the next user message after the parent
-      let targetIndex = insertIndex + 1;
-      while (targetIndex < result.length && (result[targetIndex].role === 'system' || result[targetIndex].role === 'assistant')) {
-        targetIndex++;
-      }
-
-      // If we found a next user message, insert after it
-      if (targetIndex < result.length && result[targetIndex].role === 'user') {
+      // If we have a valid insertion point, insert after it
+      if (insertIndex >= 0) {
         // Find how many system messages we've already inserted after this message
         let offset = 1;
         while (
-          targetIndex + offset < result.length && 
-          result[targetIndex + offset].role === 'system' &&
-          result[targetIndex + offset].id.startsWith('system-')
+          insertIndex + offset < result.length && 
+          result[insertIndex + offset].role === 'system' &&
+          result[insertIndex + offset].id.startsWith('system-')
         ) {
           offset++;
         }
-
-        result.splice(targetIndex + offset, 0, {
-          id: `system-${Date.now()}-${Math.random()}`,
-          created_at: Date.now(),
-          thread_id: threadId,
-          role: 'system',
-          object: 'thread.message',
-          content: [{
-            type: 'text',
-            text: {
-              value: sysMsg.content,
-              annotations: []
-            }
-          }],
-          file_ids: [],
-          assistant_id: null,
-          run_id: null,
-          metadata: {}
-        });
-      } else if (insertIndex === 0 || !result.length) {
-        // If we're inserting at the start or there are no messages yet
-        result.unshift({
-          id: `system-${Date.now()}-${Math.random()}`,
-          created_at: Date.now(),
-          thread_id: threadId,
-          role: 'system',
-          object: 'thread.message',
-          content: [{
-            type: 'text',
-            text: {
-              value: sysMsg.content,
-              annotations: []
-            }
-          }],
-          file_ids: [],
-          assistant_id: null,
-          run_id: null,
-          metadata: {}
-        });
+        result.splice(insertIndex + offset, 0, newMessage);
+      } else {
+        // If no valid insertion point, add to the start
+        result.unshift(newMessage);
       }
     }
     
