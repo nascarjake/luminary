@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <strong><a href="https://github.com/nascarjake/luminary/releases/latest">Download</a> &nbsp;·&nbsp; <a href="https://www.youtube.com/watch?v=g46q1IjClz8">Demo</a> &nbsp;·&nbsp; <a href="https://www.canva.com/design/DAGZZUBLnFc/-VlBs8UTq1k_2Hc5fHsC6Q/edit?utm_content=DAGZZUBLnFc&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton">Presentation</a> &nbsp;·&nbsp; <a href="https://jakedoesdev.com">Discord</a></strong>
+  <strong><a href="https://github.com/nascarjake/luminary/releases/latest">Download</a> &nbsp;·&nbsp; <a href="https://www.youtube.com/watch?v=LyOMJq47ASQ">Demo</a> &nbsp;·&nbsp; <a href="https://www.canva.com/design/DAGZZUBLnFc/-VlBs8UTq1k_2Hc5fHsC6Q/edit?utm_content=DAGZZUBLnFc&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton">Presentation</a> &nbsp;·&nbsp; <a href="https://jakedoesdev.com">Discord</a></strong>
 </p>
 
 ---
