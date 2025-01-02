@@ -47,6 +47,26 @@ Luminary provides tools for building workflows where multiple AI assistants can 
 
 ---
 
+## Luminary Builds Businesses
+
+**Want to start a merch shop?**
+- Create a pipeline that generates images, sends them to teespring
+- Create merch items on teespring like shirts and mugs using the images (via api)
+- Select and buy a domain and connect it to your teespring site (via cloudflare api or something like that)
+- Create seo metadata for your site
+- Create social media posts of your products and schedule them to post.
+
+**Want to start a survey website/app?**
+- Create an ai that asks the user what type of survey they want to build
+- Collect information about what type of recommednations or call to actions need to be made
+- Generate a data object that can be plugged into an app you are building which provides a great survey experience.
+
+If you are building an app or tool that lets people make their own guide, website, flyer, schedule, trading bot, anything.... then you can use AI to make a pipeline that will make using your tool as easy as talking.
+
+You design that AI pipeline in luminary, then export it to the standalone luminary pipeline engine library which can be imported into your project. This means you use the luminary tool to build and test the pipeline, then use it to run your own app or business.
+
+---
+
 ## Key Features
 - **Multiple AI Assistants** — Build complex AI workflows by orchestrating specialized assistants.
 - **Visual Graph Editor** — Drag-and-drop nodes to design AI pipelines without tangling in code.
