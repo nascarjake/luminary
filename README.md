@@ -104,6 +104,10 @@ To get started with Luminary, follow these steps:
      - Double-click `install.command`  
      - Drag Luminary to `Applications`  
      - *App is not signed/notarized, so Gatekeeper may prompt you*  
+     - *If you get an error about the app being damaged, run:*
+       ```bash
+       xattr -c /Applications/Luminary.app
+       ```
    - **Linux**:  
      - ```bash
        sudo dpkg -i luminary_x.x.x_<arch>.deb
