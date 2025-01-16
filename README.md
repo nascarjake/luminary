@@ -18,6 +18,20 @@
 
 ---
 
+## Current Release
+
+[![Current Release](https://img.shields.io/github/v/release/nascarjake/luminary?label=Current%20Release)](https://github.com/nascarjake/luminary/releases/latest)
+![Downloads](https://img.shields.io/github/downloads/nascarjake/luminary/total?label=Total%20Downloads)
+
+<a href="https://github.com/nascarjake/luminary/releases/latest/download/luminary-linux.tar.gz"><img src="https://img.shields.io/badge/Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black" alt="Linux Release"></a>
+<a href="https://github.com/nascarjake/luminary/releases/latest/download/luminary-macos.tar.gz"><img src="https://img.shields.io/badge/mac%20os%20intel-000000?style=for-the-badge&logo=apple&logoColor=white" alt="MacOS Intel Release"></a>
+<a href="https://github.com/nascarjake/luminary/releases/latest/download/luminary-macos-arm64.tar.gz"><img src="https://img.shields.io/badge/mac%20os%20arm%20(m*)-000000?style=for-the-badge&logo=apple&logoColor=white" alt="MacOS ARM Release"></a>
+<a href="https://github.com/nascarjake/luminary/releases/latest/download/luminary-win64.exe"><img src="https://img.shields.io/badge/Windows%2064%20Bit-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Windows 64 Bit Release"></a>
+
+Upgrading to a new version? You can find older versions [here](https://github.com/nascarjake/luminary/releases).
+
+---
+
 ## Table of Contents
 - [Introduction](#introduction)
 - [Key Features](#key-features)
