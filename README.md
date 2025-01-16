@@ -19,7 +19,7 @@
   <a href="https://github.com/nascarjake/luminary/releases/latest/download/luminary-linux.tar.gz"><img src="https://img.shields.io/badge/Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black" alt="Linux Release"></a>
   <a href="https://github.com/nascarjake/luminary/releases/latest/download/luminary-macos.tar.gz"><img src="https://img.shields.io/badge/mac%20os%20intel-000000?style=for-the-badge&logo=apple&logoColor=white" alt="MacOS Intel Release"></a>
   <a href="https://github.com/nascarjake/luminary/releases/latest/download/luminary-macos-arm64.tar.gz"><img src="https://img.shields.io/badge/mac%20os%20arm%20(m*)-000000?style=for-the-badge&logo=apple&logoColor=white" alt="MacOS ARM Release"></a>
-  <a href="https://github.com/nascarjake/luminary/releases/latest/download/luminary-win64.exe"><img src="https://img.shields.io/badge/Windows%2064%20Bit-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Windows 64 Bit Release"></a>
+  <a href="https://github.com/nascarjake/luminary/releases/latest/download/luminary-win64.exe"><img src="https://img.shields.io/badge/Windows%2064%20Bit-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Windows 64 Bit Release"></a><br>
   <strong><a href="https://www.youtube.com/watch?v=LyOMJq47ASQ">Demo</a> &nbsp;·&nbsp; <a href="https://www.canva.com/design/DAGZZUBLnFc/-VlBs8UTq1k_2Hc5fHsC6Q/edit?utm_content=DAGZZUBLnFc&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton">Presentation</a> &nbsp;·&nbsp; <a href="https://jakedoesdev.com">Discord</a></strong>
 </p>
 ---
