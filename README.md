@@ -30,6 +30,7 @@
 - [Key Features](#key-features)
 - [Screenshots](#screenshots)
 - [Installation](#installation)
+- [Getting Started](#getting-started)
 - [Building](#building)
 - [Environment Setup (Optional)](#environment-setup-optional)
 - [OpenAI Integration](#openai-integration)
@@ -128,6 +129,20 @@ To get started with Luminary, follow these steps:
 
 > **Note**  
 > No need for Node.js or Python unless you plan on running custom functions that require them.
+
+---
+
+## Getting Started
+
+Watch our [Demo Video](https://www.youtube.com/watch?v=g46q1IjClz8) to see Luminary in action! Then follow these steps:
+
+1. Install Luminary using the instructions above
+2. Download an example profile from our [profile-examples](profile-examples) directory
+3. Launch Luminary and go to "Manage Profiles"
+4. Import the downloaded profile
+5. Explore the pre-configured assistants and functions that come with the profile
+
+Each example profile is designed to showcase different capabilities of Luminary. Check the [profile-examples/README.md](profile-examples/README.md) for detailed information about each example.
 
 ---
 
@@ -279,6 +294,12 @@ Profiles work with:
 - Desktop application via zip files
 - Pipeline engine library
 - Version control systems
+
+### Example Profiles
+We provide several example profiles in our [profile-examples](profile-examples) directory to help you get started:
+
+- **Video Pipeline Profile**: Demonstrates automated video content creation using GPT and Pictory.ai
+- More examples coming soon!
 
 ---
 
